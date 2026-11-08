@@ -224,10 +224,10 @@ describe("caution rules", () => {
 });
 
 describe("penalty rules", () => {
-  it("pre-thermal costs a caution's points but keeps the hour good", () => {
+  it("sledder costs a caution's points but keeps the hour good", () => {
     const r = evalWith({ hour: hourWith((h) => (h.blhM = 300)).level(600, (l) => (l.tempC = 0)) });
     expect(r.call).toBe("good");
-    expect(r.reasons.find((x) => x.kind === "preThermal")?.severity).toBe("penalty");
+    expect(r.reasons.find((x) => x.kind === "sledder")?.severity).toBe("penalty");
     expect(r.score).toBe(r.unpenalizedScore - d.cautionReasonPenalty);
   });
 });
@@ -405,9 +405,9 @@ describe("boundaries", () => {
         .build();
     expect(thermalIndex(hourFor(499, 0), elev)).toBe(0);
     expect(thermalIndex(hourFor(499, 0.1), elev)).toBeGreaterThan(0);
-    expect(kinds(evalWith({ launch, hour: hourFor(499, 0.1) }))).toContain("preThermal");
-    expect(kinds(evalWith({ launch, hour: hourFor(500, 0.1) }))).not.toContain("preThermal");
-    expect(kinds(evalWith({ launch, hour: hourFor(499, 0) }))).not.toContain("preThermal");
+    expect(kinds(evalWith({ launch, hour: hourFor(499, 0.1) }))).toContain("sledder");
+    expect(kinds(evalWith({ launch, hour: hourFor(500, 0.1) }))).not.toContain("sledder");
+    expect(kinds(evalWith({ launch, hour: hourFor(499, 0) }))).not.toContain("sledder");
   });
 });
 
@@ -498,32 +498,32 @@ describe("nil handling", () => {
     });
   });
 
-  it("pre-thermal with only BLH", () => {
+  it("sledder with only BLH", () => {
     const noTI = (b: HourBuilder) =>
       b.level(600, (l) => (l.tempC = undefined)).level(500, (l) => (l.tempC = undefined));
     const low = noTI(hourWith((h) => (h.blhM = 400))).build();
     expect(thermalIndex(low, PERFECT_LAUNCH_ELEVATION_M)).toBeUndefined();
     expect(kinds(evalWith({ hour: low }))).toEqual(
-      expect.arrayContaining(["preThermal", "thermalIndexUnavailable"]),
+      expect.arrayContaining(["sledder", "thermalIndexUnavailable"]),
     );
-    expect(kinds(evalWith({ hour: noTI(hourWith((h) => (h.blhM = 600))) }))).not.toContain("preThermal");
+    expect(kinds(evalWith({ hour: noTI(hourWith((h) => (h.blhM = 600))) }))).not.toContain("sledder");
   });
 
-  it("pre-thermal with only TI", () => {
+  it("sledder with only TI", () => {
     const warm = hourWith((h) => (h.blhM = undefined)).level(600, (l) => (l.tempC = 0));
     expect(kinds(evalWith({ hour: warm }))).toEqual(
-      expect.arrayContaining(["preThermal", "blhUnavailable"]),
+      expect.arrayContaining(["sledder", "blhUnavailable"]),
     );
-    expect(kinds(evalWith({ hour: hourWith((h) => (h.blhM = undefined)) }))).not.toContain("preThermal");
+    expect(kinds(evalWith({ hour: hourWith((h) => (h.blhM = undefined)) }))).not.toContain("sledder");
   });
 
-  it("pre-thermal with neither BLH nor TI is skipped as n/a", () => {
+  it("sledder with neither BLH nor TI is skipped as n/a", () => {
     const r = evalWith({
       hour: hourWith((h) => (h.blhM = undefined))
         .level(600, (l) => (l.tempC = undefined))
         .level(500, (l) => (l.tempC = undefined)),
     });
-    expect(kinds(r)).not.toContain("preThermal");
+    expect(kinds(r)).not.toContain("sledder");
     expect(kinds(r)).toEqual(expect.arrayContaining(["blhUnavailable", "thermalIndexUnavailable"]));
     expect(r.call).toBe("good");
   });

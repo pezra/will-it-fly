@@ -77,7 +77,7 @@ One rule only costs points and never changes the call:
 
 | Rule | Threshold |
 |---|---|
-| Pre-thermal ("sledder") | boundary layer < 500 m and thermal index > 0 °C (if one is missing, the other decides) |
+| Sledder | boundary layer < 500 m and thermal index > 0 °C (if one is missing, the other decides) |
 
 It used to cap the hour at flyable. On weak November days at Boulder and Golden it fired all day, even though both were soarable, so now it just lowers the score.
 
@@ -98,7 +98,7 @@ No-go hours score 0. Other hours start at 50, then:
 | Thermal index (lowest pressure level ≥ 1200 m above launch) | +10 if ≤ −3 °C, +5 if ≤ −1 °C |
 | Boundary layer height | +5 if ≥ 1500 m |
 | Cloud base | +5 if ≥ 3000 ft above launch |
-| Each flyable-level or pre-thermal reason | −5 |
+| Each flyable-level or sledder reason | −5 |
 
 The score is clamped to 0–100.
 

@@ -492,8 +492,8 @@ describe("SCORING_DEFAULTS", () => {
       aloftCautionMph: 25,
       lowCloudBaseCautionFt: 1500,
       lowCloudCoverCautionPct: 60,
-      preThermalBLHBelowM: 500,
-      preThermalTIAboveC: 0,
+      sledderBLHBelowM: 500,
+      sledderTIAboveC: 0,
       // Web-only: gusts warn instead of scoring (author, 2026-11-08). Swift has gustNoGoMph 25
       // and gustFactorPenalty 5, which the web dropped.
       highGustWarningFactorMultiple: 3,

@@ -227,9 +227,9 @@ describe("mainReason", () => {
 
   it("fallsBackToTheMostFrequentCautionKind", () => {
     const hours = [
-      hourResult(T0, ["lowCloud", "preThermal", "capeUnavailable"], "flyable"),
-      hourResult(T0 + HOUR_MS, ["lowCloud", "preThermal", "overdevelopment"], "flyable"),
-      hourResult(T0 + 2 * HOUR_MS, ["overdevelopment", "preThermal", "capeUnavailable"], "flyable"),
+      hourResult(T0, ["lowCloud", "sledder", "capeUnavailable"], "flyable"),
+      hourResult(T0 + HOUR_MS, ["lowCloud", "sledder", "overdevelopment"], "flyable"),
+      hourResult(T0 + 2 * HOUR_MS, ["overdevelopment", "sledder", "capeUnavailable"], "flyable"),
     ];
     // overdevelopment 2, lowCloud 2: overdevelopment is declared first. Penalty and info kinds
     // are ignored.

@@ -51,7 +51,7 @@ export const REASON_KIND_ORDER = [
   "directionNotIdeal",
   "notCurated",
   // Penalty: scored, never changes the call
-  "preThermal",
+  "sledder",
   // Warning: shown, never scored
   "highGusts",
   // Info: a rule or score factor skipped for missing data
@@ -94,7 +94,7 @@ export const REASON_SEVERITY: Readonly<Record<ReasonKind, Severity>> = Object.fr
   neighborWind: "caution",
   directionNotIdeal: "caution",
   notCurated: "caution",
-  preThermal: "penalty",
+  sledder: "penalty",
   highGusts: "warning",
   capeUnavailable: "info",
   aloftWindUnavailable: "info",
@@ -406,14 +406,14 @@ export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORI
   const neighbor = neighborReason(ctx, defaults);
   if (neighbor !== undefined) reasons.push(neighbor);
 
-  // Pre-thermal: BLH low and TI positive. With one missing, the other decides.
+  // Sledder: BLH low and TI positive. With one missing, the other decides.
   const blh = hour.blhM;
   if (blh === undefined) reasons.push(reason("blhUnavailable", "BLH: n/a"));
   if (ti === undefined) reasons.push(reason("thermalIndexUnavailable", "thermal index: n/a"));
   if (blh !== undefined || ti !== undefined) {
-    const lowBLH = blh === undefined || blh < defaults.preThermalBLHBelowM;
-    const stableTI = ti === undefined || ti > defaults.preThermalTIAboveC;
-    if (lowBLH && stableTI) reasons.push(reason("preThermal", "pre-thermal: sledder"));
+    const lowBLH = blh === undefined || blh < defaults.sledderBLHBelowM;
+    const stableTI = ti === undefined || ti > defaults.sledderTIAboveC;
+    if (lowBLH && stableTI) reasons.push(reason("sledder", "sledder"));
   }
 
   // RRFS sees storms (ECMWF evaluation only).

@@ -38,13 +38,13 @@ export interface ScoringDefaults {
   /** `cloud_cover_low` at or above this percentage is a caution. */
   lowCloudCoverCautionPct: number;
   // Penalty (scored, never changes the call)
-  /** Pre-thermal: BLH below this (m above model terrain) ... */
-  preThermalBLHBelowM: number;
+  /** Sledder: BLH below this (m above model terrain) ... */
+  sledderBLHBelowM: number;
   /**
-   * ... and TI above this (degrees C) gives "pre-thermal: sledder". A penalty, not a caution, since
+   * ... and TI above this (degrees C) gives "sledder". A penalty, not a caution, since
    * 2026-11-08: it fired all day on weak days that were still soarable.
    */
-  preThermalTIAboveC: number;
+  sledderTIAboveC: number;
   // Warnings (shown, never scored)
   /**
    * A gust factor at or above this multiple of the site's gust-factor limit warns "high gusts
@@ -144,8 +144,8 @@ export const SCORING_DEFAULTS: Readonly<ScoringDefaults> = Object.freeze({
   lowCloudBaseCautionFt: 1500,
   lowCloudCoverCautionPct: 60,
   // Penalty (scored, never changes the call)
-  preThermalBLHBelowM: 500,
-  preThermalTIAboveC: 0,
+  sledderBLHBelowM: 500,
+  sledderTIAboveC: 0,
   // Warnings (shown, never scored)
   highGustWarningFactorMultiple: 3,
   // Storm look-ahead
