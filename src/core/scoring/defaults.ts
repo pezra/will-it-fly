@@ -55,6 +55,11 @@ export interface ScoringDefaults {
   windSpeedMaxBonus: number;
   /** Bonus when the launch wind direction is in an `ideal` arc. */
   idealDirectionBonus: number;
+  /**
+   * A zero-width `ideal` arc (from === to) counts as that heading plus or minus this. Not in the
+   * Swift defaults: added for the ideal-arc fallback the user approved on 2026-11-08.
+   */
+  zeroWidthIdealHalfWidthDeg: number;
   /** TI at or below this (degrees C) earns `thermalIndexStrongBonus`. */
   thermalIndexStrongMaxC: number;
   thermalIndexStrongBonus: number;
@@ -140,6 +145,7 @@ export const SCORING_DEFAULTS: Readonly<ScoringDefaults> = Object.freeze({
   baseScore: 50,
   windSpeedMaxBonus: 20,
   idealDirectionBonus: 10,
+  zeroWidthIdealHalfWidthDeg: 15,
   thermalIndexStrongMaxC: -3,
   thermalIndexStrongBonus: 10,
   thermalIndexModerateMaxC: -1,
