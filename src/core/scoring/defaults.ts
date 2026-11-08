@@ -39,7 +39,7 @@ export interface ScoringDefaults {
   lowCloudCoverCautionPct: number;
   /** Pre-thermal: BLH below this (m above model terrain) ... */
   preThermalBLHBelowM: number;
-  /** ... and TI above this (degrees C) gives "pre-thermal: sled ride". */
+  /** ... and TI above this (degrees C) gives "pre-thermal: sledder". */
   preThermalTIAboveC: number;
   // Warnings (shown, never scored)
   /**

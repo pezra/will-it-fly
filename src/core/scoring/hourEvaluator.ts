@@ -402,7 +402,7 @@ export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORI
   if (blh !== undefined || ti !== undefined) {
     const lowBLH = blh === undefined || blh < defaults.preThermalBLHBelowM;
     const stableTI = ti === undefined || ti > defaults.preThermalTIAboveC;
-    if (lowBLH && stableTI) reasons.push(reason("preThermal", "pre-thermal: sled ride"));
+    if (lowBLH && stableTI) reasons.push(reason("preThermal", "pre-thermal: sledder"));
   }
 
   // RRFS sees storms (ECMWF evaluation only).

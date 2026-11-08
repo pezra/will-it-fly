@@ -67,7 +67,7 @@ Otherwise it's **flyable** (not good) if any of these hold:
 | Near max | launch wind within 2 mph of the site max |
 | Low cloud | cloud base < 1500 ft above launch, or low cloud cover ≥ 60% |
 | Inconsistent wind 5 mi away | differs by > 60° (both ≥ 5 mph) |
-| Pre-thermal ("sled ride") | boundary layer < 500 m and thermal index > 0 °C (if one is missing, the other decides) |
+| Pre-thermal ("sledder") | boundary layer < 500 m and thermal index > 0 °C (if one is missing, the other decides) |
 | Direction OK but not ideal | inside the OK range, outside the ideal range |
 | Direction not curated | the launch has no OK range |
 
