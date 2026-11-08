@@ -1,10 +1,10 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { createForecastCache } from "../../../src/core/forecast/forecastCache";
 import type { ForecastCache } from "../../../src/core/forecast/forecastCache";
-import { OpenMeteoError } from "../../../src/core/forecast/openMeteoClient";
+import { OpenMeteoError, parseForecasts } from "../../../src/core/forecast/openMeteoClient";
 import type { Transport } from "../../../src/core/forecast/openMeteoClient";
 import { withDistances } from "../../../src/core/recommendation/ranker";
-import { getRecommendations } from "../../../src/core/recommendation/recommendationService";
+import { getRecommendations, resolveTargetDay } from "../../../src/core/recommendation/recommendationService";
 import type { RecommendationDeps } from "../../../src/core/recommendation/recommendationService";
 import { SCORING_DEFAULTS } from "../../../src/core/scoring/defaults";
 import { denverDayKey } from "../../../src/core/time";
@@ -362,5 +362,14 @@ describe("getRecommendations", () => {
         { ...deps(fixtureTransport(), cache), siteProvider: { sites: async () => Promise.reject(new Error("bad catalog")) } },
       ),
     ).rejects.toThrow("bad catalog");
+  });
+});
+
+describe("resolveTargetDay", () => {
+  it("uses the first forecast that has daylight days", () => {
+    const [a, b] = parseForecasts(launchesJSON, neighborsJSON, openLaunches());
+    if (a === undefined || b === undefined) never();
+    expect(resolveTargetDay([{ ...a, days: [] }, b], NOW)).toBe("today");
+    expect(resolveTargetDay([{ ...a, days: [] }, { ...b, days: [] }], NOW)).toBeUndefined();
   });
 });

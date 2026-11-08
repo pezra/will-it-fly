@@ -2,7 +2,9 @@ import { METERS_PER_FOOT, METERS_PER_MILE, compass } from "../core/units";
 import type { Confidence } from "../core/scoring/modelAgreement";
 import type { HourCall } from "../core/scoring/hourEvaluator";
 import type { TargetDay } from "../core/scoring/windowFinder";
-import type { DegreeArc } from "../core/sites/site";
+import { SCORING_DEFAULTS } from "../core/scoring/defaults";
+import { effectiveIdealArcs } from "../core/scoring/hourEvaluator";
+import type { DegreeArc, Launch } from "../core/sites/site";
 
 /** Feet from meters, rounded to the nearest 100 ft, as "≈ 9,200 ft". "n/a" when missing. */
 export function approxFeet(meters: number | undefined): string {
@@ -42,6 +44,19 @@ export function arcLabel(arc: DegreeArc): string {
 
 export function arcsLabel(arcs: readonly DegreeArc[]): string {
   return arcs.length === 0 ? "none" : arcs.map(arcLabel).join(", ");
+}
+
+const wrap360 = (deg: number): number => (deg < 0 ? deg + 360 : deg > 360 ? deg - 360 : deg);
+
+/**
+ * The directions scoring treats as ideal: the ideal arcs (a zero-width one widened to heading
+ * plus or minus the half-width, wrapped to 0-359), or "anywhere in the OK range" when none.
+ */
+export function idealLabel(launch: Launch): string {
+  if (launch.directions.ideal.length === 0) return "anywhere in the OK range";
+  return arcsLabel(
+    effectiveIdealArcs(launch, SCORING_DEFAULTS).map((a) => ({ from: wrap360(a.from), to: wrap360(a.to) })),
+  );
 }
 
 export function dayLabel(day: TargetDay): string {

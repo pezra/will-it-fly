@@ -6,12 +6,42 @@ import { compass } from "../core/units";
 import { CallBadge } from "./CallBadge";
 import { approxFeet, oneDecimal, whole } from "./format";
 
-/** "12 g18 W" style cell pieces. */
-function windCell(hour: ModelHour | undefined, withGust: boolean): string {
-  if (hour === undefined || hour.windMph === undefined) return "n/a";
-  const gust = withGust && hour.gustMph !== undefined ? ` g${Math.round(hour.gustMph)}` : "";
-  const dir = hour.windDir === undefined ? "" : ` ${compass(hour.windDir)} ${Math.round(hour.windDir)}°`;
-  return `${Math.round(hour.windMph)}${gust}${dir}`;
+/** Launch-height wind this far from the model's 10 m wind (mph) gets a marker. */
+const LAUNCH_WIND_MARK_MPH = 1;
+
+/**
+ * "12 g18 W 270°": the wind the call was scored on (launch height), with the hour's gust. A "†"
+ * marks a launch wind that differs from the 10 m wind by a mile per hour or more.
+ */
+/** True when the launch wind differs from the model's 10 m wind by at least the marker threshold. */
+function isMarked(result: HourResult | undefined, hour: ModelHour | undefined): boolean {
+  const wind = result?.launchWind;
+  return (
+    wind !== undefined &&
+    hour?.windMph !== undefined &&
+    Math.abs(wind.speedMph - hour.windMph) >= LAUNCH_WIND_MARK_MPH
+  );
+}
+
+function WindCell({
+  result,
+  hour,
+  withGust,
+}: {
+  result: HourResult | undefined;
+  hour: ModelHour | undefined;
+  withGust: boolean;
+}) {
+  const wind = result?.launchWind;
+  if (wind === undefined) return <>n/a</>;
+  const gust = withGust && hour?.gustMph !== undefined ? ` g${Math.round(hour.gustMph)}` : "";
+  const text = `${Math.round(wind.speedMph)}${gust} ${compass(wind.dirDeg)} ${Math.round(wind.dirDeg)}°`;
+  if (!isMarked(result, hour) || hour?.windMph === undefined) return <>{text}</>;
+  return (
+    <span title={`Launch-height wind; the model's 10 m wind is ${Math.round(hour.windMph)} mph`}>
+      {text}†
+    </span>
+  );
 }
 
 function ReasonList({ result, label }: { result: HourResult; label: string }) {
@@ -60,9 +90,9 @@ export function HourlyTable({ evaluation }: { evaluation: LaunchEvaluation }) {
               <tr key={time} class={ecmwf.call === "noData" ? "no-data" : undefined}>
                 <th scope="row">{formatDenverTime(time)}</th>
                 <td><CallBadge call={ecmwf.call} /></td>
-                <td>{ecmwf.call === "noData" ? "no data" : windCell(ecmwfHour, true)}</td>
+                <td>{ecmwf.call === "noData" ? "no data" : <WindCell result={ecmwf} hour={ecmwfHour} withGust={true} />}</td>
                 <td>{rrfs === undefined ? "n/a" : <CallBadge call={rrfs.call} />}</td>
-                <td>{windCell(rrfsHour, false)}</td>
+                <td><WindCell result={rrfs} hour={rrfsHour} withGust={false} /></td>
                 <td>{whole(ecmwfHour.capeJkg)}</td>
                 <td>{approxFeet(ecmwf.cloudBaseM)}</td>
                 <td>{oneDecimal(ecmwf.thermalIndexC)}</td>
@@ -71,6 +101,11 @@ export function HourlyTable({ evaluation }: { evaluation: LaunchEvaluation }) {
           </tbody>
         </table>
       </div>
+      {daylight.some((row) =>
+          (row.ecmwf.call !== "noData" && isMarked(row.ecmwf, row.ecmwfHour)) ||
+          isMarked(row.rrfs, row.rrfsHour)) && (
+        <p class="note">† launch-height wind (interpolated from pressure levels)</p>
+      )}
       <p class="note">Cloud base is above launch, from temperature minus dewpoint. It runs high at launches well above model terrain.</p>
       <h4>Why, hour by hour</h4>
       <ul class="reasons">

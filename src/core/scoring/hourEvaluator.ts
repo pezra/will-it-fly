@@ -211,7 +211,7 @@ function finish(fields: HourFields, reasons: Reason[], defaults: ScoringDefaults
  * The ideal arcs with the fallback applied: an empty list means anywhere in `ok`, and a
  * zero-width arc (from === to) means that heading plus or minus the half-width.
  */
-function effectiveIdealArcs(launch: Launch, defaults: ScoringDefaults): DegreeArc[] {
+export function effectiveIdealArcs(launch: Launch, defaults: ScoringDefaults): DegreeArc[] {
   const { ok, ideal } = launch.directions;
   if (ideal.length === 0) return ok;
   const half = defaults.zeroWidthIdealHalfWidthDeg;
@@ -279,10 +279,21 @@ function precipMaxMm(hour: ModelHour, next: ModelHour | undefined): number | und
   return definedMax(hour.precipMm, next?.precipMm);
 }
 
-/** True if this hour has a precipitation no-go by max(h, h+1). */
-function precipNoGo(hour: ModelHour, next: ModelHour | undefined, defaults: ScoringDefaults): boolean {
+/** The flying hour's precipitation (mm) when it is a no-go by max(h, h+1), else undefined. */
+function precipNoGoMm(hour: ModelHour, next: ModelHour | undefined, defaults: ScoringDefaults): number | undefined {
   const precip = precipMaxMm(hour, next);
-  return precip !== undefined && precip >= defaults.precipNoGoMm;
+  return precip !== undefined && precip >= defaults.precipNoGoMm ? precip : undefined;
+}
+
+/**
+ * The gust factor for the flying hour: the larger of each hour's gust minus its own 10 m wind (same
+ * model), at least 0. Undefined when neither hour has both values.
+ */
+function gustFactorMph(hour: ModelHour, next: ModelHour | undefined): number | undefined {
+  const terms = [hour, next].flatMap((h) =>
+    h?.gustMph === undefined || h.windMph === undefined ? [] : [h.gustMph - h.windMph],
+  );
+  return terms.length === 0 ? undefined : Math.max(0, ...terms);
 }
 
 /** The per-hour call, score and reasons for one launch and one model. */
@@ -316,19 +327,14 @@ export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORI
   const directional = wind.speedMph >= defaults.variableDirectionBelowMph;
 
   // Precipitation and gusts: the preceding-hour values, so max(h, h+1).
-  const precip = precipMaxMm(hour, next) ?? 0;
-  if (precip >= defaults.precipNoGoMm) {
+  const precip = precipNoGoMm(hour, next, defaults);
+  if (precip !== undefined) {
     reasons.push(reason("precipitation", `rain ${precip.toFixed(1)} mm`));
   }
   // Forecast gusts are not scored, only warned about. A missing gust gives no reason at all.
-  const gust = definedMax(hour.gustMph, next?.gustMph);
-  if (gust !== undefined) {
-    // Both sides from this model's 10 m wind, never the interpolated launch wind.
-    const surface = hour.windMph ?? 0;
-    const factor = Math.max(0, gust - surface);
-    if (factor >= defaults.highGustWarningFactorMultiple * limits.gustFactorMph) {
-      reasons.push(reason("highGusts", `high gusts possible (gust factor ${mph(factor)})`));
-    }
+  const factor = gustFactorMph(hour, next);
+  if (factor !== undefined && factor >= defaults.highGustWarningFactorMultiple * limits.gustFactorMph) {
+    reasons.push(reason("highGusts", `high gusts possible (gust factor ${mph(factor)})`));
   }
 
   // Launch wind speed.
@@ -407,7 +413,7 @@ export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORI
 
   // RRFS sees storms (ECMWF evaluation only).
   if (ctx.model === "ecmwf" && ctx.other?.hour !== undefined) {
-    if (precipNoGo(ctx.other.hour, ctx.other.next, defaults)) {
+    if (precipNoGoMm(ctx.other.hour, ctx.other.next, defaults) !== undefined) {
       reasons.push(reason("rrfsSeesStorms", "RRFS sees storms"));
     }
   }
@@ -451,6 +457,7 @@ export function applyStormLookahead(
 
   return results.map((r) => {
     if (r.call === "noGo" || r.call === "noData") return r;
+    if (r.reasons.some((x) => x.kind === "stormsComing")) return r;
     for (let k = 1; k <= defaults.stormLookaheadHours; k++) {
       const t = r.time + k * HOUR_MS;
       if (!convective(t)) continue;

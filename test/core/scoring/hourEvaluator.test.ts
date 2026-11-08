@@ -7,6 +7,7 @@ import {
   REASON_KIND_ORDER,
   REASON_SEVERITY,
   applyStormLookahead,
+  effectiveIdealArcs,
   evaluateHour,
 } from "../../../src/core/scoring/hourEvaluator";
 import type {
@@ -455,6 +456,40 @@ describe("nil handling", () => {
     expect(kinds(r)).toContain("highGusts");
   });
 
+  describe("gust factor uses each hour's own 10 m wind", () => {
+    const limits: WindLimits = { minMph: 0, idealMph: 10, maxMph: 40, gustFactorMph: 5 };
+    const gustsWith = (h: ModelHour, wind: number | undefined, gust: number | undefined): void => {
+      h.windMph = wind;
+      h.gustMph = gust;
+    };
+    const run = (hour: (h: ModelHour) => void, next: (h: ModelHour) => void) =>
+      kinds(evalWith({ launch: makeLaunch({ limits }), hour: hourWith(hour), next: nextWith(next) }));
+
+    it("does not warn when the next hour's high gust sits on a high wind", () => {
+      // Factors are 3 and 5, under 3 x 5. The old code took gust 25 minus hour h's wind 5 = 20.
+      const k = run((h) => gustsWith(h, 5, 8), (h) => gustsWith(h, 20, 25));
+      expect(k).not.toContain("highGusts");
+    });
+
+    it("warns when the next hour has a real gust factor of 15", () => {
+      const k = run((h) => gustsWith(h, 5, 8), (h) => gustsWith(h, 10, 25));
+      expect(k).toContain("highGusts");
+    });
+
+    it("skips a term whose wind is undefined, and does not warn with no terms", () => {
+      expect(run((h) => gustsWith(h, 10, 40), (h) => gustsWith(h, undefined, 12))).toContain("highGusts");
+      expect(run((h) => gustsWith(h, 10, undefined), (h) => gustsWith(h, 10, 40))).toContain("highGusts");
+      expect(run((h) => gustsWith(h, 10, undefined), (h) => gustsWith(h, undefined, 40))).not.toContain(
+        "highGusts",
+      );
+    });
+
+    it("clamps a gust below the wind at 0", () => {
+      const r = run((h) => gustsWith(h, 12, 8), (h) => gustsWith(h, 12, 8));
+      expect(r).not.toContain("highGusts");
+    });
+  });
+
   it("pre-thermal with only BLH", () => {
     const noTI = (b: HourBuilder) =>
       b.level(600, (l) => (l.tempC = undefined)).level(500, (l) => (l.tempC = undefined));
@@ -887,6 +922,13 @@ describe("storm look-ahead", () => {
     expect(JSON.stringify(results)).toBe(before);
   });
 
+  it("is idempotent: a second pass changes nothing", () => {
+    const { hours, results } = series(stormAt(4, 7, 300));
+    const once = applyStormLookahead(results, hours);
+    expect(marked(once)).toEqual([1, 2]);
+    expect(applyStormLookahead(once, hours)).toEqual(once);
+  });
+
   it("handles a convective hour at index 0 or 1", () => {
     const at0 = series(stormAt(0, 4, 300));
     expect(marked(applyStormLookahead(at0.results, at0.hours))).toEqual([]);
@@ -1190,5 +1232,21 @@ describe("Nov 7 2026 at Golden North (gusts not scored)", () => {
     const window = findBestWindow(daylightHours(evaluate(), day, denver(7)), new Map());
     expect(window).toBeDefined();
     expect(windowLabel(window as FlyingWindow)).toBe("10:00–16:00");
+  });
+});
+
+describe("effectiveIdealArcs", () => {
+  it("falls back to the ok arcs when there are no ideal arcs", () => {
+    expect(effectiveIdealArcs(makeLaunch({ ok: OK, ideal: [] }), d)).toEqual(OK);
+  });
+
+  it("widens a zero-width arc by the half-width on each side", () => {
+    const half = d.zeroWidthIdealHalfWidthDeg;
+    const arcs = effectiveIdealArcs(makeLaunch({ ideal: [{ from: 200, to: 200 }] }), d);
+    expect(arcs).toEqual([{ from: 200 - half, to: 200 + half }]);
+  });
+
+  it("leaves a normal arc unchanged", () => {
+    expect(effectiveIdealArcs(makeLaunch({ ideal: IDEAL }), d)).toEqual(IDEAL);
   });
 });

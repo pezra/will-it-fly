@@ -1,3 +1,4 @@
+import { isRecord } from "../isRecord";
 import type {
   DegreeArc,
   DirectionRanges,
@@ -22,8 +23,8 @@ function fail(where: string, problem: string): never {
 }
 
 function obj(v: unknown, where: string): Obj {
-  if (typeof v !== "object" || v === null || Array.isArray(v)) fail(where, "expected an object");
-  return v as Obj;
+  if (!isRecord(v)) fail(where, "expected an object");
+  return v;
 }
 
 function str(o: Obj, key: string, where: string): string {

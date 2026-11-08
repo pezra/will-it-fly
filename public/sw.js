@@ -30,6 +30,33 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+// Same-origin URLs (origin + pathname) of everything precached, resolved against the scope.
+const PRECACHED = new Set(
+  PRECACHE.map((entry) => {
+    const url = new URL(entry, self.registration.scope);
+    return url.origin + url.pathname;
+  }),
+);
+
+/**
+ * Fetches `request`, and caches a copy of an ok response. The caching is tied to the event with
+ * `waitUntil` so it can't be cut short.
+ */
+function fetchAndCache(event, request) {
+  const network = fetch(request);
+  event.waitUntil(
+    network
+      .then((response) => {
+        if (!response.ok) return undefined;
+        // Clone now, before the page starts reading the body.
+        const copy = response.clone();
+        return caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+      })
+      .catch(() => {}),
+  );
+  return network;
+}
+
 self.addEventListener("fetch", (event) => {
   const request = event.request;
   if (request.method !== "GET") return;
@@ -39,37 +66,21 @@ self.addEventListener("fetch", (event) => {
 
   if (request.mode === "navigate") {
     event.respondWith(
-      fetch(request)
-        .then((response) => {
-          if (response.ok) {
-            const copy = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-          }
-          return response;
-        })
-        .catch(async () => {
-          const cached =
-            (await caches.match(request, { ignoreSearch: true })) ||
-            (await caches.match("index.html")) ||
-            (await caches.match("./"));
-          return cached || Response.error();
-        }),
+      fetchAndCache(event, request).catch(async () => {
+        const cached =
+          (await caches.match(request, { ignoreSearch: true })) ||
+          (await caches.match("index.html")) ||
+          (await caches.match("./"));
+        return cached || Response.error();
+      }),
     );
     return;
   }
 
-  if (url.pathname.includes("/assets/")) {
+  // Precached files (icons, manifest, hashed assets) and anything else under /assets/: cache first.
+  if (PRECACHED.has(url.origin + url.pathname) || url.pathname.includes("/assets/")) {
     event.respondWith(
-      caches.match(request).then((cached) => {
-        if (cached) return cached;
-        return fetch(request).then((response) => {
-          if (response.ok) {
-            const copy = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-          }
-          return response;
-        });
-      }),
+      caches.match(request).then((cached) => cached || fetchAndCache(event, request)),
     );
   }
 });
