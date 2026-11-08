@@ -227,11 +227,12 @@ describe("mainReason", () => {
 
   it("fallsBackToTheMostFrequentCautionKind", () => {
     const hours = [
-      hourResult(T0, ["preThermal", "capeUnavailable"], "flyable"),
-      hourResult(T0 + HOUR_MS, ["preThermal", "overdevelopment"], "flyable"),
-      hourResult(T0 + 2 * HOUR_MS, ["overdevelopment", "capeUnavailable"], "flyable"),
+      hourResult(T0, ["lowCloud", "preThermal", "capeUnavailable"], "flyable"),
+      hourResult(T0 + HOUR_MS, ["lowCloud", "preThermal", "overdevelopment"], "flyable"),
+      hourResult(T0 + 2 * HOUR_MS, ["overdevelopment", "preThermal", "capeUnavailable"], "flyable"),
     ];
-    // overdevelopment 2, preThermal 2: overdevelopment is declared first. Info kinds are ignored.
+    // overdevelopment 2, lowCloud 2: overdevelopment is declared first. Penalty and info kinds
+    // are ignored.
     expect(mainReason([evaluation("a", hours)])).toEqual({
       kind: "overdevelopment",
       severity: "caution",

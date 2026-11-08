@@ -20,12 +20,15 @@ export type ModelName = "ecmwf" | "rrfs";
 
 export type HourCall = "good" | "flyable" | "noGo" | "noData";
 
-/** A `"warning"` is shown to the pilot but never changes an hour's call or score. */
-export type Severity = "info" | "warning" | "caution" | "noGo";
+/**
+ * A `"penalty"` costs points but never changes an hour's call. A `"warning"` is shown to the pilot
+ * but never changes an hour's call or score.
+ */
+export type Severity = "info" | "warning" | "penalty" | "caution" | "noGo";
 
 /**
- * Every reason kind, declared roughly most-severe first: no-go kinds, then caution, then warning,
- * then info ("n/a"). Ties in reason counts are broken by this order.
+ * Every reason kind, declared roughly most-severe first: no-go kinds, then caution, then penalty,
+ * then warning, then info ("n/a"). Ties in reason counts are broken by this order.
  */
 export const REASON_KIND_ORDER = [
   // No-go
@@ -45,9 +48,10 @@ export const REASON_KIND_ORDER = [
   "nearMaxWind",
   "lowCloud",
   "neighborWind",
-  "preThermal",
   "directionNotIdeal",
   "notCurated",
+  // Penalty: scored, never changes the call
+  "preThermal",
   // Warning: shown, never scored
   "highGusts",
   // Info: a rule or score factor skipped for missing data
@@ -88,9 +92,9 @@ export const REASON_SEVERITY: Readonly<Record<ReasonKind, Severity>> = Object.fr
   nearMaxWind: "caution",
   lowCloud: "caution",
   neighborWind: "caution",
-  preThermal: "caution",
   directionNotIdeal: "caution",
   notCurated: "caution",
+  preThermal: "penalty",
   highGusts: "warning",
   capeUnavailable: "info",
   aloftWindUnavailable: "info",
@@ -192,7 +196,8 @@ function finish(fields: HourFields, reasons: Reason[], defaults: ScoringDefaults
   if (call === "good" || call === "flyable") {
     // Warnings and info reasons cost nothing.
     const penalties =
-      sorted.filter((r) => r.severity === "caution").length * defaults.cautionReasonPenalty;
+      sorted.filter((r) => r.severity === "caution" || r.severity === "penalty").length *
+      defaults.cautionReasonPenalty;
     score = Math.min(defaults.maxScore, Math.max(defaults.minScore, unpenalizedScore - penalties));
   }
   return {

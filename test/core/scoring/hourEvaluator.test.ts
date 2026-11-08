@@ -129,8 +129,8 @@ function rrfsNeighborAt(bearing: number, wind: NeighborWind | undefined): Neighb
 const PERFECT = evaluateHour(ctx());
 
 describe("ReasonKind", () => {
-  it("is declared no-go kinds first, then caution, then warning, then info", () => {
-    const rank = { noGo: 0, caution: 1, warning: 2, info: 3 } as const;
+  it("is declared no-go kinds first, then caution, then penalty, then warning, then info", () => {
+    const rank = { noGo: 0, caution: 1, penalty: 2, warning: 3, info: 4 } as const;
     const ranks = REASON_KIND_ORDER.map((k) => rank[REASON_SEVERITY[k]]);
     expect([...ranks].sort((a, b) => a - b)).toEqual(ranks);
   });
@@ -207,7 +207,6 @@ describe("caution rules", () => {
     ["low cloud base", { hour: hourWith((h) => (h.dewpointC = 19)) }, "lowCloud"],
     ["low cloud cover", { hour: hourWith((h) => (h.lowCloudPct = 80)) }, "lowCloud"],
     ["neighbor", { neighbors: rrfsNeighborAt(180, nw(8, 350)) }, "neighborWind"],
-    ["pre-thermal", { hour: hourWith((h) => (h.blhM = 300)).level(600, (l) => (l.tempC = 0)) }, "preThermal"],
     [
       "RRFS sees storms",
       { other: { hour: hourWith((h) => (h.precipMm = 2)).build(), next: undefined } },
@@ -222,6 +221,15 @@ describe("caution rules", () => {
       expect(r.score).toBeLessThan(PERFECT.score);
     });
   }
+});
+
+describe("penalty rules", () => {
+  it("pre-thermal costs a caution's points but keeps the hour good", () => {
+    const r = evalWith({ hour: hourWith((h) => (h.blhM = 300)).level(600, (l) => (l.tempC = 0)) });
+    expect(r.call).toBe("good");
+    expect(r.reasons.find((x) => x.kind === "preThermal")?.severity).toBe("penalty");
+    expect(r.score).toBe(r.unpenalizedScore - d.cautionReasonPenalty);
+  });
 });
 
 describe("boundaries", () => {

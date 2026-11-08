@@ -68,11 +68,18 @@ Otherwise it's **flyable** (not good) if any of these hold:
 | Near max | launch wind within 2 mph of the site max |
 | Low cloud | cloud base < 1500 ft above launch, or low cloud cover ≥ 60% |
 | Inconsistent wind 5 mi away | differs by > 60° (both ≥ 5 mph) |
-| Pre-thermal ("sledder") | boundary layer < 500 m and thermal index > 0 °C (if one is missing, the other decides) |
 | Direction OK but not ideal | inside the OK range, outside the ideal range |
 | Direction not curated | the launch has no OK range |
 
 Otherwise it's **good**. An hour with no ECMWF wind or precipitation is **no data**, never good.
+
+One rule only costs points and never changes the call:
+
+| Rule | Threshold |
+|---|---|
+| Pre-thermal ("sledder") | boundary layer < 500 m and thermal index > 0 °C (if one is missing, the other decides) |
+
+It used to cap the hour at flyable. On weak November days at Boulder and Golden it fired all day, even though both were soarable, so now it just lowers the score.
 
 If a launch has no ideal range, anywhere in its OK range counts as ideal. A single ideal heading (e.g. "Ideal 200") counts as ±15°.
 
@@ -91,7 +98,7 @@ No-go hours score 0. Other hours start at 50, then:
 | Thermal index (lowest pressure level ≥ 1200 m above launch) | +10 if ≤ −3 °C, +5 if ≤ −1 °C |
 | Boundary layer height | +5 if ≥ 1500 m |
 | Cloud base | +5 if ≥ 3000 ft above launch |
-| Each flyable-level reason | −5 |
+| Each flyable-level or pre-thermal reason | −5 |
 
 The score is clamped to 0–100.
 
@@ -126,7 +133,7 @@ Each launch gets its best window, and a site takes its best launch. Ties go to t
 
 - Wind limits and directions come from RMHPA's prose, and some pages are vague or contradictory. Notes on the judgment calls are in the JSON.
 - The grid models don't see local effects like rotor, valley flow or which way the LZ wind is blowing.
-- The thermal index and cloud base are rough. They nudge the score, but only the pre-thermal and low cloud rules can change a call.
+- The thermal index and cloud base are rough. They nudge the score, but only the low cloud rule can change a call.
 
 ## Running it locally
 
