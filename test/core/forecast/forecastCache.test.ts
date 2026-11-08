@@ -18,7 +18,7 @@ describe("ForecastCache", () => {
     const map = new Map<string, string>();
     const cache = createForecastCache(mapStore(map));
     cache.save(entry);
-    expect([...map.keys()]).toEqual(["flyable-sites/forecast-v1"]);
+    expect([...map.keys()]).toEqual(["will-it-fly/forecast-v1"]);
     expect(cache.load(launches)).toEqual({ launchRaw: "[1]", neighborRaw: "[2]", fetchedAt: 1_000 });
   });
 
@@ -49,7 +49,7 @@ describe("ForecastCache", () => {
     "corruptContentsGiveUndefined: %s",
     (text) => {
       vi.spyOn(console, "warn").mockImplementation(() => undefined);
-      const cache = createForecastCache(mapStore(new Map([["flyable-sites/forecast-v1", text]])));
+      const cache = createForecastCache(mapStore(new Map([["will-it-fly/forecast-v1", text]])));
       expect(cache.load(launches)).toBeUndefined();
     },
   );

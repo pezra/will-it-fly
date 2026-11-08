@@ -1,4 +1,4 @@
-# Flyable sites
+# Will it fly?
 
 Ranks the RMHPA paragliding sites by how flyable they look today, using the ECMWF forecast and NOAA's RRFS model as a cross-check. Each site gets a call (good, flyable or no-go), its best time window, how much the two models agree, and the reasons behind the call.
 

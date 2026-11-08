@@ -20,7 +20,7 @@ export interface ForecastCache {
   load(launches: readonly Launch[]): CachedForecast | undefined;
 }
 
-export const DEFAULT_CACHE_KEY = "flyable-sites/forecast-v1";
+export const DEFAULT_CACHE_KEY = "will-it-fly/forecast-v1";
 
 /**
  * The responses are arrays matched to launches by position, so a cache is only valid for the same
