@@ -4,7 +4,9 @@ import type {
   DirectionRanges,
   Launch,
   Site,
+  SiteSoaring,
   SiteStatus,
+  SiteXC,
   WindLimits,
 } from "./site";
 
@@ -104,6 +106,20 @@ function parseLaunch(v: unknown, where: string): Launch {
   return launch;
 }
 
+function parseSoaring(v: unknown, where: string): SiteSoaring {
+  const o = obj(v, where);
+  const soaring: SiteSoaring = { notes: str(o, "notes", where) };
+  const minMph = optNum(o, "minMph", where);
+  if (minMph !== undefined) soaring.minMph = minMph;
+  if (present(o, "launchIds")) {
+    soaring.launchIds = arr(o, "launchIds", where).map((id, i) => {
+      if (typeof id !== "string") fail(`${where}.launchIds[${i}]`, "expected a string");
+      return id;
+    });
+  }
+  return soaring;
+}
+
 function parseSite(v: unknown, where: string): Site {
   const o = obj(v, where);
   const id = optStr(o, "id", where);
@@ -120,6 +136,12 @@ function parseSite(v: unknown, where: string): Site {
   };
   const notes = optStr(o, "notes", w);
   if (notes !== undefined) site.notes = notes;
+  if (present(o, "soaring")) site.soaring = parseSoaring(o["soaring"], `${w}.soaring`);
+  if (present(o, "xc")) {
+    const xc = obj(o["xc"], `${w}.xc`);
+    const parsed: SiteXC = { notes: str(xc, "notes", `${w}.xc`) };
+    site.xc = parsed;
+  }
   return site;
 }
 

@@ -16,6 +16,11 @@ export function SiteRow({ rec, day }: { rec: SiteRecommendation; day: DayKey | u
       : best === undefined
         ? rec.mainReason?.text
         : undefined;
+  const hasReason = (kind: string) =>
+    best?.window.hours.some((h) => h.reasons.some((r) => r.kind === kind)) ?? false;
+  const tags = [hasReason("ridgeLift") && "ridge lift", hasReason("xcPotential") && "XC potential"]
+    .filter((t) => t !== false)
+    .join(", ");
   const highGusts = best?.window.warnings.some((r) => r.kind === "highGusts") ?? false;
 
   return (
@@ -37,6 +42,7 @@ export function SiteRow({ rec, day }: { rec: SiteRecommendation; day: DayKey | u
           )}
         </div>
         {note !== undefined && <div class="row-note">{note}</div>}
+        {tags !== "" && <div class="row-note row-bonus">{tags}</div>}
         {highGusts && <div class="row-note row-warning">⚠ high gusts possible</div>}
       </a>
     </li>

@@ -494,6 +494,11 @@ describe("SCORING_DEFAULTS", () => {
       lowCloudCoverCautionPct: 60,
       sledderBLHBelowM: 500,
       sledderTIAboveC: 0,
+      // Web-only: ridge soaring and XC bonuses (author, 2026-11-08). Not in Swift.
+      ridgeLiftMinMph: 8,
+      ridgeLiftBonus: 10,
+      xcBlhMinM: 2000,
+      xcBonus: 5,
       // Web-only: gusts warn instead of scoring (author, 2026-11-08). Swift has gustNoGoMph 25
       // and gustFactorPenalty 5, which the web dropped.
       highGustWarningFactorMultiple: 3,
