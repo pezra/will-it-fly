@@ -10,9 +10,10 @@ It's a static web app meant for a phone. Open it in Safari and use Share → Add
 
 The list shows every RMHPA site:
 
-1. Sites with a window, best window score first.
-2. Open sites without a window, nearest first, with the main reason.
-3. Closed sites.
+1. Good sites, best window score first.
+2. Flyable sites, best window score first.
+3. Open sites without a window, nearest first, with the main reason.
+4. Closed sites.
 
 Tap a site to see its launches, the hour by hour ECMWF and RRFS conditions, and the reasons for each hour's call. Refresh fetches a new forecast, unless the last one is under 5 minutes old. Forecasts are otherwise reused for an hour.
 
@@ -100,7 +101,7 @@ The score is clamped to 0–100.
 
 ### Windows and confidence
 
-A window is a run of consecutive daylight hours (from sunrise, or from the current hour today, until sunset) with no no-go or no-data hours and at least one good hour. Its score is:
+A window is a run of consecutive daylight hours (from sunrise, or from the current hour today, until sunset) with no no-go or no-data hours. Its score is:
 
 > mean hour score × run length weight × confidence weight
 
@@ -119,7 +120,7 @@ RRFS **agrees** with ECMWF for an hour when RRFS isn't no-go, the launch wind di
 | Low | < 40% | 0.7 |
 | ECMWF only | RRFS covers less than half the window | 0.85 |
 
-Each launch gets its best window, and a site takes its best launch. Ties go to the earlier window and to the launch listed first. A site's call is good if every hour in its best window is good, flyable if its best window has a flyable hour, and no-go if it has no window. A site with no window shows its most common no-go reason, or its most common flyable-level reason if it had no no-go hours.
+Each launch gets its best window, and a site takes its best launch. Ties go to the earlier window and to the launch listed first. A site's call is good if its best window has at least one good hour, flyable if the window has only flyable hours, and no-go if it has no window. Good sites always rank above flyable ones, whatever their scores. A site with no window shows its most common no-go reason.
 
 ### Known limitations
 

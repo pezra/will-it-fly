@@ -125,8 +125,23 @@ describe("findBestWindow", () => {
     expect(find([])).toBeUndefined();
   });
 
-  it("an all-flyable run isn't a window", () => {
-    expect(find([hr(10, "flyable"), hr(11, "flyable"), hr(12, "flyable")])).toBeUndefined();
+  it("an all-flyable run is a window", () => {
+    const w = find([hr(10, "flyable"), hr(11, "flyable"), hr(12, "flyable")]);
+    expect(w?.start).toBe(at(10));
+    expect(w?.end).toBe(at(13));
+  });
+
+  it("a higher-scoring good run beats a lower-scoring flyable run", () => {
+    const w = find([
+      hr(9, "flyable", 45),
+      hr(10, "flyable", 45),
+      hr(11, "flyable", 45),
+      hr(12, "noGo"),
+      hr(13, "good", 80),
+      hr(14, "good", 80),
+      hr(15, "good", 80),
+    ]);
+    expect(w?.start).toBe(at(13));
   });
 
   it("an all-noGo day has no window", () => {

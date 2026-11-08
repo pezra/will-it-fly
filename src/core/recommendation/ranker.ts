@@ -51,16 +51,16 @@ function mostFrequent(
 
 /**
  * Why a site has no window: the most frequent no-go kind across every launch's daylight hours, else
- * the most frequent caution kind, else "no good hour". Count ties go to `REASON_KIND_ORDER`.
+ * the most frequent caution kind, else "no flyable hour". Count ties go to `REASON_KIND_ORDER`.
  * The text is the first occurrence's.
  */
 export function mainReason(launches: readonly LaunchEvaluation[]): MainReason {
   return (
     mostFrequent(launches, "noGo") ??
     mostFrequent(launches, "caution") ?? {
-      kind: "noGoodHour",
+      kind: "noFlyableHour",
       severity: "info",
-      text: "no good hour",
+      text: "no flyable hour",
     }
   );
 }
@@ -73,10 +73,10 @@ function siteDistanceM(site: Site, location: Coordinate | undefined): number | u
     : distanceM(location, first.coordinate);
 }
 
-/** An open site's call. No window: no-go; every hour of the best window good: good; else flyable. */
+/** An open site's call. No window: no-go; a good hour in the best window: good; else flyable. */
 function openSiteCall(best: BestWindow | undefined): SiteCall {
   if (best === undefined) return "noGo";
-  return best.window.hours.every((h) => h.call === "good") ? "good" : "flyable";
+  return best.window.hours.some((h) => h.call === "good") ? "good" : "flyable";
 }
 
 /**
@@ -103,25 +103,23 @@ function compareDistance(a: number | undefined, b: number | undefined): number {
   return a - b;
 }
 
-function group(rec: SiteRecommendation): 0 | 1 | 2 {
-  if (rec.call === "closed") return 2;
-  return rec.call === "noGo" ? 1 : 0;
-}
+const GROUP: Readonly<Record<SiteCall, number>> = { good: 0, flyable: 1, noGo: 2, closed: 3 };
 
 /**
- * Orders sites: open sites with a window by score (ties by distance), then open sites without one
- * by distance, then closed sites by name. Undefined distance sorts last. Returns a new array.
+ * Orders sites: good sites, then flyable sites, each by window score (ties by distance), then open
+ * sites without a window by distance, then closed sites by name. Undefined distance sorts last.
+ * Returns a new array.
  */
 export function rankSites(recs: readonly SiteRecommendation[]): SiteRecommendation[] {
   return [...recs].sort((a, b) => {
-    const ga = group(a);
-    const gb = group(b);
+    const ga = GROUP[a.call];
+    const gb = GROUP[b.call];
     if (ga !== gb) return ga - gb;
-    if (ga === 0) {
+    if (a.best !== undefined && b.best !== undefined) {
       const byScore = (b.best?.window.score ?? 0) - (a.best?.window.score ?? 0);
       return byScore !== 0 ? byScore : compareDistance(a.distanceM, b.distanceM);
     }
-    if (ga === 1) return compareDistance(a.distanceM, b.distanceM);
+    if (a.call === "noGo") return compareDistance(a.distanceM, b.distanceM);
     return a.site.name.localeCompare(b.site.name);
   });
 }

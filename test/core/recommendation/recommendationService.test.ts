@@ -164,8 +164,10 @@ describe("getRecommendations", () => {
     expect(windowLabel(boulder?.best?.window ?? never())).toBe("11:00\u201317:00");
     expect((boulder?.best?.window.score ?? 0) > (glenwood?.best?.window.score ?? 1)).toBe(true);
     expect(boulder?.mainReason).toBeUndefined();
-    expect(butte?.best).toBeUndefined();
-    expect(butte?.mainReason?.kind).toBe("preThermal");
+    // Pre-thermal all afternoon: a flyable-only window, ranked below the good sites.
+    expect(butte?.call).toBe("flyable");
+    expect(windowLabel(butte?.best?.window ?? never())).toBe("11:00\u201318:00");
+    expect(butte?.mainReason).toBeUndefined();
   });
 
   it("savesTheFetchedResponsesToTheCache", async () => {

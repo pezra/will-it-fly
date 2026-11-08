@@ -4,11 +4,11 @@ import type { TargetDay, FlyingWindow } from "../scoring/windowFinder";
 import type { Launch, Site } from "../sites/site";
 
 /**
- * Why a site has no window. Mostly an hour-level reason, but "no good hour" has no `ReasonKind`
+ * Why a site has no window. Mostly an hour-level reason, but "no flyable hour" has no `ReasonKind`
  * (and shouldn't: it never appears on an hour), so it is a kind of its own here.
  */
 export interface MainReason {
-  kind: ReasonKind | "noGoodHour";
+  kind: ReasonKind | "noFlyableHour";
   severity: Severity;
   text: string;
 }
