@@ -118,4 +118,19 @@ describe("parseSites", () => {
     parseSites(sampleJson);
     expect(JSON.stringify(sampleJson)).toBe(JSON.stringify(JSON.parse(before)));
   });
+
+  it("decodesSoaringAndXc", () => {
+    const sites = parseSites({
+      sites: [
+        {
+          ...(sampleJson as { sites: Record<string, unknown>[] }).sites[0],
+          soaring: { notes: "n", minMph: 9, launchIds: ["a"] },
+          xc: { notes: "x" },
+        },
+      ],
+    });
+    expect(sites[0]?.soaring).toEqual({ notes: "n", minMph: 9, launchIds: ["a"] });
+    expect(sites[0]?.xc).toEqual({ notes: "x" });
+    expect(() => parseSites(broken(["sites", 0, "soaring"], {}))).toThrow(SiteDataError);
+  });
 });

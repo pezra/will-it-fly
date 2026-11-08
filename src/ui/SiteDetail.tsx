@@ -125,6 +125,16 @@ export function SiteDetail({
           <p>{site.notes}</p>
         </details>
       )}
+      {site.soaring !== undefined && (
+        <p class="notes">
+          <strong>Soaring.</strong> {site.soaring.notes}
+        </p>
+      )}
+      {site.xc !== undefined && (
+        <p class="notes">
+          <strong>XC.</strong> {site.xc.notes}
+        </p>
+      )}
       {rec.launches.map((evaluation) => (
         <LaunchSection key={evaluation.launch.id} site={site} evaluation={evaluation} />
       ))}

@@ -35,11 +35,27 @@ export interface Launch {
   limits?: WindLimits;
 }
 
+/** RMHPA says the site offers ridge soaring. Its notes quote or summarize what the page says. */
+export interface SiteSoaring {
+  notes: string;
+  /** Overrides `ridgeLiftMinMph` for this site. */
+  minMph?: number;
+  /** Only these launches soar. Absent means every launch. */
+  launchIds?: string[];
+}
+
+/** RMHPA says the site has cross-country potential. */
+export interface SiteXC {
+  notes: string;
+}
+
 export interface Site {
   id: string; // "rmhpa/crested-butte"
   name: string;
   sourceURL: string;
   notes?: string;
+  soaring?: SiteSoaring;
+  xc?: SiteXC;
   rating: string; // "P4"
   status: SiteStatus;
   launches: Launch[];

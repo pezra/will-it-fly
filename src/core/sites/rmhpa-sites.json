@@ -10,6 +10,7 @@
       "status": { "state": "open" },
       "limits": { "minMph": 0, "maxMph": 15, "idealMph": 8, "gustFactorMph": 5 },
       "limitsSource": "page",
+      "xc": {"notes": "RMHPA: the XC potential is outstanding, S to Colorado Springs and N to Wyoming. Crossing Boulder Canyon (no legal landings) is not for beginners."},
       "launches": [
         {
           "id": "rmhpa/boulder-wonderland/upper",
@@ -121,6 +122,7 @@
       "status": { "state": "open" },
       "limits": { "minMph": 0, "maxMph": 15, "idealMph": 8, "gustFactorMph": 5 },
       "limitsSource": "page",
+      "xc": {"notes": "RMHPA: advanced thermal XC launchpad, on rare suitable days when western to southern winds arrive around 11:00. Mid-day XC needs a P4 with strong mountain flying experience."},
       "launches": [
         {
           "id": "rmhpa/glenwood-lookout-mtn/north",
@@ -195,6 +197,7 @@
       "status": { "state": "open" },
       "limits": { "minMph": 0, "maxMph": 15, "idealMph": 7, "gustFactorMph": 5 },
       "limitsSource": "page",
+      "xc": {"notes": "RMHPA: huge XC flights start here regularly."},
       "launches": [
         {
           "id": "rmhpa/golden-lookout-mountain/north",
@@ -247,6 +250,8 @@
       "status": { "state": "open" },
       "limits": { "minMph": 0, "maxMph": 15, "idealMph": 7, "gustFactorMph": 5 },
       "limitsSource": "page",
+      "soaring": {"notes": "RMHPA: possible to ridge soar early morning, before 8 am, with the catabatic flow."},
+      "xc": {"notes": "RMHPA: as the morning gets thermic, small XC flights become possible."},
       "launches": [
         {
           "id": "rmhpa/bellyache/main",
@@ -272,6 +277,8 @@
       "status": { "state": "open" },
       "limits": { "minMph": 0, "maxMph": 10, "idealMph": 5, "gustFactorMph": 5 },
       "limitsSource": "page",
+      "soaring": {"notes": "RMHPA: beautiful morning soaring/sleds; by 10 am there may be enough wind to ridge soar for a while, but it can ramp up very quickly."},
+      "xc": {"notes": "RMHPA: when winds are very light, even up to 18,000', an afternoon flight can reach Frisco; XC is most often done to the north."},
       "launches": [
         {
           "id": "rmhpa/peak-6/main",
@@ -297,6 +304,7 @@
       "status": { "state": "open" },
       "limits": { "minMph": 0, "maxMph": 10, "idealMph": 8, "gustFactorMph": 5 },
       "limitsSource": "page",
+      "soaring": {"notes": "RMHPA: morning ridge lift from the south drain; reliable soaring flights of an hour or so, best until about 10 am."},
       "launches": [
         {
           "id": "rmhpa/glenwood-red-mtn/main",
@@ -347,6 +355,8 @@
       "status": { "state": "open" },
       "limits": { "minMph": 0, "maxMph": 15, "idealMph": 8, "gustFactorMph": 5 },
       "limitsSource": "page",
+      "soaring": {"notes": "RMHPA: ridge soaring is possible at the Dinosaur launch and can be extremely fun, but Williams is primarily a thermal site and not ideal for ridge soaring.", "launchIds": ["rmhpa/williams-peak/dinosaur"]},
+      "xc": {"notes": "RMHPA: experienced pilots can explore phenomenal XC potential."},
       "launches": [
         {
           "id": "rmhpa/williams-peak/upper",
@@ -396,6 +406,7 @@
       "status": { "state": "open" },
       "limits": { "minMph": 3, "maxMph": 10, "idealMph": 5, "gustFactorMph": 5 },
       "limitsSource": "page",
+      "soaring": {"notes": "RMHPA: 'High altitude thermals and soaring'; you can sledder or soar here."},
       "launches": [
         {
           "id": "rmhpa/kenosha-pass/main",
@@ -421,6 +432,8 @@
       "status": { "state": "open" },
       "limits": { "minMph": 0, "maxMph": 10, "idealMph": 5, "gustFactorMph": 5 },
       "limitsSource": "page",
+      "soaring": {"notes": "RMHPA: with a W wind of 8-10 mph the west side is soarable, and it's possible to bench up to Peak 1. The West Launch is not recommended unless you are very experienced in the area.", "launchIds": ["rmhpa/mt-victoria/west"]},
+      "xc": {"notes": "RMHPA: on light east wind days, P4s can launch in the first thermals and fly XC all over Summit County."},
       "launches": [
         {
           "id": "rmhpa/mt-victoria/east",
@@ -460,6 +473,7 @@
       "status": { "state": "open" },
       "limits": { "minMph": 0, "maxMph": 17, "idealMph": 8, "gustFactorMph": 5 },
       "limitsSource": "page",
+      "soaring": {"notes": "RMHPA: magical evening soaring; typically you can soar right in front of launch."},
       "launches": [
         {
           "id": "rmhpa/stovepipe/main",
@@ -485,6 +499,8 @@
       "status": { "state": "open" },
       "limits": { "minMph": 0, "maxMph": 18, "idealMph": 8, "gustFactorMph": 5 },
       "limitsSource": "page",
+      "soaring": {"notes": "RMHPA: both ridge soaring and thermal opportunities. Wind compresses along the ridgeline: 15 mph in the valley can blow a paraglider over the back."},
+      "xc": {"notes": "RMHPA: huge thermals and great XC potential."},
       "launches": [
         {
           "id": "rmhpa/villa-grove/main",
@@ -522,6 +538,7 @@
       "status": { "state": "open" },
       "limits": { "minMph": 5, "maxMph": 15, "idealMph": 8, "gustFactorMph": 5 },
       "limitsSource": "page",
+      "soaring": {"notes": "RMHPA: lakeside evening soaring; new pilots should not launch until someone with site experience has established soaring."},
       "launches": [
         {
           "id": "rmhpa/the-duck/main",
@@ -547,6 +564,7 @@
       "status": { "state": "open" },
       "limits": { "minMph": 0, "maxMph": 10, "idealMph": 5, "gustFactorMph": 5 },
       "limitsSource": "page",
+      "xc": {"notes": "RMHPA: a thermic paradise, maybe the best mountain on the front range for XC, north to Wyoming or out to the flats."},
       "launches": [
         {
           "id": "rmhpa/mt-herman/north",
@@ -584,6 +602,8 @@
       "status": { "state": "open" },
       "limits": { "minMph": 0, "maxMph": 15, "idealMph": 5, "gustFactorMph": 5 },
       "limitsSource": "page",
+      "soaring": {"notes": "RMHPA: ridge soaring in the evenings, after the afternoon convergence flying."},
+      "xc": {"notes": "RMHPA: a house thermal in front of launch gets you established at top of lift for XC."},
       "launches": [
         {
           "id": "rmhpa/douglas-pass/main",
@@ -609,6 +629,7 @@
       "status": { "state": "open" },
       "limits": { "minMph": 0, "maxMph": 15, "idealMph": 10, "gustFactorMph": 5 },
       "limitsSource": "page",
+      "soaring": {"notes": "RMHPA (secondary site): desert ridge soaring, one of the most consistent sites in the state. Works off the morning east wind from valley flow."},
       "launches": [
         {
           "id": "rmhpa/ottos-ridge/east",
@@ -634,6 +655,7 @@
       "status": { "state": "open" },
       "limits": { "minMph": 0, "maxMph": 12, "gustFactorMph": 5 },
       "limitsSource": "page-prose",
+      "soaring": {"notes": "RMHPA: some ridge soaring is possible (secondary site, not maintained by RMHPA)."},
       "launches": [
         {
           "id": "rmhpa/aspen/walshes",
@@ -671,6 +693,7 @@
       "status": { "state": "open" },
       "limits": { "minMph": 0, "maxMph": 10, "idealMph": 2, "gustFactorMph": 5 },
       "limitsSource": "page",
+      "xc": {"notes": "RMHPA: XC flights do happen, Keystone being the most common destination."},
       "launches": [
         {
           "id": "rmhpa/loveland-pass/main",

@@ -45,6 +45,13 @@ export interface ScoringDefaults {
    * 2026-11-08: it fired all day on weak days that were still soarable.
    */
   sledderTIAboveC: number;
+  // Bonus (scored, never changes the call)
+  /** Ridge lift: the launch wind is in an ideal arc and at least this fast (a site can override). */
+  ridgeLiftMinMph: number;
+  ridgeLiftBonus: number;
+  /** XC: the thermal index is at most `thermalIndexStrongMaxC` and the BLH at least this (m). */
+  xcBlhMinM: number;
+  xcBonus: number;
   // Warnings (shown, never scored)
   /**
    * A gust factor at or above this multiple of the site's gust-factor limit warns "high gusts
@@ -146,6 +153,11 @@ export const SCORING_DEFAULTS: Readonly<ScoringDefaults> = Object.freeze({
   // Penalty (scored, never changes the call)
   sledderBLHBelowM: 500,
   sledderTIAboveC: 0,
+  // Bonus (scored, never changes the call)
+  ridgeLiftMinMph: 8,
+  ridgeLiftBonus: 10,
+  xcBlhMinM: 2000,
+  xcBonus: 5,
   // Warnings (shown, never scored)
   highGustWarningFactorMultiple: 3,
   // Storm look-ahead

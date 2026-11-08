@@ -129,4 +129,16 @@ describe("rmhpa-sites.json", () => {
     expect(arcsContain(ruthies, 255)).toBe(true);
     expect(arcsContain(ruthies, 250)).toBe(false);
   });
+
+  it("lists only real launches under soaring, and Boulder and Golden are not ridge sites", () => {
+    for (const site of sites) {
+      for (const id of site.soaring?.launchIds ?? []) {
+        expect(site.launches.map((l) => l.id), site.id).toContain(id);
+      }
+    }
+    // RMHPA's Boulder page doesn't call it soarable and its Golden page says little ridge soaring.
+    for (const id of ["rmhpa/boulder-wonderland", "rmhpa/golden-lookout-mountain"]) {
+      expect(sites.find((s) => s.id === id)?.soaring, id).toBeUndefined();
+    }
+  });
 });

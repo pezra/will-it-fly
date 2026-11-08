@@ -81,6 +81,15 @@ One rule only costs points and never changes the call:
 
 It used to cap the hour at flyable. On weak November days at Boulder and Golden it fired all day, even though both were soarable, so now it just lowers the score.
 
+Two bonuses only add points and never change the call. Both depend on notes curated from the RMHPA pages (`soaring` and `xc` in the site JSON), so a site RMHPA doesn't describe that way never gets them:
+
+| Bonus | When | Points |
+|---|---|---|
+| Ridge lift | the site is marked soarable (some sites list only certain launches), the launch wind is in an ideal direction and ≥ 8 mph (a site can override the 8) | +10, and the sledder penalty is waived |
+| XC potential | the site is marked XC, thermal index ≤ −3 °C, boundary layer ≥ 2000 m and wind aloft under 25 mph | +5 |
+
+Ridge lift doesn't raise the site's wind max. RMHPA's limits are safety limits, and its pages advise against high-wind soaring at the mountain sites. Boulder and Golden are not marked soarable, because RMHPA doesn't describe them as ridge sites (Boulder depends on a bubble of east wind, and west wind there is a hazard). Both are marked XC.
+
 If a launch has no ideal range, anywhere in its OK range counts as ideal. A single ideal heading (e.g. "Ideal 200") counts as ±15°.
 
 The nearby-wind check compares 10 m winds at the launch's grid point and at points 5 mi N, E, S and W, within one model. It uses RRFS when it can, because ECMWF's ~9 km grid barely resolves 5 mi, and falls back to ECMWF.
@@ -98,6 +107,8 @@ No-go hours score 0. Other hours start at 50, then:
 | Thermal index (lowest pressure level ≥ 1200 m above launch) | +10 if ≤ −3 °C, +5 if ≤ −1 °C |
 | Boundary layer height | +5 if ≥ 1500 m |
 | Cloud base | +5 if ≥ 3000 ft above launch |
+| Ridge lift (soarable sites) | +10 |
+| XC potential (XC sites) | +5 |
 | Each flyable-level or sledder reason | −5 |
 
 The score is clamped to 0–100.

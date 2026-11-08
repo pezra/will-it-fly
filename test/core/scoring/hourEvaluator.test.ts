@@ -129,8 +129,8 @@ function rrfsNeighborAt(bearing: number, wind: NeighborWind | undefined): Neighb
 const PERFECT = evaluateHour(ctx());
 
 describe("ReasonKind", () => {
-  it("is declared no-go kinds first, then caution, then penalty, then warning, then info", () => {
-    const rank = { noGo: 0, caution: 1, penalty: 2, warning: 3, info: 4 } as const;
+  it("is declared no-go kinds first, then caution, then penalty, then bonus, then warning, then info", () => {
+    const rank = { noGo: 0, caution: 1, penalty: 2, bonus: 3, warning: 4, info: 5 } as const;
     const ranks = REASON_KIND_ORDER.map((k) => rank[REASON_SEVERITY[k]]);
     expect([...ranks].sort((a, b) => a - b)).toEqual(ranks);
   });
@@ -229,6 +229,71 @@ describe("penalty rules", () => {
     expect(r.call).toBe("good");
     expect(r.reasons.find((x) => x.kind === "sledder")?.severity).toBe("penalty");
     expect(r.score).toBe(r.unpenalizedScore - d.cautionReasonPenalty);
+  });
+});
+
+describe("ridge lift and XC bonuses", () => {
+  const soaring = { notes: "test" };
+  const withSite = (extra: Partial<Site>, o: CtxOptions = {}): HourResult => {
+    const c = ctx(o);
+    return evaluateHour({ ...c, site: { ...c.site, ...extra } });
+  };
+
+  it("adds nothing on a site that RMHPA does not call soarable or XC", () => {
+    expect(kinds(PERFECT)).not.toContain("ridgeLift");
+    expect(kinds(PERFECT)).not.toContain("xcPotential");
+  });
+
+  it("ridge lift: wind in an ideal arc at or above the minimum adds a bonus without changing the call", () => {
+    const r = withSite({ soaring });
+    expect(r.call).toBe("good");
+    expect(r.reasons.find((x) => x.kind === "ridgeLift")?.severity).toBe("bonus");
+    expect(r.unpenalizedScore).toBe(PERFECT.unpenalizedScore + d.ridgeLiftBonus);
+  });
+
+  it("ridge lift needs the minimum speed, a site can override it, and the ideal arc", () => {
+    const slow = hourWith((h) => (h.windMph = d.ridgeLiftMinMph - 1));
+    expect(kinds(withSite({ soaring }, { hour: slow }))).not.toContain("ridgeLift");
+    expect(kinds(withSite({ soaring: { ...soaring, minMph: 6 } }, { hour: slow }))).toContain("ridgeLift");
+    const okOnly = hourWith((h) => (h.windDir = 235));
+    expect(kinds(withSite({ soaring }, { hour: okOnly }))).not.toContain("ridgeLift");
+  });
+
+  it("ridge lift only applies to the launches a site lists", () => {
+    expect(kinds(withSite({ soaring: { ...soaring, launchIds: ["other/launch"] } }))).not.toContain("ridgeLift");
+    const launch = makeLaunch();
+    expect(kinds(withSite({ soaring: { ...soaring, launchIds: [launch.id] } }, { launch }))).toContain("ridgeLift");
+  });
+
+  it("ridge lift waives the sledder penalty", () => {
+    const sledder = hourWith((h) => (h.blhM = 300)).level(600, (l) => (l.tempC = 0));
+    expect(kinds(evalWith({ hour: sledder }))).toContain("sledder");
+    const r = withSite({ soaring }, { hour: sledder });
+    expect(kinds(r)).toContain("ridgeLift");
+    expect(kinds(r)).not.toContain("sledder");
+  });
+
+  it("ridge lift never rescues a no-go hour", () => {
+    const r = withSite({ soaring }, { hour: hourWith((h) => (h.precipMm = 1)) });
+    expect(r.call).toBe("noGo");
+    expect(r.score).toBe(d.minScore);
+  });
+
+  it("XC potential: strong thermals topping out high add a bonus on XC sites only", () => {
+    const r = withSite({ xc: { notes: "test" } });
+    expect(r.call).toBe("good");
+    expect(r.reasons.find((x) => x.kind === "xcPotential")?.severity).toBe("bonus");
+    expect(r.unpenalizedScore).toBe(PERFECT.unpenalizedScore + d.xcBonus);
+  });
+
+  it("XC potential needs a high BLH, a strong thermal index and calm enough air aloft", () => {
+    const xc = { xc: { notes: "test" } };
+    expect(kinds(withSite(xc, { hour: hourWith((h) => (h.blhM = d.xcBlhMinM - 1)) }))).not.toContain("xcPotential");
+    expect(kinds(withSite(xc, { hour: hourWith((h) => (h.blhM = d.xcBlhMinM)) }))).toContain("xcPotential");
+    const warm = perfectHour().level(600, (l) => (l.tempC = -2));
+    expect(kinds(withSite(xc, { hour: warm }))).not.toContain("xcPotential");
+    const windy = perfectHour().level(700, (l) => (l.windMph = d.aloftCautionMph));
+    expect(kinds(withSite(xc, { hour: windy }))).not.toContain("xcPotential");
   });
 });
 

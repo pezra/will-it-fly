@@ -21,14 +21,15 @@ export type ModelName = "ecmwf" | "rrfs";
 export type HourCall = "good" | "flyable" | "noGo" | "noData";
 
 /**
+ * A `"bonus"` is a favorable condition that adds points but never changes an hour's call.
  * A `"penalty"` costs points but never changes an hour's call. A `"warning"` is shown to the pilot
  * but never changes an hour's call or score.
  */
-export type Severity = "info" | "warning" | "penalty" | "caution" | "noGo";
+export type Severity = "info" | "bonus" | "warning" | "penalty" | "caution" | "noGo";
 
 /**
  * Every reason kind, declared roughly most-severe first: no-go kinds, then caution, then penalty,
- * then warning, then info ("n/a"). Ties in reason counts are broken by this order.
+ * then bonus, then warning, then info ("n/a"). Ties in reason counts are broken by this order.
  */
 export const REASON_KIND_ORDER = [
   // No-go
@@ -52,6 +53,9 @@ export const REASON_KIND_ORDER = [
   "notCurated",
   // Penalty: scored, never changes the call
   "sledder",
+  // Bonus: scored, never changes the call
+  "ridgeLift",
+  "xcPotential",
   // Warning: shown, never scored
   "highGusts",
   // Info: a rule or score factor skipped for missing data
@@ -95,6 +99,8 @@ export const REASON_SEVERITY: Readonly<Record<ReasonKind, Severity>> = Object.fr
   directionNotIdeal: "caution",
   notCurated: "caution",
   sledder: "penalty",
+  ridgeLift: "bonus",
+  xcPotential: "bonus",
   highGusts: "warning",
   capeUnavailable: "info",
   aloftWindUnavailable: "info",
@@ -406,14 +412,37 @@ export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORI
   const neighbor = neighborReason(ctx, defaults);
   if (neighbor !== undefined) reasons.push(neighbor);
 
-  // Sledder: BLH low and TI positive. With one missing, the other decides.
+  // Ridge lift: the wind is on the ridge, in an ideal arc and fast enough to soar.
+  const soaring = ctx.site.soaring;
+  const ridgeLift =
+    soaring !== undefined &&
+    (soaring.launchIds === undefined || soaring.launchIds.includes(launch.id)) &&
+    curated &&
+    wind.speedMph >= (soaring.minMph ?? defaults.ridgeLiftMinMph) &&
+    arcsContain(effectiveIdealArcs(launch, defaults), wind.dirDeg);
+  if (ridgeLift) reasons.push(reason("ridgeLift", `ridge lift: ${windText(wind)} on the ridge`));
+
+  // Sledder: BLH low and TI positive. With one missing, the other decides. Ridge lift waives it.
   const blh = hour.blhM;
   if (blh === undefined) reasons.push(reason("blhUnavailable", "BLH: n/a"));
   if (ti === undefined) reasons.push(reason("thermalIndexUnavailable", "thermal index: n/a"));
   if (blh !== undefined || ti !== undefined) {
     const lowBLH = blh === undefined || blh < defaults.sledderBLHBelowM;
     const stableTI = ti === undefined || ti > defaults.sledderTIAboveC;
-    if (lowBLH && stableTI) reasons.push(reason("sledder", "sledder"));
+    if (lowBLH && stableTI && !ridgeLift) reasons.push(reason("sledder", "sledder"));
+  }
+
+  // XC: strong thermals that top out high, with the wind aloft not already a caution.
+  const xcPotential =
+    ctx.site.xc !== undefined &&
+    ti !== undefined &&
+    ti <= defaults.thermalIndexStrongMaxC &&
+    blh !== undefined &&
+    blh >= defaults.xcBlhMinM &&
+    aloft !== undefined &&
+    aloft.speedMph < defaults.aloftCautionMph;
+  if (xcPotential) {
+    reasons.push(reason("xcPotential", `XC potential (thermal index ${ti.toFixed(1)} °C, BLH ${Math.round(blh)} m)`));
   }
 
   // RRFS sees storms (ECMWF evaluation only).
@@ -425,6 +454,8 @@ export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORI
 
   // Score bonuses.
   let unpenalized = defaults.baseScore + windBonus(wind.speedMph, limits, defaults);
+  if (ridgeLift) unpenalized += defaults.ridgeLiftBonus;
+  if (xcPotential) unpenalized += defaults.xcBonus;
   if (inIdeal) unpenalized += defaults.idealDirectionBonus;
   if (ti !== undefined) {
     if (ti <= defaults.thermalIndexStrongMaxC) unpenalized += defaults.thermalIndexStrongBonus;
