@@ -76,7 +76,7 @@ describe("evaluateForecast", () => {
     const f = forecast({ rrfs: [hour(0), stormHour(2), hour(3)] });
     const { rrfs } = evaluateForecast(site, launch, f);
     expect(rrfs.map((r) => r.time)).toEqual([t(0), t(2), t(3)]);
-    expect(rrfs.map((r) => r.call)).toEqual(["marginal", "noGo", "flyable"]);
+    expect(rrfs.map((r) => r.call)).toEqual(["flyable", "noGo", "good"]);
     expect(rrfs[0]?.reasons.find((x) => x.kind === "stormsComing")?.text).toBe(
       `storms forecast by ${formatDenverTime(t(2))}`,
     );
@@ -86,14 +86,14 @@ describe("evaluateForecast", () => {
     // The storm is three hours after hour 0 (look-ahead is two), though it is the next result.
     const f = forecast({ rrfs: [hour(0), stormHour(3)] });
     const { rrfs } = evaluateForecast(site, launch, f);
-    expect(rrfs.map((r) => r.call)).toEqual(["flyable", "noGo"]);
+    expect(rrfs.map((r) => r.call)).toEqual(["good", "noGo"]);
   });
 
   it("appliesTheStormLookaheadWithinAStretch", () => {
     const f = forecast({ ecmwf: [hour(0), hour(1), stormHour(2)] });
     const { ecmwf } = evaluateForecast(site, launch, f);
     // Hour 1 is already a no-go (precipitation is the max of the hour and the next), hour 2 is the storm.
-    expect(ecmwf.map((r) => r.call)).toEqual(["marginal", "noGo", "noGo"]);
+    expect(ecmwf.map((r) => r.call)).toEqual(["flyable", "noGo", "noGo"]);
     expect(kinds(ecmwf[0] as HourResult)).toContain("stormsComing");
   });
 

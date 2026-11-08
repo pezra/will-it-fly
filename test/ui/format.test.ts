@@ -76,7 +76,7 @@ describe("labels", () => {
     expect(arcLabel({ from: 330, to: 30 })).toBe("330–30° (NNW–NNE)");
   });
   it("gives every call a label and a glyph", () => {
-    for (const call of ["flyable", "marginal", "noGo", "noData"] as const) {
+    for (const call of ["good", "flyable", "noGo", "noData"] as const) {
       expect(callLabel(call).length).toBeGreaterThan(0);
       expect(callGlyph(call).length).toBeGreaterThan(0);
     }

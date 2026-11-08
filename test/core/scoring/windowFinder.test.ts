@@ -27,7 +27,7 @@ function hr(h: number, call: HourCall, score = 80, wind = { speedMph: 10, dirDeg
 }
 
 /** RRFS result at hour h that agrees with `hr(h, ...)` defaults, or disagrees by direction. */
-function rrfsHr(h: number, agrees: boolean, call: HourCall = "flyable"): HourResult {
+function rrfsHr(h: number, agrees: boolean, call: HourCall = "good"): HourResult {
   return hr(h, call, 80, { speedMph: 10, dirDeg: agrees ? 270 : 90 });
 }
 
@@ -66,7 +66,7 @@ describe("daylightDayFor", () => {
 });
 
 describe("daylightHours", () => {
-  const all = Array.from({ length: 24 }, (_, h) => hr(h, "flyable"));
+  const all = Array.from({ length: 24 }, (_, h) => hr(h, "good"));
   const hoursOf = (rs: HourResult[]): number[] => rs.map((r) => (r.time - at(0)) / HOUR_MS);
 
   it("before sunrise, all of today's daylight counts: start >= sunrise and < sunset", () => {
@@ -102,14 +102,14 @@ describe("daylightHours", () => {
     expect(which).toBe("tomorrow");
     const day = daylightDayFor([DAY, tomorrow], which, now);
     expect(day).toBe(tomorrow);
-    const twoDays = Array.from({ length: 48 }, (_, h) => hr(h, "flyable"));
+    const twoDays = Array.from({ length: 48 }, (_, h) => hr(h, "good"));
     const got = daylightHours(twoDays, tomorrow, now).map((r) => (r.time - at(0)) / HOUR_MS);
     expect(got[0]).toBe(31);
     expect(got[got.length - 1]).toBe(44);
   });
 
   it("returns the results in time order", () => {
-    const shuffled = [hr(9, "flyable"), hr(8, "flyable"), hr(10, "flyable")];
+    const shuffled = [hr(9, "good"), hr(8, "good"), hr(10, "good")];
     expect(hoursOf(daylightHours(shuffled, DAY, NOW_EARLY))).toEqual([8, 9, 10]);
   });
 });
@@ -125,109 +125,109 @@ describe("findBestWindow", () => {
     expect(find([])).toBeUndefined();
   });
 
-  it("an all-marginal run isn't a window", () => {
-    expect(find([hr(10, "marginal"), hr(11, "marginal"), hr(12, "marginal")])).toBeUndefined();
+  it("an all-flyable run isn't a window", () => {
+    expect(find([hr(10, "flyable"), hr(11, "flyable"), hr(12, "flyable")])).toBeUndefined();
   });
 
   it("an all-noGo day has no window", () => {
     expect(find([hr(10, "noGo"), hr(11, "noGo")])).toBeUndefined();
   });
 
-  it("a run with one flyable hour among marginal hours is a window, marginal edges kept", () => {
-    const w = find([hr(9, "marginal"), hr(10, "flyable"), hr(11, "marginal")]);
+  it("a run with one good hour among flyable hours is a window, flyable edges kept", () => {
+    const w = find([hr(9, "flyable"), hr(10, "good"), hr(11, "flyable")]);
     expect(w?.start).toBe(at(9));
     expect(w?.end).toBe(at(12));
     expect(w?.hours.length).toBe(3);
   });
 
   it("start is the first hour's start, end is the last hour's start plus an hour", () => {
-    const w = find([hr(11, "flyable"), hr(12, "flyable"), hr(13, "flyable")]);
+    const w = find([hr(11, "good"), hr(12, "good"), hr(13, "good")]);
     expect(w?.start).toBe(at(11));
     expect(w?.end).toBe(at(14));
   });
 
   it("a 1-hour run gets weight 0.6", () => {
-    const w = find([hr(11, "flyable", 80)]);
+    const w = find([hr(11, "good", 80)]);
     expect(w?.score).toBeCloseTo(80 * 0.6 * SCORING_DEFAULTS.ecmwfOnlyConfidenceWeight, 9);
   });
 
   it("a 2-hour run gets weight 0.8 and a 3-hour run 1.0", () => {
-    const two = find([hr(11, "flyable", 80), hr(12, "flyable", 80)]);
+    const two = find([hr(11, "good", 80), hr(12, "good", 80)]);
     expect(two?.score).toBeCloseTo(80 * 0.8 * 0.85, 9);
-    const three = find([hr(11, "flyable", 80), hr(12, "flyable", 80), hr(13, "flyable", 80)]);
+    const three = find([hr(11, "good", 80), hr(12, "good", 80), hr(13, "good", 80)]);
     expect(three?.score).toBeCloseTo(80 * 1.0 * 0.85, 9);
   });
 
   it("the score is the mean hour score", () => {
-    const w = find([hr(11, "flyable", 60), hr(12, "flyable", 80), hr(13, "flyable", 70)]);
+    const w = find([hr(11, "good", 60), hr(12, "good", 80), hr(13, "good", 70)]);
     expect(w?.score).toBeCloseTo(70 * 0.85, 9);
   });
 
   it("with two runs, the higher-scoring run wins", () => {
     const w = find([
-      hr(8, "flyable", 60),
-      hr(9, "flyable", 60),
-      hr(10, "flyable", 60),
+      hr(8, "good", 60),
+      hr(9, "good", 60),
+      hr(10, "good", 60),
       hr(11, "noGo"),
-      hr(12, "flyable", 90),
-      hr(13, "flyable", 90),
-      hr(14, "flyable", 90),
+      hr(12, "good", 90),
+      hr(13, "good", 90),
+      hr(14, "good", 90),
     ]);
     expect(w?.start).toBe(at(12));
   });
 
   it("a short high-scoring run can lose to a longer run", () => {
     const w = find([
-      hr(8, "flyable", 80),
+      hr(8, "good", 80),
       hr(9, "noGo"),
-      hr(10, "flyable", 70),
-      hr(11, "flyable", 70),
-      hr(12, "flyable", 70),
+      hr(10, "good", 70),
+      hr(11, "good", 70),
+      hr(12, "good", 70),
     ]);
     expect(w?.start).toBe(at(10));
   });
 
   it("when two runs tie, the earlier one wins", () => {
     const w = find([
-      hr(8, "flyable", 70),
-      hr(9, "flyable", 70),
-      hr(10, "flyable", 70),
+      hr(8, "good", 70),
+      hr(9, "good", 70),
+      hr(10, "good", 70),
       hr(11, "noGo"),
-      hr(12, "flyable", 70),
-      hr(13, "flyable", 70),
-      hr(14, "flyable", 70),
+      hr(12, "good", 70),
+      hr(13, "good", 70),
+      hr(14, "good", 70),
     ]);
     expect(w?.start).toBe(at(8));
   });
 
   it("a noGo hour splits a run", () => {
-    const w = find([hr(10, "flyable"), hr(11, "noGo"), hr(12, "flyable")]);
+    const w = find([hr(10, "good"), hr(11, "noGo"), hr(12, "good")]);
     expect(w?.hours.length).toBe(1);
   });
 
   it("a no-data hour splits a run", () => {
-    const w = find([hr(10, "flyable"), hr(11, "flyable"), hr(12, "noData"), hr(13, "flyable")]);
+    const w = find([hr(10, "good"), hr(11, "good"), hr(12, "noData"), hr(13, "good")]);
     expect(w?.start).toBe(at(10));
     expect(w?.end).toBe(at(12));
   });
 
   it("a missing hour (gap in the array) splits a run", () => {
-    const w = find([hr(10, "flyable", 80), hr(11, "flyable", 80), hr(13, "flyable", 80), hr(14, "flyable", 50)]);
+    const w = find([hr(10, "good", 80), hr(11, "good", 80), hr(13, "good", 80), hr(14, "good", 50)]);
     expect(w?.start).toBe(at(10));
     expect(w?.end).toBe(at(12));
   });
 
   it("only daylight hours are considered", () => {
-    expect(find([hr(2, "flyable"), hr(3, "flyable"), hr(23, "flyable")])).toBeUndefined();
+    expect(find([hr(2, "good"), hr(3, "good"), hr(23, "good")])).toBeUndefined();
   });
 
   it("only hours from now onward are considered today", () => {
-    const w = find([hr(9, "flyable"), hr(10, "flyable"), hr(11, "flyable"), hr(12, "flyable")], [], at(11) + 30 * 60_000);
+    const w = find([hr(9, "good"), hr(10, "good"), hr(11, "good"), hr(12, "good")], [], at(11) + 30 * 60_000);
     expect(w?.start).toBe(at(11));
   });
 
   describe("confidence", () => {
-    const run = (n: number): HourResult[] => Array.from({ length: n }, (_, i) => hr(10 + i, "flyable", 80));
+    const run = (n: number): HourResult[] => Array.from({ length: n }, (_, i) => hr(10 + i, "good", 80));
     const confidenceOf = (agreeing: boolean[], noRrfs: number[] = []): Confidence | undefined => {
       const ecmwf = run(agreeing.length);
       const rrfs = agreeing.flatMap((a, i) => (noRrfs.includes(i) ? [] : [rrfsHr(10 + i, a)]));
@@ -306,7 +306,7 @@ describe("findBestWindow", () => {
 
   it("uses the supplied defaults", () => {
     const d = { ...SCORING_DEFAULTS, oneHourRunWeight: 0.5, ecmwfOnlyConfidenceWeight: 1 };
-    const w = findBestWindow([hr(11, "flyable", 80)], [], DAY, NOW_EARLY, d);
+    const w = findBestWindow([hr(11, "good", 80)], [], DAY, NOW_EARLY, d);
     expect(w?.score).toBeCloseTo(40, 9);
   });
 });
@@ -319,7 +319,7 @@ describe("DST fall-back (2026-11-01, 25-hour day)", () => {
   const day = { sunrise: Date.UTC(2026, 10, 1, 13, 20), sunset: Date.UTC(2026, 10, 1, 23, 50) };
   const results = dayHours.map((time): HourResult => ({
     time,
-    call: "flyable",
+    call: "good",
     score: 80,
     reasons: [],
     launchWind: { speedMph: 10, dirDeg: 270 },

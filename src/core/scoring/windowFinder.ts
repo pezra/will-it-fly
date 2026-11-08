@@ -89,7 +89,7 @@ function buildWindow(
 }
 
 /**
- * The highest-scoring run of consecutive non-no-go ECMWF daylight hours with at least one flyable
+ * The highest-scoring run of consecutive non-no-go ECMWF daylight hours with at least one good
  * hour. A no-go, no-data or missing hour breaks a run. Ties go to the earlier run.
  */
 export function findBestWindow(
@@ -104,7 +104,7 @@ export function findBestWindow(
   let run: HourResult[] = [];
 
   const close = (): void => {
-    if (run.some((h) => h.call === "flyable")) {
+    if (run.some((h) => h.call === "good")) {
       const w = buildWindow(run, rrfsByTime, defaults);
       if (best === undefined || w.score > best.score) best = w;
     }
