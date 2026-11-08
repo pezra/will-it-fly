@@ -1,3 +1,5 @@
+import { METERS_PER_FOOT } from "../units";
+
 export interface Coordinate {
   latitude: number;
   longitude: number;
@@ -52,5 +54,5 @@ export const DEFAULT_WIND_LIMITS: Readonly<WindLimits> = Object.freeze({
 });
 
 export function elevationM(launch: Launch): number {
-  return launch.elevationFt * 0.3048;
+  return launch.elevationFt * METERS_PER_FOOT;
 }
