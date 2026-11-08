@@ -11,8 +11,6 @@ export interface ScoringDefaults {
   // No-go
   /** Precipitation in hour h or h+1 at or above this is no-go. */
   precipNoGoMm: number;
-  /** Gusts in hour h or h+1 at or above this are no-go. */
-  gustNoGoMph: number;
   /** Below this launch wind speed, direction is treated as variable and the direction rules are ignored. */
   variableDirectionBelowMph: number;
   /** Aloft wind at or above this from outside every `ok` arc is no-go (over the back). */
@@ -43,10 +41,18 @@ export interface ScoringDefaults {
   preThermalBLHBelowM: number;
   /** ... and TI above this (degrees C) gives "pre-thermal: sled ride". */
   preThermalTIAboveC: number;
+  // Warnings (shown, never scored)
+  /**
+   * A gust factor at or above this multiple of the site's gust-factor limit warns "high gusts
+   * possible". Forecast gusts drive no call or score. Not in the Swift defaults: added when the
+   * author took gusts out of scoring on 2026-11-08 (Swift's `gustNoGoMph` and `gustFactorPenalty`
+   * were dropped).
+   */
+  highGustWarningFactorMultiple: number;
   // Storm look-ahead
   /** Hours before a convective no-go that are capped at marginal ("storms forecast by HH:00"). */
   stormLookaheadHours: number;
-  /** A precip or gust no-go hour is convective when max(CAPE h, CAPE h+1) is at least this. */
+  /** A precipitation no-go hour is convective when max(CAPE h, CAPE h+1) is at least this. */
   stormCapeJkg: number;
   // Score
   /** Non-no-go hours start here. No-go hours score `minScore`. */
@@ -72,10 +78,8 @@ export interface ScoringDefaults {
   /** Cloud base at or above this many feet above launch earns `cloudBaseBonus`. */
   cloudBaseBonusMinFt: number;
   cloudBaseBonus: number;
-  /** Subtracted once per marginal reason (other than the gust-factor reason). */
+  /** Subtracted once per marginal reason. */
   marginalReasonPenalty: number;
-  /** Subtracted for the gust-factor marginal reason, *instead of* (not in addition to) `marginalReasonPenalty`. */
-  gustFactorPenalty: number;
   minScore: number;
   maxScore: number;
   // Derived values
@@ -121,7 +125,6 @@ export interface ScoringDefaults {
 export const SCORING_DEFAULTS: Readonly<ScoringDefaults> = Object.freeze({
   // No-go
   precipNoGoMm: 0.25,
-  gustNoGoMph: 25,
   variableDirectionBelowMph: 4,
   overTheBackAloftNoGoMph: 20,
   strongAloftNoGoMph: 35,
@@ -138,6 +141,8 @@ export const SCORING_DEFAULTS: Readonly<ScoringDefaults> = Object.freeze({
   lowCloudCoverMarginalPct: 60,
   preThermalBLHBelowM: 500,
   preThermalTIAboveC: 0,
+  // Warnings (shown, never scored)
+  highGustWarningFactorMultiple: 3,
   // Storm look-ahead
   stormLookaheadHours: 2,
   stormCapeJkg: 200,
@@ -155,7 +160,6 @@ export const SCORING_DEFAULTS: Readonly<ScoringDefaults> = Object.freeze({
   cloudBaseBonusMinFt: 3000,
   cloudBaseBonus: 5,
   marginalReasonPenalty: 5,
-  gustFactorPenalty: 5,
   minScore: 0,
   maxScore: 100,
   // Derived values

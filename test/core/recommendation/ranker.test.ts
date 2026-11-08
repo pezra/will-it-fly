@@ -191,14 +191,14 @@ describe("bestWindow", () => {
 describe("mainReason", () => {
   it("isTheMostFrequentNoGoKindAcrossAllLaunches", () => {
     const a = evaluation("a", [
-      hourResult(T0, ["gusts"]),
-      hourResult(T0 + HOUR_MS, ["gusts", "windTooStrong"]),
+      hourResult(T0, ["precipitation"]),
+      hourResult(T0 + HOUR_MS, ["precipitation", "windTooStrong"]),
     ]);
     const b = evaluation("b", [
       hourResult(T0, ["windTooStrong"]),
       hourResult(T0 + HOUR_MS, ["windTooStrong"]),
     ]);
-    // gusts 2, windTooStrong 3.
+    // precipitation 2, windTooStrong 3.
     expect(mainReason([a, b])).toEqual({
       kind: "windTooStrong",
       severity: "noGo",
@@ -225,9 +225,9 @@ describe("mainReason", () => {
 
   it("fallsBackToTheMostFrequentMarginalKind", () => {
     const hours = [
-      hourResult(T0, ["preThermal", "gustUnavailable"], "marginal"),
+      hourResult(T0, ["preThermal", "capeUnavailable"], "marginal"),
       hourResult(T0 + HOUR_MS, ["preThermal", "overdevelopment"], "marginal"),
-      hourResult(T0 + 2 * HOUR_MS, ["overdevelopment", "gustUnavailable"], "marginal"),
+      hourResult(T0 + 2 * HOUR_MS, ["overdevelopment", "capeUnavailable"], "marginal"),
     ];
     // overdevelopment 2, preThermal 2: overdevelopment is declared first. Info kinds are ignored.
     expect(mainReason([evaluation("a", hours)])).toEqual({
@@ -238,13 +238,23 @@ describe("mainReason", () => {
   });
 
   it("saysNoFlyableHourWhenThereIsNothingToCount", () => {
-    const quiet = evaluation("a", [hourResult(T0, ["gustUnavailable"], "marginal")]);
+    const quiet = evaluation("a", [hourResult(T0, ["capeUnavailable"], "marginal")]);
     expect(mainReason([quiet])).toEqual({
       kind: "noFlyableHour",
       severity: "info",
       text: "no flyable hour",
     });
     expect(mainReason([]).kind).toBe("noFlyableHour");
+  });
+
+  it("ignoresWarnings", () => {
+    const gusty = evaluation("a", [
+      hourResult(T0, ["highGusts"], "marginal"),
+      hourResult(T0 + HOUR_MS, ["highGusts", "lowCloud"], "marginal"),
+    ]);
+    expect(mainReason([gusty]).kind).toBe("lowCloud");
+    const onlyWarnings = evaluation("a", [hourResult(T0, ["highGusts"], "flyable")]);
+    expect(mainReason([onlyWarnings]).kind).toBe("noFlyableHour");
   });
 
   it("noDataCountsAsANoGoKind", () => {
@@ -262,9 +272,9 @@ describe("recommendSite", () => {
   });
 
   it("anOpenSiteWithoutAWindowHasAMainReason", () => {
-    const r = recommendSite(site("s"), [evaluation("x", [hourResult(T0, ["gusts"])])], undefined);
+    const r = recommendSite(site("s"), [evaluation("x", [hourResult(T0, ["precipitation"])])], undefined);
     expect(r.best).toBeUndefined();
-    expect(r.mainReason?.kind).toBe("gusts");
+    expect(r.mainReason?.kind).toBe("precipitation");
   });
 
   it("aClosedSiteHasNoLaunchesBestOrReason", () => {

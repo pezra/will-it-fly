@@ -22,6 +22,7 @@ export function SiteRow({ rec }: { rec: SiteRecommendation }) {
       : best === undefined
         ? rec.mainReason?.text
         : undefined;
+  const highGusts = best?.window.hours.some((h) => h.reasons.some((r) => r.kind === "highGusts")) ?? false;
 
   return (
     <li>
@@ -42,6 +43,7 @@ export function SiteRow({ rec }: { rec: SiteRecommendation }) {
           )}
         </div>
         {note !== undefined && <div class="row-note">{note}</div>}
+        {highGusts && <div class="row-note row-warning">⚠ high gusts possible</div>}
       </a>
     </li>
   );
