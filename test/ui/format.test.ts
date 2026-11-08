@@ -4,41 +4,15 @@ import {
   arcLabel,
   callGlyph,
   callLabel,
-  compass,
   confidenceLabel,
-  direction,
   feet,
   forecastAge,
   miles,
-  mph,
   oneDecimal,
   whole,
 } from "../../src/ui/format";
 
-describe("compass", () => {
-  it("names the 16 points", () => {
-    expect(compass(0)).toBe("N");
-    expect(compass(90)).toBe("E");
-    expect(compass(225)).toBe("SW");
-    expect(compass(292.5)).toBe("WNW");
-  });
-  it("wraps and rounds at the boundaries", () => {
-    expect(compass(360)).toBe("N");
-    expect(compass(-10)).toBe("N");
-    expect(compass(349)).toBe("N");
-    expect(compass(348)).toBe("NNW");
-    expect(compass(11.2)).toBe("N");
-    expect(compass(11.3)).toBe("NNE");
-  });
-});
-
 describe("number formats", () => {
-  it("formats wind and direction, with n/a for missing", () => {
-    expect(mph(12.4)).toBe("12 mph");
-    expect(mph(undefined)).toBe("n/a");
-    expect(direction(272)).toBe("272° W");
-    expect(direction(undefined)).toBe("n/a");
-  });
   it("rounds cloud base to 100 ft with a leading ≈", () => {
     expect(approxFeet(1000)).toBe("≈ 3,300 ft");
     expect(approxFeet(0)).toBe("≈ 0 ft");

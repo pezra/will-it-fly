@@ -1,3 +1,4 @@
+import { isRecord } from "../isRecord";
 import type { Launch } from "../sites/site";
 
 /** The slice of `localStorage` the cache needs. `get` returns undefined for a missing key. */
@@ -21,62 +22,18 @@ export interface ForecastCache {
 
 export const DEFAULT_CACHE_KEY = "flyable-sites/forecast-v1";
 
-interface LaunchKey {
-  id: string;
-  latitude: number;
-  longitude: number;
-  elevationFt: number;
-}
-
 /**
  * The responses are arrays matched to launches by position, so a cache is only valid for the same
  * ordered list of launches: ids, coordinates and elevations (the launch request depends on all of
- * them).
+ * them). They are compared as one JSON string.
  */
-function launchKeys(launches: readonly Launch[]): LaunchKey[] {
-  return launches.map((l) => ({
-    id: l.id,
-    latitude: l.coordinate.latitude,
-    longitude: l.coordinate.longitude,
-    elevationFt: l.elevationFt,
-  }));
-}
-
-function sameKeys(a: readonly LaunchKey[], b: readonly LaunchKey[]): boolean {
-  return (
-    a.length === b.length &&
-    a.every((k, i) => {
-      const o = b[i];
-      return (
-        o !== undefined &&
-        k.id === o.id &&
-        k.latitude === o.latitude &&
-        k.longitude === o.longitude &&
-        k.elevationFt === o.elevationFt
-      );
-    })
+function launchesKey(launches: readonly Launch[]): string {
+  return JSON.stringify(
+    launches.map((l) => [l.id, l.coordinate.latitude, l.coordinate.longitude, l.elevationFt]),
   );
 }
 
-function isRecord(v: unknown): v is Record<string, unknown> {
-  return typeof v === "object" && v !== null && !Array.isArray(v);
-}
-
-function toLaunchKey(v: unknown): LaunchKey | undefined {
-  if (!isRecord(v)) return undefined;
-  const { id, latitude, longitude, elevationFt } = v;
-  if (
-    typeof id !== "string" ||
-    typeof latitude !== "number" ||
-    typeof longitude !== "number" ||
-    typeof elevationFt !== "number"
-  ) {
-    return undefined;
-  }
-  return { id, latitude, longitude, elevationFt };
-}
-
-function parseStored(text: string): (CachedForecast & { keys: LaunchKey[] }) | undefined {
+function parseStored(text: string): (CachedForecast & { launchesKey: string }) | undefined {
   const value: unknown = JSON.parse(text);
   if (!isRecord(value)) return undefined;
   const { launchRaw, neighborRaw, fetchedAt, launches } = value;
@@ -84,17 +41,11 @@ function parseStored(text: string): (CachedForecast & { keys: LaunchKey[] }) | u
     typeof launchRaw !== "string" ||
     typeof neighborRaw !== "string" ||
     typeof fetchedAt !== "number" ||
-    !Array.isArray(launches)
+    typeof launches !== "string"
   ) {
     return undefined;
   }
-  const keys: LaunchKey[] = [];
-  for (const l of launches) {
-    const key = toLaunchKey(l);
-    if (key === undefined) return undefined;
-    keys.push(key);
-  }
-  return { launchRaw, neighborRaw, fetchedAt, keys };
+  return { launchRaw, neighborRaw, fetchedAt, launchesKey: launches };
 }
 
 /** Keeps the last successful raw responses as one JSON string. Storage errors never escape. */
@@ -107,7 +58,7 @@ export function createForecastCache(
       try {
         store.set(
           key,
-          JSON.stringify({ launchRaw, neighborRaw, fetchedAt, launches: launchKeys(launches) }),
+          JSON.stringify({ launchRaw, neighborRaw, fetchedAt, launches: launchesKey(launches) }),
         );
       } catch (error) {
         console.warn("Could not save the forecast cache", error);
@@ -118,7 +69,7 @@ export function createForecastCache(
         const text = store.get(key);
         if (text === undefined) return undefined;
         const stored = parseStored(text);
-        if (stored === undefined || !sameKeys(stored.keys, launchKeys(launches))) return undefined;
+        if (stored === undefined || stored.launchesKey !== launchesKey(launches)) return undefined;
         const { launchRaw, neighborRaw, fetchedAt } = stored;
         return { launchRaw, neighborRaw, fetchedAt };
       } catch (error) {

@@ -1,5 +1,6 @@
 import type { Recommendations } from "./useRecommendations";
-import { forecastAge } from "./format";
+import { ForecastStatus } from "./ForecastStatus";
+import { dayLabel, forecastAge } from "./format";
 import { SiteRow } from "./SiteRow";
 
 function LocationNote({ location }: { location: Recommendations["location"] }) {
@@ -19,24 +20,11 @@ function LocationNote({ location }: { location: Recommendations["location"] }) {
 export function SiteList({ recs }: { recs: Recommendations }) {
   const { state, location, now, refresh, retry } = recs;
 
-  if (state.status === "loading") {
+  if (state.status !== "loaded") {
     return (
       <>
         <h1>Flyable sites</h1>
-        <p class="status" role="status">Loading forecast…</p>
-      </>
-    );
-  }
-
-  if (state.status === "failed") {
-    return (
-      <>
-        <h1>Flyable sites</h1>
-        <div class="error" role="alert">
-          <p><strong>Couldn't load the forecast.</strong></p>
-          <p>{state.message}</p>
-          <button type="button" onClick={retry}>Retry</button>
-        </div>
+        <ForecastStatus state={state} retry={retry} />
       </>
     );
   }
@@ -45,7 +33,7 @@ export function SiteList({ recs }: { recs: Recommendations }) {
   return (
     <>
       <header class="list-header">
-        <h1>{result.day === "today" ? "Today" : "Tomorrow"}</h1>
+        <h1>{dayLabel(result.day)}</h1>
         <button type="button" onClick={refresh} disabled={state.refreshing}>
           {state.refreshing ? "Refreshing…" : "Refresh"}
         </button>

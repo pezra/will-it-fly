@@ -1,4 +1,4 @@
-import { REASON_KIND_ORDER } from "../scoring/hourEvaluator";
+import { reasonRank } from "../scoring/hourEvaluator";
 import type { ReasonKind, Severity } from "../scoring/hourEvaluator";
 import { distanceM } from "../sites/coordinate";
 import type { Coordinate, Site } from "../sites/site";
@@ -7,6 +7,7 @@ import type {
   LaunchEvaluation,
   MainReason,
   RecommendationResult,
+  SiteCall,
   SiteRecommendation,
 } from "./types";
 
@@ -28,8 +29,8 @@ function mostFrequent(
 ): MainReason | undefined {
   const counts = new Map<ReasonKind, { count: number; text: string }>();
   for (const l of launches) {
-    for (const hour of l.daylight) {
-      for (const r of hour.reasons) {
+    for (const row of l.daylight) {
+      for (const r of row.ecmwf.reasons) {
         if (r.severity !== severity) continue;
         const entry = counts.get(r.kind);
         if (entry === undefined) counts.set(r.kind, { count: 1, text: r.text });
@@ -42,8 +43,7 @@ function mostFrequent(
     const wins =
       winner === undefined ||
       count > winner.count ||
-      (count === winner.count &&
-        REASON_KIND_ORDER.indexOf(kind) < REASON_KIND_ORDER.indexOf(winner.kind));
+      (count === winner.count && reasonRank(kind) < reasonRank(winner.kind));
     if (wins) winner = { kind, count, text };
   }
   return winner === undefined ? undefined : { kind: winner.kind, severity, text: winner.text };
@@ -66,25 +66,29 @@ export function mainReason(launches: readonly LaunchEvaluation[]): MainReason {
 }
 
 /** Distance from the user to the site's first launch. */
-export function siteDistanceM(site: Site, location: Coordinate | undefined): number | undefined {
+function siteDistanceM(site: Site, location: Coordinate | undefined): number | undefined {
   const first = site.launches[0];
   return location === undefined || first === undefined
     ? undefined
     : distanceM(location, first.coordinate);
 }
 
-/** Builds a site's recommendation from its evaluated launches (empty for closed sites). */
-export function recommendSite(
-  site: Site,
-  launches: LaunchEvaluation[],
-  location: Coordinate | undefined,
-): SiteRecommendation {
-  const distance = siteDistanceM(site, location);
-  if (site.status.state === "closed") return { site, distanceM: distance, launches: [] };
+/** An open site's call. No window: no-go; every hour of the best window good: good; else flyable. */
+function openSiteCall(best: BestWindow | undefined): SiteCall {
+  if (best === undefined) return "noGo";
+  return best.window.hours.every((h) => h.call === "good") ? "good" : "flyable";
+}
+
+/**
+ * Builds a site's recommendation from its evaluated launches. A closed site keeps none of them.
+ * Distances are filled in later by `withDistances`.
+ */
+export function recommendSite(site: Site, launches: LaunchEvaluation[]): SiteRecommendation {
+  if (site.status.state === "closed") return { site, call: "closed", launches: [] };
   const best = bestWindow(launches);
   return {
     site,
-    distanceM: distance,
+    call: openSiteCall(best),
     best,
     mainReason: best === undefined ? mainReason(launches) : undefined,
     launches,
@@ -100,8 +104,8 @@ function compareDistance(a: number | undefined, b: number | undefined): number {
 }
 
 function group(rec: SiteRecommendation): 0 | 1 | 2 {
-  if (rec.site.status.state === "closed") return 2;
-  return rec.best === undefined ? 1 : 0;
+  if (rec.call === "closed") return 2;
+  return rec.call === "noGo" ? 1 : 0;
 }
 
 /**

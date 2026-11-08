@@ -1,29 +1,8 @@
-import { METERS_PER_FOOT } from "../core/units";
+import { METERS_PER_FOOT, METERS_PER_MILE, compass } from "../core/units";
 import type { Confidence } from "../core/scoring/modelAgreement";
 import type { HourCall } from "../core/scoring/hourEvaluator";
+import type { TargetDay } from "../core/scoring/windowFinder";
 import type { DegreeArc } from "../core/sites/site";
-
-const METERS_PER_MILE = 1609.344;
-const COMPASS = [
-  "N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
-  "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW",
-] as const;
-
-/** 16-point compass name for a bearing in degrees. */
-export function compass(deg: number): string {
-  const index = Math.round((((deg % 360) + 360) % 360) / 22.5) % 16;
-  return COMPASS[index] ?? "N";
-}
-
-/** "12 mph", or "n/a" when missing. */
-export function mph(value: number | undefined): string {
-  return value === undefined ? "n/a" : `${Math.round(value)} mph`;
-}
-
-/** "240° WSW", or "n/a". */
-export function direction(deg: number | undefined): string {
-  return deg === undefined ? "n/a" : `${Math.round(deg)}° ${compass(deg)}`;
-}
 
 /** Feet from meters, rounded to the nearest 100 ft, as "≈ 9,200 ft". "n/a" when missing. */
 export function approxFeet(meters: number | undefined): string {
@@ -63,6 +42,10 @@ export function arcLabel(arc: DegreeArc): string {
 
 export function arcsLabel(arcs: readonly DegreeArc[]): string {
   return arcs.length === 0 ? "none" : arcs.map(arcLabel).join(", ");
+}
+
+export function dayLabel(day: TargetDay): string {
+  return day === "today" ? "Today" : "Tomorrow";
 }
 
 export function callLabel(call: HourCall): string {

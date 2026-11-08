@@ -6,38 +6,17 @@ import type { HourContext, HourResult, ModelName } from "../scoring/hourEvaluato
 import { daylightDayFor, daylightHours, findBestWindow } from "../scoring/windowFinder";
 import type { TargetDay } from "../scoring/windowFinder";
 import type { Launch, Site } from "../sites/site";
-import { HOUR_MS } from "../time";
-import type { LaunchEvaluation } from "./types";
+import { HOUR_MS, byTime } from "../time";
+import type { DaylightRow, LaunchEvaluation } from "./types";
 
-function byTime<T extends { time: number }>(items: readonly T[]): Map<number, T> {
-  return new Map(items.map((item) => [item.time, item] as const));
-}
-
-/**
- * Evaluates the hours and runs the storm look-ahead, which assumes `results[i + 1]` is the next
- * hour. Gaps are therefore filled with no-data placeholders for the look-ahead, and dropped after.
- */
+/** Evaluates the hours in time order, then runs the storm look-ahead (which matches by time). */
 function evaluateSeries(
   hours: readonly ModelHour[],
   evaluate: (hour: ModelHour) => HourResult,
   defaults: ScoringDefaults,
 ): HourResult[] {
-  const byHour = byTime([...hours]);
-  const first = Math.min(...hours.map((h) => h.time));
-  const last = Math.max(...hours.map((h) => h.time));
-  const padded: ModelHour[] = [];
-  const results: HourResult[] = [];
-  for (let time = first; time <= last; time += HOUR_MS) {
-    const hour = byHour.get(time);
-    padded.push(hour ?? { time, levels: {} });
-    results.push(
-      hour === undefined
-        ? { time, call: "noData", score: defaults.minScore, reasons: [], unpenalizedScore: 0 }
-        : evaluate(hour),
-    );
-  }
-  const looked = applyStormLookahead(results, padded, defaults);
-  return looked.filter((r) => byHour.has(r.time));
+  const sorted = [...byTime(hours).values()].sort((a, b) => a.time - b.time);
+  return applyStormLookahead(sorted.map(evaluate), sorted, defaults);
 }
 
 /**
@@ -86,7 +65,6 @@ export function evaluateForecast(
   }
 
   function run(model: ModelName, hours: readonly ModelHour[]): HourResult[] {
-    if (hours.length === 0) return [];
     return evaluateSeries(hours, (h) => evaluateHour(context(model, h), defaults), defaults);
   }
 
@@ -102,15 +80,25 @@ export function evaluateLaunch(
   now: number,
   defaults: ScoringDefaults = SCORING_DEFAULTS,
 ): LaunchEvaluation {
-  const { ecmwf, rrfs } = evaluateForecast(site, launch, forecast, defaults);
   const day = daylightDayFor(forecast.days, which, now);
-  return {
-    launch,
-    ecmwfHours: forecast.ecmwf,
-    rrfsHours: forecast.rrfs,
-    ecmwf,
-    rrfs,
-    daylight: day === undefined ? [] : daylightHours(ecmwf, day, now),
-    window: day === undefined ? undefined : findBestWindow(ecmwf, rrfs, day, now, defaults),
-  };
+  if (day === undefined) return { launch, daylight: [], window: undefined };
+  const { ecmwf, rrfs } = evaluateForecast(site, launch, forecast, defaults);
+  const results = daylightHours(ecmwf, day, now);
+  const rrfsByTime = byTime(rrfs);
+  const ecmwfHours = byTime(forecast.ecmwf);
+  const rrfsHours = byTime(forecast.rrfs);
+  const daylight = results.flatMap((result): DaylightRow[] => {
+    const ecmwfHour = ecmwfHours.get(result.time);
+    if (ecmwfHour === undefined) return [];
+    return [
+      {
+        time: result.time,
+        ecmwf: result,
+        ecmwfHour,
+        rrfs: rrfsByTime.get(result.time),
+        rrfsHour: rrfsHours.get(result.time),
+      },
+    ];
+  });
+  return { launch, daylight, window: findBestWindow(results, rrfsByTime, defaults) };
 }

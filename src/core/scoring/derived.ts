@@ -1,6 +1,7 @@
 import { PRESSURE_LEVELS } from "../forecast/models";
 import type { LevelData, ModelHour } from "../forecast/models";
 import { normalizedDegrees } from "../sites/degreeArc";
+import { definedMax } from "../units";
 import { SCORING_DEFAULTS } from "./defaults";
 import type { ScoringDefaults } from "./defaults";
 
@@ -70,10 +71,7 @@ export function topOfLiftM(
   launchElevationM: number,
   defaults: ScoringDefaults = SCORING_DEFAULTS,
 ): number {
-  const candidates = [cloudBaseAboveLaunchM(hour, defaults), hour.blhM].filter(
-    (x): x is number => x !== undefined,
-  );
-  const above = candidates.length > 0 ? Math.max(...candidates) : undefined;
+  const above = definedMax(cloudBaseAboveLaunchM(hour, defaults), hour.blhM);
   return launchElevationM + (above ?? defaults.topOfLiftFallbackAboveLaunchM);
 }
 
