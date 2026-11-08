@@ -1,5 +1,6 @@
-// Generates public/icons/icon-{180,192,512}.png: a paraglider wing arc on a solid background.
-// Node built-ins only (zlib for the PNG deflate stream). Run: node scripts/make-icons.mjs
+// Generates public/icons/icon-{180,192,512}.png: a paraglider wing drawn as a question mark. The
+// canopy is the curl, one riser is the stem and the pilot is the dot. public/icons/icon.svg is the
+// same drawing. Node built-ins only (zlib for the PNG deflate stream). Run: node scripts/make-icons.mjs
 import { deflateSync } from "node:zlib";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -7,30 +8,52 @@ import { fileURLToPath } from "node:url";
 
 const BG = [0x16, 0x36, 0x5c];
 const FG = [0xf2, 0xf6, 0xfb];
+const DOT = [0xf5, 0xb8, 0x3d];
+const FAINT_ALPHA = 0.45;
 
 // Everything is drawn in a 512 x 512 design space, then sampled 3x3 per pixel for smooth edges.
-// Wing: the region between two curves, each a quadratic bezier from (96,300) to (416,300).
-const TOP = { cx: 256, cy: 90 }; // top curve control point (outer arc)
-const BOT = { cx: 256, cy: 262 }; // bottom curve control point (trailing edge)
+// Canopy: the region between two quadratic beziers from (120,250) to (392,250).
+const TOP_CY = 40;
+const BOTTOM_CY = 120;
+// The stem: a cubic from the right wingtip down to the center, as a 24-wide round-capped stroke.
+const STEM = sampleCubic({ x: 392, y: 250 }, { x: 400, y: 312 }, { x: 256, y: 296 }, { x: 256, y: 352 });
+// The faint left riser, 9 wide.
+const RISER = [{ x: 120, y: 250 }, { x: 256, y: 352 }];
+const PILOT = { x: 256, y: 420, r: 28 };
 
 function bezierY(t, p0y, cy, p2y) {
   return (1 - t) * (1 - t) * p0y + 2 * (1 - t) * t * cy + t * t * p2y;
 }
 
-/** Is (x, y) inside the wing or on a suspension line? */
-function inMark(x, y) {
-  if (x >= 96 && x <= 416) {
-    const t = (x - 96) / 320; // x is linear in t for a symmetric bezier with these control points
-    const top = bezierY(t, 300, TOP.cy, 300);
-    const bottom = bezierY(t, 300, BOT.cy, 300);
-    if (y >= top && y <= bottom) return true;
+function sampleCubic(p0, p1, p2, p3, n = 64) {
+  const points = [];
+  for (let i = 0; i <= n; i++) {
+    const t = i / n;
+    const a = (1 - t) ** 3, b = 3 * (1 - t) ** 2 * t, c = 3 * (1 - t) * t * t, d = t ** 3;
+    points.push({ x: a * p0.x + b * p1.x + c * p2.x + d * p3.x, y: a * p0.y + b * p1.y + c * p2.y + d * p3.y });
   }
-  // Lines from the wing's underside to the pilot at (256, 392).
-  const pilot = { x: 256, y: 392 };
-  for (const start of [{ x: 256, y: 300 }, { x: 176, y: 282 }, { x: 336, y: 282 }]) {
-    if (distanceToSegment(x, y, start, pilot) <= 5) return true;
+  return points;
+}
+
+function nearPolyline(x, y, points, halfWidth) {
+  for (let i = 1; i < points.length; i++) {
+    if (distanceToSegment(x, y, points[i - 1], points[i]) <= halfWidth) return true;
   }
   return false;
+}
+
+function inCanopy(x, y) {
+  if (x < 120 || x > 392) return false;
+  const t = (x - 120) / 272; // x is linear in t for a symmetric bezier with these control points
+  return y >= bezierY(t, 250, TOP_CY, 250) && y <= bezierY(t, 250, BOTTOM_CY, 250);
+}
+
+/** The color at (x, y), painting back to front. */
+function colorAt(x, y) {
+  if (Math.hypot(x - PILOT.x, y - PILOT.y) <= PILOT.r) return DOT;
+  if (inCanopy(x, y) || nearPolyline(x, y, STEM, 12)) return FG;
+  if (nearPolyline(x, y, RISER, 4.5)) return BG.map((c, i) => c + (FG[i] - c) * FAINT_ALPHA);
+  return BG;
 }
 
 function distanceToSegment(px, py, a, b) {
@@ -67,18 +90,14 @@ function png(size) {
   for (let py = 0; py < size; py++) {
     const row = Buffer.alloc(1 + size * 3); // filter byte 0 + RGB
     for (let px = 0; px < size; px++) {
-      let covered = 0;
+      const sum = [0, 0, 0];
       for (let sy = 0; sy < 3; sy++) {
         for (let sx = 0; sx < 3; sx++) {
-          const x = (px + (sx + 0.5) / 3) * scale;
-          const y = (py + (sy + 0.5) / 3) * scale;
-          if (inMark(x, y)) covered++;
+          const color = colorAt((px + (sx + 0.5) / 3) * scale, (py + (sy + 0.5) / 3) * scale);
+          for (let c = 0; c < 3; c++) sum[c] += color[c];
         }
       }
-      const f = covered / 9;
-      for (let c = 0; c < 3; c++) {
-        row[1 + px * 3 + c] = Math.round(BG[c] + (FG[c] - BG[c]) * f);
-      }
+      for (let c = 0; c < 3; c++) row[1 + px * 3 + c] = Math.round(sum[c] / 9);
     }
     rows.push(row);
   }
