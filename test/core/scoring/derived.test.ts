@@ -498,6 +498,8 @@ describe("SCORING_DEFAULTS", () => {
       baseScore: 50,
       windSpeedMaxBonus: 20,
       idealDirectionBonus: 10,
+      // Web-only: the zero-width ideal-arc fallback (approved 2026-11-08). Not in Swift.
+      zeroWidthIdealHalfWidthDeg: 15,
       thermalIndexStrongMaxC: -3,
       thermalIndexStrongBonus: 10,
       thermalIndexModerateMaxC: -1,
