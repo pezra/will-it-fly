@@ -4,7 +4,7 @@ import { effectiveLimits } from "../core/sites/site";
 import type { Launch, Site } from "../core/sites/site";
 import { CallBadge } from "./CallBadge";
 import { ForecastStatus } from "./ForecastStatus";
-import { arcsLabel, confidenceLabel, dayLabel, feet, miles } from "./format";
+import { arcsLabel, confidenceLabel, dayLabel, feet, idealLabel, miles } from "./format";
 import { HourlyTable } from "./HourlyTable";
 import type { Recommendations } from "./useRecommendations";
 
@@ -25,7 +25,7 @@ function LaunchSection({ site, evaluation }: { site: Site; evaluation: LaunchEva
         <dt>Elevation</dt>
         <dd>{feet(launch.elevationFt)}</dd>
         <dt>Works best</dt>
-        <dd>{arcsLabel(launch.directions.ideal)}</dd>
+        <dd>{idealLabel(launch)}</dd>
         <dt>OK</dt>
         <dd>{arcsLabel(launch.directions.ok)}</dd>
         <dt>Wind limits</dt>
@@ -117,7 +117,7 @@ export function SiteDetail({ siteId, recs }: { siteId: string; recs: Recommendat
           <ul>
             {site.launches.map((l) => (
               <li key={l.id}>
-                {l.name}, {feet(l.elevationFt)}, ideal {arcsLabel(l.directions.ideal)}
+                {l.name}, {feet(l.elevationFt)}, ideal {idealLabel(l)}
               </li>
             ))}
           </ul>

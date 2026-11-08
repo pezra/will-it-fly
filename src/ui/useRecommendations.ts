@@ -31,6 +31,9 @@ export interface Recommendations {
   retry: () => void;
 }
 
+/** How often the forecast age re-renders while the page is visible. */
+const TICK_MS = 60_000;
+
 function describe(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
@@ -58,10 +61,13 @@ export function useRecommendations(debug: DebugParams): Recommendations {
 
   // The latest request wins; an older response that lands late is ignored.
   const requestId = useRef(0);
+  // Loads in flight, so coming back to the page doesn't start a second one while one is running.
+  const inFlight = useRef(0);
 
   const load = useCallback(
     (forceRefresh: boolean) => {
       const id = ++requestId.current;
+      inFlight.current++;
       setBase((prev) =>
         prev.status === "loaded"
           ? { status: "loaded", result: prev.result, refreshing: true }
@@ -69,10 +75,12 @@ export function useRecommendations(debug: DebugParams): Recommendations {
       );
       getRecommendations({ forceRefresh }, deps).then(
         (result) => {
+          inFlight.current--;
           if (id !== requestId.current) return;
           setBase({ status: "loaded", result, refreshing: false });
         },
         (error: unknown) => {
+          inFlight.current--;
           if (id !== requestId.current) return;
           console.error("Could not load recommendations", error);
           setBase((prev) =>
@@ -93,6 +101,42 @@ export function useRecommendations(debug: DebugParams): Recommendations {
 
   useEffect(() => {
     load(false);
+  }, [load]);
+
+  // Coming back to the page re-runs a non-forced load (the core cache rules decide whether to
+  // fetch) and re-renders the forecast age. While visible, the age also re-renders every minute.
+  // `tick` only forces a render: `now` reads the clock itself, and `load` does not depend on it.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    let timer: ReturnType<typeof setInterval> | undefined;
+    const stopTimer = () => {
+      if (timer !== undefined) clearInterval(timer);
+      timer = undefined;
+    };
+    const startTimer = () => {
+      stopTimer();
+      timer = setInterval(() => setTick((t) => t + 1), TICK_MS);
+    };
+    const resume = () => {
+      setTick((t) => t + 1);
+      startTimer();
+      if (inFlight.current === 0) load(false);
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") resume();
+      else stopTimer();
+    };
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) resume();
+    };
+    if (document.visibilityState === "visible") startTimer();
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pageshow", onPageShow);
+    return () => {
+      stopTimer();
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pageshow", onPageShow);
+    };
   }, [load]);
 
   useEffect(() => {

@@ -77,7 +77,7 @@ If a launch has no ideal range, anywhere in its OK range counts as ideal. A sing
 
 The nearby-wind check compares 10 m winds at the launch's grid point and at points 5 mi N, E, S and W, within one model. It uses RRFS when it can, because ECMWF's ~9 km grid barely resolves 5 mi, and falls back to ECMWF.
 
-**Gusts are not scored.** Model gusts on light thermal days often run 10–14 mph over the mean wind, which says little about what you'll find at launch. Instead, an hour shows "⚠ high gusts possible" when the gust factor (the larger gust of h and h+1, minus the 10 m wind) is at least 3× the site's gust-factor limit. That's 15 mph at the default limit of 5.
+**Gusts are not scored.** Model gusts on light thermal days often run 10–14 mph over the mean wind, which says little about what you'll find at launch. Instead, an hour shows "⚠ high gusts possible" when the gust factor (each hour's gust minus that hour's 10 m wind, the larger of h and h+1) is at least 3× the site's gust-factor limit. That's 15 mph at the default limit of 5.
 
 ### Hour score
 

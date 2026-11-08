@@ -32,10 +32,13 @@ function serviceWorkerManifest(): Plugin {
       const buildId = Date.now().toString(36);
       const swPath = join(outDir, "sw.js");
       const template = readFileSync(swPath, "utf8");
+      const buildIdPattern = /const BUILD_ID = .*;/;
+      const precachePattern = /const PRECACHE = .*;/;
+      if (!buildIdPattern.test(template)) throw new Error("sw.js template: BUILD_ID placeholder not found");
+      if (!precachePattern.test(template)) throw new Error("sw.js template: PRECACHE placeholder not found");
       const filled = template
-        .replace(/const BUILD_ID = .*;/, `const BUILD_ID = ${JSON.stringify(buildId)};`)
-        .replace(/const PRECACHE = .*;/, `const PRECACHE = ${JSON.stringify(precache)};`);
-      if (filled === template) throw new Error("sw.js template placeholders not found");
+        .replace(buildIdPattern, `const BUILD_ID = ${JSON.stringify(buildId)};`)
+        .replace(precachePattern, `const PRECACHE = ${JSON.stringify(precache)};`);
       writeFileSync(swPath, filled);
     },
   };

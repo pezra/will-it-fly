@@ -26,19 +26,20 @@ export interface RecommendationDeps {
 }
 
 /**
- * The target day, from the first launch's sunset (it decides for every site). Undefined when the
- * forecast doesn't cover today or the target day.
+ * The target day, from the sunset of the first forecast that covers today and the target day (it decides
+ * for every site). Undefined when no forecast covers both today and the target day.
  */
 export function resolveTargetDay(
   forecasts: readonly LaunchForecast[],
   now: number,
 ): TargetDay | undefined {
-  const first = forecasts[0];
-  if (first === undefined) return undefined;
-  const today = daylightDayFor(first.days, "today", now);
-  if (today === undefined) return undefined;
-  const which = targetDay(now, today.sunset);
-  return daylightDayFor(first.days, which, now) === undefined ? undefined : which;
+  for (const { days } of forecasts) {
+    const today = daylightDayFor(days, "today", now);
+    if (today === undefined) continue;
+    const which = targetDay(now, today.sunset);
+    if (daylightDayFor(days, which, now) !== undefined) return which;
+  }
+  return undefined;
 }
 
 interface Loaded {

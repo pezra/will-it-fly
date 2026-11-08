@@ -30,6 +30,22 @@ export function evaluateForecast(
   forecast: LaunchForecast,
   defaults: ScoringDefaults = SCORING_DEFAULTS,
 ): { ecmwf: HourResult[]; rrfs: HourResult[] } {
+  const { ecmwf, rrfs } = evaluateForecastIndexed(site, launch, forecast, defaults);
+  return { ecmwf, rrfs };
+}
+
+/** `evaluateForecast` plus the by-time maps of both models' input hours, for the caller to reuse. */
+function evaluateForecastIndexed(
+  site: Site,
+  launch: Launch,
+  forecast: LaunchForecast,
+  defaults: ScoringDefaults,
+): {
+  ecmwf: HourResult[];
+  rrfs: HourResult[];
+  ecmwfByTime: Map<number, ModelHour>;
+  rrfsByTime: Map<number, ModelHour>;
+} {
   const ecmwfByTime = byTime(forecast.ecmwf);
   const rrfsByTime = byTime(forecast.rrfs);
   const centers: Record<ModelName, Map<number, NeighborWind>> = {
@@ -68,7 +84,12 @@ export function evaluateForecast(
     return evaluateSeries(hours, (h) => evaluateHour(context(model, h), defaults), defaults);
   }
 
-  return { ecmwf: run("ecmwf", forecast.ecmwf), rrfs: run("rrfs", forecast.rrfs) };
+  return {
+    ecmwf: run("ecmwf", forecast.ecmwf),
+    rrfs: run("rrfs", forecast.rrfs),
+    ecmwfByTime,
+    rrfsByTime,
+  };
 }
 
 /** Evaluates one launch and finds its best window for the target day. */
@@ -82,11 +103,14 @@ export function evaluateLaunch(
 ): LaunchEvaluation {
   const day = daylightDayFor(forecast.days, which, now);
   if (day === undefined) return { launch, daylight: [], window: undefined };
-  const { ecmwf, rrfs } = evaluateForecast(site, launch, forecast, defaults);
+  const { ecmwf, rrfs, ecmwfByTime: ecmwfHours, rrfsByTime: rrfsHours } = evaluateForecastIndexed(
+    site,
+    launch,
+    forecast,
+    defaults,
+  );
   const results = daylightHours(ecmwf, day, now);
-  const rrfsByTime = byTime(rrfs);
-  const ecmwfHours = byTime(forecast.ecmwf);
-  const rrfsHours = byTime(forecast.rrfs);
+  const rrfsResults = byTime(rrfs);
   const daylight = results.flatMap((result): DaylightRow[] => {
     const ecmwfHour = ecmwfHours.get(result.time);
     if (ecmwfHour === undefined) return [];
@@ -95,10 +119,10 @@ export function evaluateLaunch(
         time: result.time,
         ecmwf: result,
         ecmwfHour,
-        rrfs: rrfsByTime.get(result.time),
+        rrfs: rrfsResults.get(result.time),
         rrfsHour: rrfsHours.get(result.time),
       },
     ];
   });
-  return { launch, daylight, window: findBestWindow(results, rrfsByTime, defaults) };
+  return { launch, daylight, window: findBestWindow(results, rrfsResults, defaults) };
 }

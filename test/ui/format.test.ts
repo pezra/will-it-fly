@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { testLaunch } from "../support/builders";
 import {
   approxFeet,
   arcLabel,
@@ -7,6 +8,7 @@ import {
   confidenceLabel,
   feet,
   forecastAge,
+  idealLabel,
   miles,
   oneDecimal,
   whole,
@@ -59,5 +61,23 @@ describe("labels", () => {
   it("labels confidence", () => {
     expect(confidenceLabel("ecmwfOnly")).toBe("ECMWF only");
     expect(confidenceLabel("high")).toBe("high confidence");
+  });
+});
+
+describe("idealLabel", () => {
+  const withIdeal = (ideal: { from: number; to: number }[]) =>
+    idealLabel(testLaunch({ directions: { ok: [{ from: 180, to: 270 }], ideal } }));
+
+  it("says anywhere in the OK range when there are no ideal arcs", () => {
+    expect(withIdeal([])).toBe("anywhere in the OK range");
+  });
+  it("shows a zero-width ideal as the heading plus or minus 15 degrees", () => {
+    expect(withIdeal([{ from: 200, to: 200 }])).toBe("185–215° (S–SW)");
+  });
+  it("wraps a widened arc below 0", () => {
+    expect(withIdeal([{ from: 5, to: 5 }])).toMatch(/^350–20°/);
+  });
+  it("shows a normal arc as is", () => {
+    expect(withIdeal([{ from: 250, to: 290 }])).toMatch(/^250–290°/);
   });
 });
