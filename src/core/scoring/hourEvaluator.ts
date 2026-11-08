@@ -20,17 +20,17 @@ export type ModelName = "ecmwf" | "rrfs";
 
 export type HourCall = "flyable" | "marginal" | "noGo" | "noData";
 
-export type Severity = "info" | "marginal" | "noGo";
+/** A `"warning"` is shown to the pilot but never changes an hour's call or score. */
+export type Severity = "info" | "warning" | "marginal" | "noGo";
 
 /**
- * Every reason kind, declared roughly most-severe first: no-go kinds, then marginal, then
- * info ("n/a"). Ties in reason counts are broken by this order.
+ * Every reason kind, declared roughly most-severe first: no-go kinds, then marginal, then warning,
+ * then info ("n/a"). Ties in reason counts are broken by this order.
  */
 export const REASON_KIND_ORDER = [
   // No-go
   "noData",
   "precipitation",
-  "gusts",
   "windTooStrong",
   "windTooWeak",
   "wrongDirection",
@@ -43,14 +43,14 @@ export const REASON_KIND_ORDER = [
   "overdevelopment",
   "aloftWind",
   "nearMaxWind",
-  "gustFactor",
   "lowCloud",
   "neighborWind",
   "preThermal",
   "directionNotIdeal",
   "notCurated",
+  // Warning: shown, never scored
+  "highGusts",
   // Info: a rule or score factor skipped for missing data
-  "gustUnavailable",
   "capeUnavailable",
   "aloftWindUnavailable",
   "cloudBaseUnavailable",
@@ -66,7 +66,6 @@ export type ReasonKind = (typeof REASON_KIND_ORDER)[number];
 export const REASON_SEVERITY: Readonly<Record<ReasonKind, Severity>> = Object.freeze({
   noData: "noGo",
   precipitation: "noGo",
-  gusts: "noGo",
   windTooStrong: "noGo",
   windTooWeak: "noGo",
   wrongDirection: "noGo",
@@ -78,13 +77,12 @@ export const REASON_SEVERITY: Readonly<Record<ReasonKind, Severity>> = Object.fr
   overdevelopment: "marginal",
   aloftWind: "marginal",
   nearMaxWind: "marginal",
-  gustFactor: "marginal",
   lowCloud: "marginal",
   neighborWind: "marginal",
   preThermal: "marginal",
   directionNotIdeal: "marginal",
   notCurated: "marginal",
-  gustUnavailable: "info",
+  highGusts: "warning",
   capeUnavailable: "info",
   aloftWindUnavailable: "info",
   cloudBaseUnavailable: "info",
@@ -199,12 +197,9 @@ function finish(
 
   let score = defaults.minScore;
   if (call === "flyable" || call === "marginal") {
-    let penalties = 0;
-    for (const r of sorted) {
-      if (r.severity !== "marginal") continue;
-      // The gust-factor penalty replaces the generic one for that reason.
-      penalties += r.kind === "gustFactor" ? defaults.gustFactorPenalty : defaults.marginalReasonPenalty;
-    }
+    // Warnings and info reasons cost nothing.
+    const penalties =
+      sorted.filter((r) => r.severity === "marginal").length * defaults.marginalReasonPenalty;
     score = Math.min(defaults.maxScore, Math.max(defaults.minScore, unpenalizedScore - penalties));
   }
   return { time, call, score, reasons: sorted, launchWind: wind, unpenalizedScore };
@@ -282,18 +277,10 @@ function neighborReason(ctx: HourContext, defaults: ScoringDefaults): Reason | u
   return reason("neighborUnavailable", "wind nearby: n/a");
 }
 
-/** True if this hour has a precipitation or gust no-go by max(h, h+1). */
-function precipOrGustNoGo(
-  hour: ModelHour,
-  next: ModelHour | undefined,
-  defaults: ScoringDefaults,
-): boolean {
+/** True if this hour has a precipitation no-go by max(h, h+1). */
+function precipNoGo(hour: ModelHour, next: ModelHour | undefined, defaults: ScoringDefaults): boolean {
   const precip = definedMax(hour.precipMm, next?.precipMm);
-  const gust = definedMax(hour.gustMph, next?.gustMph);
-  return (
-    (precip !== undefined && precip >= defaults.precipNoGoMm) ||
-    (gust !== undefined && gust >= defaults.gustNoGoMph)
-  );
+  return precip !== undefined && precip >= defaults.precipNoGoMm;
 }
 
 /** The per-hour call, score and reasons for one launch and one model. */
@@ -321,16 +308,16 @@ export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORI
   if (precip >= defaults.precipNoGoMm) {
     reasons.push(reason("precipitation", `rain ${precip.toFixed(1)} mm`));
   }
+  // Forecast gusts are not scored, only warned about. A missing gust gives no reason at all.
   const gust = definedMax(hour.gustMph, next?.gustMph);
-  if (gust === undefined) {
-    reasons.push(reason("gustUnavailable", "gusts: n/a"));
-  } else {
-    if (gust >= defaults.gustNoGoMph) reasons.push(reason("gusts", `gusts ${mph(gust)}`));
+  if (gust !== undefined) {
     // Both sides from this model's 10 m wind, never the interpolated launch wind.
     const surface = hour.windMph ?? 0;
     const factor = Math.max(0, gust - surface);
     const limit = limits.gustFactorMph ?? DEFAULT_WIND_LIMITS.gustFactorMph ?? 0;
-    if (factor > limit) reasons.push(reason("gustFactor", `gust factor ${mph(factor)}`));
+    if (factor >= defaults.highGustWarningFactorMultiple * limit) {
+      reasons.push(reason("highGusts", `high gusts possible (gust factor ${mph(factor)})`));
+    }
   }
 
   // Launch wind speed.
@@ -411,7 +398,7 @@ export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORI
 
   // RRFS sees storms (ECMWF evaluation only).
   if (ctx.model === "ecmwf" && ctx.other?.hour !== undefined) {
-    if (precipOrGustNoGo(ctx.other.hour, ctx.other.next, defaults)) {
+    if (precipNoGo(ctx.other.hour, ctx.other.next, defaults)) {
       reasons.push(reason("rrfsSeesStorms", "RRFS sees storms"));
     }
   }
@@ -434,7 +421,7 @@ export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORI
 /**
  * Second pass over one model's hours for one launch: caps the hours within
  * `stormLookaheadHours` before a convective no-go at marginal ("storms forecast by HH:00").
- * A convective no-go has a precipitation or gust no-go and max(CAPE h, CAPE h+1) at or above
+ * A convective no-go has a precipitation no-go and max(CAPE h, CAPE h+1) at or above
  * `stormCapeJkg`. `results[i]` must be the evaluation of `hours[i]`, with hours contiguous.
  * No-go and no-data hours are left unchanged. Returns a new array; the input is not mutated.
  */
@@ -444,7 +431,7 @@ export function applyStormLookahead(
   defaults: ScoringDefaults = SCORING_DEFAULTS,
 ): HourResult[] {
   const convective = results.map((r, j) => {
-    if (!r.reasons.some((x) => x.kind === "precipitation" || x.kind === "gusts")) return false;
+    if (!r.reasons.some((x) => x.kind === "precipitation")) return false;
     const cape = definedMax(hours[j]?.capeJkg, hours[j + 1]?.capeJkg);
     return cape !== undefined && cape >= defaults.stormCapeJkg;
   });

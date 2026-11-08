@@ -132,11 +132,15 @@ describe("getRecommendations", () => {
     expect(scores).toEqual([...scores].sort((a, b) => b - a));
     const firstWithout = result.sites.findIndex((r) => r.best === undefined);
     expect(result.sites.slice(firstWithout).every((r) => r.best === undefined)).toBe(true);
+    // Gusts aren't scored: with the real limits, the recorded day's ECMWF gust factors (up to
+    // 14 mph) no longer cap Boulder at marginal, so it gets its window.
+    const boulder = result.sites.find((r) => r.site.id === "rmhpa/boulder-wonderland");
+    expect(windowLabel(boulder?.best?.window ?? never())).toBe("11:00\u201317:00");
 
   });
 
   it("withPermissiveLimitsWindowsAreRankedAheadOfNoWindowAndClosedSites", async () => {
-    // The recorded November day is no-go for the real limits, so loosen them to get windows.
+    // Loosen the limits and directions so wind speed and direction rule nothing out.
     const anyDirection = [{ from: 0, to: 360 }];
     const loose = sites.map((x) => ({
       ...x,

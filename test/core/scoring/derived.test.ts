@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { angularDifference } from "../../../src/core/sites/degreeArc";
+import { DEFAULT_WIND_LIMITS } from "../../../src/core/sites/site";
 import {
   aloftWind,
   cloudBaseAboveLaunchM,
@@ -462,7 +463,8 @@ describe("SCORING_DEFAULTS", () => {
     const d = SCORING_DEFAULTS;
     const h = perfectHour().build();
     expect(h.capeJkg).toBeLessThan(d.stormCapeJkg);
-    expect(h.gustMph).toBeLessThan(d.gustNoGoMph);
+    const gustFactor = (h.gustMph ?? 0) - (h.windMph ?? 0);
+    expect(gustFactor).toBeLessThan(d.highGustWarningFactorMultiple * (DEFAULT_WIND_LIMITS.gustFactorMph ?? 0));
     expect(h.blhM).toBeGreaterThanOrEqual(d.blhBonusMinM);
     expect(cloudBaseAboveLaunchM(h)).toBeGreaterThanOrEqual(cloudBaseBonusM());
     const ti = thermalIndex(h, PERFECT_LAUNCH_ELEVATION_M);
@@ -478,7 +480,6 @@ describe("SCORING_DEFAULTS", () => {
   it("pinsEveryFieldToTheSwiftValue", () => {
     expect(SCORING_DEFAULTS).toStrictEqual({
       precipNoGoMm: 0.25,
-      gustNoGoMph: 25,
       variableDirectionBelowMph: 4,
       overTheBackAloftNoGoMph: 20,
       strongAloftNoGoMph: 35,
@@ -493,6 +494,9 @@ describe("SCORING_DEFAULTS", () => {
       lowCloudCoverMarginalPct: 60,
       preThermalBLHBelowM: 500,
       preThermalTIAboveC: 0,
+      // Web-only: gusts warn instead of scoring (author, 2026-11-08). Swift has gustNoGoMph 25
+      // and gustFactorPenalty 5, which the web dropped.
+      highGustWarningFactorMultiple: 3,
       stormLookaheadHours: 2,
       stormCapeJkg: 200,
       baseScore: 50,
@@ -509,7 +513,6 @@ describe("SCORING_DEFAULTS", () => {
       cloudBaseBonusMinFt: 3000,
       cloudBaseBonus: 5,
       marginalReasonPenalty: 5,
-      gustFactorPenalty: 5,
       minScore: 0,
       maxScore: 100,
       aloftMinAboveLaunchM: 600,

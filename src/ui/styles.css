@@ -152,6 +152,9 @@ button:disabled { opacity: 0.6; }
 .reason-noGo { color: var(--nogo); }
 .reason-marginal { color: var(--marginal); }
 .reason-info { color: var(--muted); }
+.reason-warning { color: var(--marginal); font-weight: 600; }
+.reason-warning::before { content: "⚠ "; }
+.row-warning { color: var(--marginal); font-weight: 600; }
 .reason-noGo::before { content: "✕ "; }
 .reason-marginal::before { content: "~ "; }
 .reason-info::before { content: "· "; }
