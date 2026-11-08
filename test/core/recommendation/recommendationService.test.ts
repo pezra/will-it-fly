@@ -164,9 +164,9 @@ describe("getRecommendations", () => {
     expect(windowLabel(boulder?.best?.window ?? never())).toBe("11:00\u201317:00");
     expect((boulder?.best?.window.score ?? 0) > (glenwood?.best?.window.score ?? 1)).toBe(true);
     expect(boulder?.mainReason).toBeUndefined();
-    // Pre-thermal all afternoon costs points but doesn't cap the call.
+    // A sledder all afternoon costs points but doesn't cap the call.
     expect(butte?.call).toBe("good");
-    expect(butte?.best?.window.hours.every((h) => h.reasons.some((r) => r.kind === "preThermal"))).toBe(true);
+    expect(butte?.best?.window.hours.every((h) => h.reasons.some((r) => r.kind === "sledder"))).toBe(true);
     expect(windowLabel(butte?.best?.window ?? never())).toBe("11:00\u201318:00");
     expect(butte?.mainReason).toBeUndefined();
   });
