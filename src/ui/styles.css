@@ -152,9 +152,11 @@ button:disabled { opacity: 0.6; }
 .reason-noGo { color: var(--nogo); }
 .reason-caution { color: var(--flyable); }
 .reason-info { color: var(--muted); }
+.reason-penalty { color: var(--muted); }
 .reason-warning { color: var(--flyable); font-weight: 600; }
 .reason-warning::before { content: "⚠ "; }
 .row-warning { color: var(--flyable); font-weight: 600; }
 .reason-noGo::before { content: "✕ "; }
 .reason-caution::before { content: "~ "; }
 .reason-info::before { content: "· "; }
+.reason-penalty::before { content: "− "; }

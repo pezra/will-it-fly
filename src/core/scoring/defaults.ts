@@ -37,9 +37,13 @@ export interface ScoringDefaults {
   lowCloudBaseCautionFt: number;
   /** `cloud_cover_low` at or above this percentage is a caution. */
   lowCloudCoverCautionPct: number;
+  // Penalty (scored, never changes the call)
   /** Pre-thermal: BLH below this (m above model terrain) ... */
   preThermalBLHBelowM: number;
-  /** ... and TI above this (degrees C) gives "pre-thermal: sledder". */
+  /**
+   * ... and TI above this (degrees C) gives "pre-thermal: sledder". A penalty, not a caution, since
+   * 2026-11-08: it fired all day on weak days that were still soarable.
+   */
   preThermalTIAboveC: number;
   // Warnings (shown, never scored)
   /**
@@ -78,7 +82,7 @@ export interface ScoringDefaults {
   /** Cloud base at or above this many feet above launch earns `cloudBaseBonus`. */
   cloudBaseBonusMinFt: number;
   cloudBaseBonus: number;
-  /** Subtracted once per caution reason. */
+  /** Subtracted once per caution or penalty reason. */
   cautionReasonPenalty: number;
   minScore: number;
   maxScore: number;
@@ -139,6 +143,7 @@ export const SCORING_DEFAULTS: Readonly<ScoringDefaults> = Object.freeze({
   aloftCautionMph: 25,
   lowCloudBaseCautionFt: 1500,
   lowCloudCoverCautionPct: 60,
+  // Penalty (scored, never changes the call)
   preThermalBLHBelowM: 500,
   preThermalTIAboveC: 0,
   // Warnings (shown, never scored)

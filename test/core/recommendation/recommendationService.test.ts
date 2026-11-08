@@ -153,19 +153,20 @@ describe("getRecommendations", () => {
     );
     expect(result.sites.map((r) => r.site.id)).toEqual([
       "rmhpa/boulder-wonderland",
-      "rmhpa/glenwood-lookout-mtn",
       "rmhpa/crested-butte",
+      "rmhpa/glenwood-lookout-mtn",
       "rmhpa/copper-mountain",
     ]);
-    const [boulder, glenwood, butte] = result.sites;
+    const [boulder, butte, glenwood] = result.sites;
     expect(boulder?.best?.launch.id).toBe("rmhpa/boulder-wonderland/upper");
     expect(boulder?.best?.window.confidence).toBe("high");
     expect(glenwood?.best?.window.confidence).toBe("medium");
     expect(windowLabel(boulder?.best?.window ?? never())).toBe("11:00\u201317:00");
     expect((boulder?.best?.window.score ?? 0) > (glenwood?.best?.window.score ?? 1)).toBe(true);
     expect(boulder?.mainReason).toBeUndefined();
-    // Pre-thermal all afternoon: a flyable-only window, ranked below the good sites.
-    expect(butte?.call).toBe("flyable");
+    // Pre-thermal all afternoon costs points but doesn't cap the call.
+    expect(butte?.call).toBe("good");
+    expect(butte?.best?.window.hours.every((h) => h.reasons.some((r) => r.kind === "preThermal"))).toBe(true);
     expect(windowLabel(butte?.best?.window ?? never())).toBe("11:00\u201318:00");
     expect(butte?.mainReason).toBeUndefined();
   });
