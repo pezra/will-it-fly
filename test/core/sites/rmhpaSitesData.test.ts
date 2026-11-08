@@ -91,7 +91,7 @@ describe("rmhpa-sites.json", () => {
 
   it("closedSites", () => {
     const closed = sites.filter((s) => s.status.state !== "open").map((s) => s.id).sort();
-    expect(closed).toEqual(["rmhpa/blodgett-open-space", "rmhpa/wolcott"]);
+    expect(closed).toEqual(["rmhpa/blodgett-open-space", "rmhpa/copper-mountain", "rmhpa/wolcott"]);
   });
 
   // Ids differ from Swift: "boulder---wonderland" is now "boulder-wonderland", etc.
@@ -110,5 +110,23 @@ describe("rmhpa-sites.json", () => {
     const golden = launch("rmhpa/golden-lookout-mountain/north");
     expect(arcsContain(golden.directions.ok, 0)).toBe(true);
     expect(arcsContain(golden.directions.ok, 180)).toBe(false);
+  });
+
+  // Judgment calls the author made on 2026-11-08 (see the notes in the JSON).
+  it("authorDirectionDecisions", () => {
+    function launch(id: string): Launch {
+      const found = sites.flatMap((s) => s.launches).find((l) => l.id === id);
+      if (found === undefined) throw new Error(`no launch ${id}`);
+      return found;
+    }
+    const bellyache = launch("rmhpa/bellyache/main").directions.ok;
+    expect(arcsContain(bellyache, 340)).toBe(true);
+    expect(arcsContain(bellyache, 330)).toBe(false);
+    const walshes = launch("rmhpa/aspen/walshes").directions.ok;
+    expect(arcsContain(walshes, 105)).toBe(true);
+    expect(arcsContain(walshes, 110)).toBe(false);
+    const ruthies = launch("rmhpa/aspen/ruthies").directions.ok;
+    expect(arcsContain(ruthies, 255)).toBe(true);
+    expect(arcsContain(ruthies, 250)).toBe(false);
   });
 });
