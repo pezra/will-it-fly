@@ -1,10 +1,11 @@
 import { METERS_PER_FOOT, METERS_PER_MILE, compass } from "../core/units";
 import type { Confidence } from "../core/scoring/modelAgreement";
 import type { HourCall } from "../core/scoring/hourEvaluator";
-import type { TargetDay } from "../core/scoring/windowFinder";
 import { SCORING_DEFAULTS } from "../core/scoring/defaults";
 import { effectiveIdealArcs } from "../core/scoring/hourEvaluator";
 import type { DegreeArc, Launch } from "../core/sites/site";
+import { addDays, formatDayKey } from "../core/time";
+import type { DayKey } from "../core/time";
 
 /** Feet from meters, rounded to the nearest 100 ft, as "≈ 9,200 ft". "n/a" when missing. */
 export function approxFeet(meters: number | undefined): string {
@@ -59,8 +60,11 @@ export function idealLabel(launch: Launch): string {
   );
 }
 
-export function dayLabel(day: TargetDay): string {
-  return day === "today" ? "Today" : "Tomorrow";
+/** "Today", "Tomorrow" or "Tue, Nov 10". */
+export function dayLabel(day: DayKey, today: DayKey): string {
+  if (day === today) return "Today";
+  if (day === addDays(today, 1)) return "Tomorrow";
+  return formatDayKey(day);
 }
 
 export function callLabel(call: HourCall): string {

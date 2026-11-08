@@ -114,7 +114,9 @@ describe("rankSites", () => {
 
 describe("withDistances", () => {
   const result = (sites: SiteRecommendation[]): RecommendationResult => ({
-    day: "today",
+    day: "2026-11-08",
+    today: "2026-11-08",
+    dayOver: false,
     fetchedAt: T0,
     isOffline: false,
     sites,
@@ -130,7 +132,7 @@ describe("withDistances", () => {
     const after = withDistances(before, where);
     expect(names(after.sites)).toEqual(["near", "far"]);
     expect(after.sites[0]?.distanceM).toBeCloseTo(distanceM(where, { latitude: 39.6, longitude: -106 }), 3);
-    expect(after.day).toBe("today");
+    expect(after.day).toBe("2026-11-08");
     expect(after.fetchedAt).toBe(T0);
     expect(before.sites[0]?.distanceM).toBeUndefined();
   });
@@ -287,7 +289,14 @@ describe("recommendSite", () => {
     expect(r.best).toBeUndefined();
     expect(r.mainReason).toBeUndefined();
     expect(r.call).toBe("closed");
-    const result: RecommendationResult = { day: "today", fetchedAt: 0, isOffline: false, sites: [r] };
+    const result: RecommendationResult = {
+      day: "2026-11-08",
+      today: "2026-11-08",
+      dayOver: false,
+      fetchedAt: 0,
+      isOffline: false,
+      sites: [r],
+    };
     expect(withDistances(result, where).sites[0]?.distanceM).toBe(0);
   });
 

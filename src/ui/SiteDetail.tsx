@@ -6,6 +6,8 @@ import { CallBadge } from "./CallBadge";
 import { ForecastStatus } from "./ForecastStatus";
 import { arcsLabel, confidenceLabel, dayLabel, feet, idealLabel, miles } from "./format";
 import { HourlyTable } from "./HourlyTable";
+import { listHref } from "./route";
+import type { DayKey } from "../core/time";
 import type { Recommendations } from "./useRecommendations";
 
 function limitsLine(site: Site, launch: Launch): string {
@@ -42,9 +44,18 @@ function LaunchSection({ site, evaluation }: { site: Site; evaluation: LaunchEva
   );
 }
 
-export function SiteDetail({ siteId, recs }: { siteId: string; recs: Recommendations }) {
+/** `day` is the route's day, undefined for the default day. */
+export function SiteDetail({
+  siteId,
+  day,
+  recs,
+}: {
+  siteId: string;
+  day: DayKey | undefined;
+  recs: Recommendations;
+}) {
   const { state, location } = recs;
-  const back = <a class="back" href="#/">← All sites</a>;
+  const back = <a class="back" href={listHref(day)}>← All sites</a>;
 
   if (state.status !== "loaded") {
     return (
@@ -73,7 +84,7 @@ export function SiteDetail({ siteId, recs }: { siteId: string; recs: Recommendat
       {back}
       <h1>{site.name}</h1>
       <p class="detail-head">
-        <CallBadge call={rec.call} /> <span>{dayLabel(state.result.day)}</span>
+        <CallBadge call={rec.call} /> <span>{dayLabel(state.result.day, state.result.today)}</span>
       </p>
       <dl class="facts">
         <dt>Rating</dt>
@@ -99,7 +110,13 @@ export function SiteDetail({ siteId, recs }: { siteId: string; recs: Recommendat
         </dd>
       </dl>
       {closedReason !== undefined && <p class="banner">Closed: {closedReason}</p>}
-      {closedReason === undefined && best === undefined && rec.mainReason !== undefined && (
+      {closedReason === undefined && state.result.dayOver && (
+        <p class="banner">Today's sunset has passed.</p>
+      )}
+      {closedReason === undefined &&
+        !state.result.dayOver &&
+        best === undefined &&
+        rec.mainReason !== undefined && (
         <p class="banner">No flyable window: {rec.mainReason.text}</p>
       )}
       {site.notes !== undefined && (

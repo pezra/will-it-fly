@@ -1,7 +1,8 @@
 import type { ModelHour } from "../forecast/models";
 import type { HourResult, ReasonKind, Severity } from "../scoring/hourEvaluator";
-import type { TargetDay, FlyingWindow } from "../scoring/windowFinder";
+import type { FlyingWindow } from "../scoring/windowFinder";
 import type { Launch, Site } from "../sites/site";
+import type { DayKey } from "../time";
 
 /**
  * Why a site has no window. Mostly an hour-level reason, but "no flyable hour" has no `ReasonKind`
@@ -26,9 +27,9 @@ export interface DaylightRow {
 /** One launch's forecast, evaluated for the detail view. */
 export interface LaunchEvaluation {
   launch: Launch;
-  /** The ECMWF hours inside the target day's daylight (and not yet over), in time order. */
+  /** The ECMWF hours inside the day's daylight (and not yet over), in time order. */
   daylight: DaylightRow[];
-  /** The launch's best window for the target day. */
+  /** The launch's best window for the day. */
   window?: FlyingWindow | undefined;
 }
 
@@ -54,7 +55,12 @@ export interface SiteRecommendation {
 }
 
 export interface RecommendationResult {
-  day: TargetDay;
+  /** The day the sites are evaluated for. */
+  day: DayKey;
+  /** Today's day key (by the clock the result was computed with). */
+  today: DayKey;
+  /** True when `day` is today and today's sunset has passed, so no hour is left to fly. */
+  dayOver: boolean;
   /** When the forecast was fetched (epoch ms). */
   fetchedAt: number;
   /** True when a fetch failed and the cached forecast was used. */

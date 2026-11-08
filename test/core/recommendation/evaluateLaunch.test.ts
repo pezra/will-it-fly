@@ -4,7 +4,7 @@ import { evaluateForecast, evaluateLaunch } from "../../../src/core/recommendati
 import { findBestWindow } from "../../../src/core/scoring/windowFinder";
 import type { HourResult } from "../../../src/core/scoring/hourEvaluator";
 import type { Launch, Site } from "../../../src/core/sites/site";
-import { byTime, formatDenverTime } from "../../../src/core/time";
+import { byTime, denverDayKey, formatDenverTime } from "../../../src/core/time";
 import { kinds, testLaunch, testSite } from "../../support/builders";
 import { REFERENCE_TIME, perfectHour } from "../../support/hourBuilder";
 
@@ -111,7 +111,7 @@ describe("evaluateLaunch", () => {
 
   it("joinsEachDaylightHourWithBothModelsByTime", () => {
     const f = forecast({ ecmwf: [0, 1, 2, 3, 4].map(hour), rrfs: [0, 2, 3, 4].map(hour), days: [day] });
-    const e = evaluateLaunch(site, launch, f, "today", t(0));
+    const e = evaluateLaunch(site, launch, f, denverDayKey(t(0)), t(0));
     const { ecmwf, rrfs } = evaluateForecast(site, launch, f);
     expect(e.daylight.map((row) => row.time)).toEqual([t(0), t(1), t(2), t(3)]);
     expect(e.daylight.map((row) => row.ecmwf)).toEqual(ecmwf.slice(0, 4));
@@ -124,7 +124,7 @@ describe("evaluateLaunch", () => {
 
   it("hasNoDaylightOrWindowWhenTheDayIsNotCovered", () => {
     const f = forecast({ ecmwf: [0, 1].map(hour), days: [] });
-    const e = evaluateLaunch(site, launch, f, "today", t(0));
+    const e = evaluateLaunch(site, launch, f, denverDayKey(t(0)), t(0));
     expect(e.daylight).toEqual([]);
     expect(e.window).toBeUndefined();
   });

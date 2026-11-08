@@ -2,6 +2,7 @@ import { isRecord } from "../isRecord";
 import { offset } from "../sites/coordinate";
 import { elevationM } from "../sites/site";
 import type { Coordinate, Launch } from "../sites/site";
+import type { DayKey } from "../time";
 import { PRESSURE_LEVELS } from "./models";
 import type {
   DaylightDay,
@@ -90,12 +91,16 @@ interface Point {
   elevation: string;
 }
 
-export function launchRequestURL(launches: readonly Launch[], baseURL = DEFAULT_BASE_URL): string {
+export function launchRequestURL(
+  launches: readonly Launch[],
+  baseURL = DEFAULT_BASE_URL,
+  day?: DayKey,
+): string {
   const points = launches.map((l) => ({
     coord: l.coordinate,
     elevation: elevationM(l).toFixed(1),
   }));
-  return makeURL(baseURL, points, LAUNCH_HOURLY_VARIABLES, LAUNCH_MODELS);
+  return makeURL(baseURL, points, LAUNCH_HOURLY_VARIABLES, LAUNCH_MODELS, day);
 }
 
 /**
@@ -106,7 +111,11 @@ export function launchRequestURL(launches: readonly Launch[], baseURL = DEFAULT_
  * nearest cell. The neighbor check must compare like with like, so the center point is requested with
  * the same `nan` selection as the neighbors rather than reusing the (elevation-matched) launch request.
  */
-export function neighborRequestURL(launches: readonly Launch[], baseURL = DEFAULT_BASE_URL): string {
+export function neighborRequestURL(
+  launches: readonly Launch[],
+  baseURL = DEFAULT_BASE_URL,
+  day?: DayKey,
+): string {
   const points: Point[] = [];
   for (const launch of launches) {
     points.push({ coord: launch.coordinate, elevation: "nan" });
@@ -114,16 +123,27 @@ export function neighborRequestURL(launches: readonly Launch[], baseURL = DEFAUL
       points.push({ coord: offset(launch.coordinate, bearing, NEIGHBOR_DISTANCE_M), elevation: "nan" });
     }
   }
-  return makeURL(baseURL, points, ["wind_speed_10m", "wind_direction_10m"], NEIGHBOR_MODELS);
+  return makeURL(baseURL, points, ["wind_speed_10m", "wind_direction_10m"], NEIGHBOR_MODELS, day);
 }
 
-/** Hand-joined: URLSearchParams would encode the commas and slashes. */
+/**
+ * Hand-joined: URLSearchParams would encode the commas and slashes. Without a `day` it asks for today
+ * and tomorrow; with one, for that Denver day only.
+ */
 function makeURL(
   baseURL: string,
   points: readonly Point[],
   hourly: readonly string[],
   models: readonly string[],
+  day?: DayKey,
 ): string {
+  const range: [string, string][] =
+    day === undefined
+      ? [["forecast_days", "2"]]
+      : [
+          ["start_date", day],
+          ["end_date", day],
+        ];
   const items: [string, string][] = [
     ["latitude", points.map((p) => p.coord.latitude.toFixed(4)).join(",")],
     ["longitude", points.map((p) => p.coord.longitude.toFixed(4)).join(",")],
@@ -133,7 +153,7 @@ function makeURL(
     ["models", models.join(",")],
     ["wind_speed_unit", "mph"],
     ["timezone", "America/Denver"],
-    ["forecast_days", "2"],
+    ...range,
     ["timeformat", "unixtime"],
   ];
   const query = items.map(([k, v]) => `${k}=${v}`).join("&");
@@ -146,6 +166,8 @@ function makeURL(
 export interface FetchOptions {
   transport: Transport;
   baseURL?: string | undefined;
+  /** Fetch only this Denver day, instead of today and tomorrow. */
+  day?: DayKey | undefined;
 }
 
 export async function fetchForecasts(
@@ -154,8 +176,8 @@ export async function fetchForecasts(
 ): Promise<FetchResult> {
   const baseURL = options.baseURL ?? DEFAULT_BASE_URL;
   const [launchRaw, neighborRaw] = await Promise.all([
-    load(options.transport, launchRequestURL(launches, baseURL)),
-    load(options.transport, neighborRequestURL(launches, baseURL)),
+    load(options.transport, launchRequestURL(launches, baseURL, options.day)),
+    load(options.transport, neighborRequestURL(launches, baseURL, options.day)),
   ]);
   const forecasts = parseForecasts(launchRaw, neighborRaw, launches);
   return { forecasts, launchRaw, neighborRaw };

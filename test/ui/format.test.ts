@@ -6,6 +6,7 @@ import {
   callGlyph,
   callLabel,
   confidenceLabel,
+  dayLabel,
   feet,
   forecastAge,
   idealLabel,
@@ -61,6 +62,12 @@ describe("labels", () => {
   it("labels confidence", () => {
     expect(confidenceLabel("ecmwfOnly")).toBe("ECMWF only");
     expect(confidenceLabel("high")).toBe("high confidence");
+  });
+  it("labels days relative to today", () => {
+    expect(dayLabel("2026-11-08", "2026-11-08")).toBe("Today");
+    expect(dayLabel("2026-11-09", "2026-11-08")).toBe("Tomorrow");
+    expect(dayLabel("2026-11-10", "2026-11-08")).toBe("Tue, Nov 10");
+    expect(dayLabel("2027-01-01", "2026-12-31")).toBe("Tomorrow");
   });
 });
 

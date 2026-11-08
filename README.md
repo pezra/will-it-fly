@@ -17,7 +17,7 @@ The list shows every RMHPA site:
 
 Tap a site to see its launches, the hour by hour ECMWF and RRFS conditions, and the reasons for each hour's call. Refresh fetches a new forecast, unless the last one is under 5 minutes old. Forecasts are otherwise reused for an hour.
 
-After local sunset it shows tomorrow instead of today.
+After local sunset it shows tomorrow instead of today. The Today and Tomorrow buttons, and the date picker, show any day up to 14 days out. A day after tomorrow is fetched on its own when you pick it. RRFS only runs about 3½ days ahead, so windows further out are ECMWF only, and a two-week forecast is a rough guide at best.
 
 If you allow location access you'll see distances. Without it everything still works, and the distances are left out. (To change it on an iPhone: Settings → Safari → Location.)
 

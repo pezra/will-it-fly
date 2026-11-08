@@ -21,15 +21,15 @@ function useHashRoute(): Route {
 
 export function App({ debug }: { debug: DebugParams }) {
   const route = useHashRoute();
-  const recs = useRecommendations(debug);
+  const recs = useRecommendations(debug, route.day);
 
   return (
     <>
       <main>
         {route.page === "site" ? (
-          <SiteDetail siteId={route.id} recs={recs} />
+          <SiteDetail siteId={route.id} day={route.day} recs={recs} />
         ) : (
-          <SiteList recs={recs} />
+          <SiteList recs={recs} day={route.day} />
         )}
       </main>
       <footer>
