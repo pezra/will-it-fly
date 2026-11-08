@@ -13,7 +13,7 @@ import {
 } from "../../../src/core/scoring/derived";
 import {
   cloudBaseBonusM,
-  lowCloudBaseMarginalM,
+  lowCloudBaseCautionM,
   runLengthWeight,
   SCORING_DEFAULTS,
 } from "../../../src/core/scoring/defaults";
@@ -446,7 +446,7 @@ describe("SCORING_DEFAULTS", () => {
 
   it("feetThresholdsConvertToMeters", () => {
     // 1500 ft * 0.3048 = 457.2 m; 3000 ft * 0.3048 = 914.4 m
-    expect(isClose(lowCloudBaseMarginalM(), 457.2)).toBe(true);
+    expect(isClose(lowCloudBaseCautionM(), 457.2)).toBe(true);
     expect(isClose(cloudBaseBonusM(), 914.4)).toBe(true);
   });
 
@@ -471,7 +471,7 @@ describe("SCORING_DEFAULTS", () => {
     expect(ti).toBeLessThanOrEqual(d.thermalIndexStrongMaxC);
     const top = topOfLiftM(h, PERFECT_LAUNCH_ELEVATION_M);
     const aloft = aloftWind(h, PERFECT_LAUNCH_ELEVATION_M, top);
-    expect(aloft?.speedMph).toBeLessThan(d.aloftMarginalMph);
+    expect(aloft?.speedMph).toBeLessThan(d.aloftCautionMph);
   });
 
   // Values copied from Swift's `ScoringDefaults.standard`. The cache intervals are seconds
@@ -484,14 +484,14 @@ describe("SCORING_DEFAULTS", () => {
       overTheBackAloftNoGoMph: 20,
       strongAloftNoGoMph: 35,
       neighborMinWindMph: 5,
-      neighborMarginalDiffDeg: 60,
+      neighborCautionDiffDeg: 60,
       neighborNoGoDiffDeg: 90,
       neighborNoGoMinNeighborMph: 10,
       nearMaxMarginMph: 2,
-      capeMarginalJkg: 500,
-      aloftMarginalMph: 25,
-      lowCloudBaseMarginalFt: 1500,
-      lowCloudCoverMarginalPct: 60,
+      capeCautionJkg: 500,
+      aloftCautionMph: 25,
+      lowCloudBaseCautionFt: 1500,
+      lowCloudCoverCautionPct: 60,
       preThermalBLHBelowM: 500,
       preThermalTIAboveC: 0,
       // Web-only: gusts warn instead of scoring (author, 2026-11-08). Swift has gustNoGoMph 25
@@ -512,7 +512,7 @@ describe("SCORING_DEFAULTS", () => {
       blhBonus: 5,
       cloudBaseBonusMinFt: 3000,
       cloudBaseBonus: 5,
-      marginalReasonPenalty: 5,
+      cautionReasonPenalty: 5,
       minScore: 0,
       maxScore: 100,
       aloftMinAboveLaunchM: 600,

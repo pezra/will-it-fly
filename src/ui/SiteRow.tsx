@@ -5,11 +5,11 @@ import type { BadgeCall } from "./CallBadge";
 import { siteHref } from "./route";
 import { confidenceLabel, miles } from "./format";
 
-/** The site's headline call: closed, no-go, or flyable (every hour flyable) / marginal. */
+/** The site's headline call: closed, no-go, or good (every hour good) / flyable. */
 export function siteCall(rec: SiteRecommendation): BadgeCall {
   if (rec.site.status.state === "closed") return "closed";
   if (rec.best === undefined) return "noGo";
-  return rec.best.window.hours.every((h) => h.call === "flyable") ? "flyable" : "marginal";
+  return rec.best.window.hours.every((h) => h.call === "good") ? "good" : "flyable";
 }
 
 export function SiteRow({ rec }: { rec: SiteRecommendation }) {

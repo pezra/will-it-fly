@@ -6,10 +6,10 @@
   --muted: #566070;
   --border: #d5dae1;
   --link: #0b5cc2;
-  --flyable: #0b6b2e;
-  --flyable-bg: #dff3e5;
-  --marginal: #7a4a00;
-  --marginal-bg: #fbecc8;
+  --good: #0b6b2e;
+  --good-bg: #dff3e5;
+  --flyable: #7a4a00;
+  --flyable-bg: #fbecc8;
   --nogo: #a11a1a;
   --nogo-bg: #fbe0e0;
   --neutral: #4a5361;
@@ -24,10 +24,10 @@
     --muted: #a3adbb;
     --border: #2f3743;
     --link: #7db4ff;
-    --flyable: #7fe0a0;
-    --flyable-bg: #12331f;
-    --marginal: #f5cf75;
-    --marginal-bg: #3a2c0b;
+    --good: #7fe0a0;
+    --good-bg: #12331f;
+    --flyable: #f5cf75;
+    --flyable-bg: #3a2c0b;
     --nogo: #ff9e9e;
     --nogo-bg: #3d1717;
     --neutral: #b4bdca;
@@ -87,7 +87,7 @@ button:disabled { opacity: 0.6; }
   border-radius: 8px;
   font-size: 14px;
 }
-.banner { background: var(--marginal-bg); color: var(--marginal); border: 1px solid var(--marginal); }
+.banner { background: var(--flyable-bg); color: var(--flyable); border: 1px solid var(--flyable); }
 .note { color: var(--muted); padding: 0; }
 .error { background: var(--nogo-bg); color: var(--nogo); border: 1px solid var(--nogo); }
 .error p { margin: 0 0 8px; }
@@ -117,8 +117,8 @@ button:disabled { opacity: 0.6; }
   white-space: nowrap;
   border: 1px solid currentColor;
 }
+.badge-good { color: var(--good); background: var(--good-bg); }
 .badge-flyable { color: var(--flyable); background: var(--flyable-bg); }
-.badge-marginal { color: var(--marginal); background: var(--marginal-bg); }
 .badge-noGo { color: var(--nogo); background: var(--nogo-bg); }
 .badge-noData, .badge-closed { color: var(--neutral); background: var(--neutral-bg); }
 
@@ -150,11 +150,11 @@ button:disabled { opacity: 0.6; }
 .reasons > li { padding: 8px 0; border-bottom: 1px solid var(--border); }
 .reasons ul { margin: 4px 0 0; padding-left: 20px; }
 .reason-noGo { color: var(--nogo); }
-.reason-marginal { color: var(--marginal); }
+.reason-caution { color: var(--flyable); }
 .reason-info { color: var(--muted); }
-.reason-warning { color: var(--marginal); font-weight: 600; }
+.reason-warning { color: var(--flyable); font-weight: 600; }
 .reason-warning::before { content: "⚠ "; }
-.row-warning { color: var(--marginal); font-weight: 600; }
+.row-warning { color: var(--flyable); font-weight: 600; }
 .reason-noGo::before { content: "✕ "; }
-.reason-marginal::before { content: "~ "; }
+.reason-caution::before { content: "~ "; }
 .reason-info::before { content: "· "; }

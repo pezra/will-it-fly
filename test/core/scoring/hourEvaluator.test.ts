@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ModelHour, NeighborWind } from "../../../src/core/forecast/models";
-import { SCORING_DEFAULTS, lowCloudBaseMarginalM } from "../../../src/core/scoring/defaults";
+import { SCORING_DEFAULTS, lowCloudBaseCautionM } from "../../../src/core/scoring/defaults";
 import type { ScoringDefaults } from "../../../src/core/scoring/defaults";
 import { cloudBaseAboveLaunchM, launchWind, thermalIndex } from "../../../src/core/scoring/derived";
 import {
@@ -144,8 +144,8 @@ function rrfsNeighborAt(bearing: number, wind: NeighborWind | undefined): Neighb
 const PERFECT = evaluateHour(ctx());
 
 describe("ReasonKind", () => {
-  it("is declared no-go kinds first, then marginal, then warning, then info", () => {
-    const rank = { noGo: 0, marginal: 1, warning: 2, info: 3 } as const;
+  it("is declared no-go kinds first, then caution, then warning, then info", () => {
+    const rank = { noGo: 0, caution: 1, warning: 2, info: 3 } as const;
     const ranks = REASON_KIND_ORDER.map((k) => rank[REASON_SEVERITY[k]]);
     expect([...ranks].sort((a, b) => a - b)).toEqual(ranks);
   });
@@ -166,8 +166,8 @@ describe("ReasonKind", () => {
 });
 
 describe("baseline", () => {
-  it("the perfect hour is flyable with no marginal or no-go reasons and a high score", () => {
-    expect(PERFECT.call).toBe("flyable");
+  it("the perfect hour is good with no caution or no-go reasons and a high score", () => {
+    expect(PERFECT.call).toBe("good");
     expect(PERFECT.reasons.filter((x) => x.severity !== "info")).toEqual([]);
     expect(PERFECT.score).toBeGreaterThanOrEqual(80);
     expect(PERFECT.time).toBe(REFERENCE_TIME);
@@ -199,7 +199,7 @@ describe("no-go rules", () => {
   }
 });
 
-describe("marginal rules", () => {
+describe("caution rules", () => {
   const cases: [string, CtxOptions, ReasonKind][] = [
     ["direction not ideal", { hour: hourWith((h) => (h.windDir = 240)) }, "directionNotIdeal"],
     ["near max", { hour: hourWith((h) => (h.windMph = 17)) }, "nearMaxWind"],
@@ -219,7 +219,7 @@ describe("marginal rules", () => {
   for (const [name, o, kind] of cases) {
     it(name, () => {
       const r = evalWith(o);
-      expect(r.call).toBe("marginal");
+      expect(r.call).toBe("flyable");
       expect(kinds(r)).toContain(kind);
       expect(r.score).toBeLessThan(PERFECT.score);
     });
@@ -233,7 +233,7 @@ describe("boundaries", () => {
   });
 
   it("precipitation in h+1 only", () => {
-    expect(evalWith({ next: nextWith((h) => (h.precipMm = 0.24)) }).call).toBe("flyable");
+    expect(evalWith({ next: nextWith((h) => (h.precipMm = 0.24)) }).call).toBe("good");
     const r = evalWith({ next: nextWith((h) => (h.precipMm = 0.25)) });
     expect(r.call).toBe("noGo");
     expect(kinds(r)).toContain("precipitation");
@@ -241,7 +241,7 @@ describe("boundaries", () => {
 
   it("max wind: exactly max is not no-go, just over is", () => {
     const at = evalWith({ hour: hourWith((h) => ((h.windMph = 18), (h.gustMph = 18))) });
-    expect(at.call).toBe("marginal");
+    expect(at.call).toBe("flyable");
     expect(kinds(at)).toEqual(expect.arrayContaining(["nearMaxWind"]));
     expect(kinds(at)).not.toContain("windTooStrong");
     const over = evalWith({ hour: hourWith((h) => ((h.windMph = 18.1), (h.gustMph = 18.1))) });
@@ -254,10 +254,10 @@ describe("boundaries", () => {
     const launch = makeLaunch({ limits: { minMph: 0, idealMph: 10, maxMph: 25, gustFactorMph: 6 } });
     const r = evalWith({ launch, hour: hourWith((h) => (h.windMph = 20)) });
     expect(kinds(r)).not.toContain("windTooStrong");
-    expect(r.call).toBe("flyable");
+    expect(r.call).toBe("good");
   });
 
-  it("near max: max - 2 is marginal, just below is not", () => {
+  it("near max: max - 2 is flyable, just below is not", () => {
     expect(kinds(evalWith({ hour: hourWith((h) => (h.windMph = 15.9)) }))).not.toContain("nearMaxWind");
     expect(kinds(evalWith({ hour: hourWith((h) => (h.windMph = 16)) }))).toContain("nearMaxWind");
   });
@@ -289,7 +289,7 @@ describe("boundaries", () => {
     expect(kinds(at)).toContain("wrongDirection");
   });
 
-  it("below 4 mph there is no ideal bonus and no not-ideal marginal", () => {
+  it("below 4 mph there is no ideal bonus and no not-ideal caution", () => {
     const limits: WindLimits = { minMph: 0, idealMph: 3.9, maxMph: 15, gustFactorMph: 20 };
     const inIdeal = evalWith({ siteLimits: limits, hour: hourWith((h) => (h.windMph = 3.9)) });
     const notIdeal = evalWith({
@@ -308,10 +308,10 @@ describe("boundaries", () => {
   it("aloft 24 / 25 / 34 / 35 mph", () => {
     const at = (mph: number) =>
       evalWith({ hour: perfectHour().level(700, (l) => (l.windMph = mph)) });
-    expect(at(24).call).toBe("flyable");
+    expect(at(24).call).toBe("good");
     expect(kinds(at(25))).toContain("aloftWind");
-    expect(at(25).call).toBe("marginal");
-    expect(at(34).call).toBe("marginal");
+    expect(at(25).call).toBe("flyable");
+    expect(at(34).call).toBe("flyable");
     expect(kinds(at(34))).not.toContain("strongAloft");
     expect(at(35).call).toBe("noGo");
     expect(kinds(at(35))).toContain("strongAloft");
@@ -321,7 +321,7 @@ describe("boundaries", () => {
   it("over the back 19 / 20 mph", () => {
     const at = (mph: number) =>
       evalWith({ hour: perfectHour().level(700, (l) => ((l.windMph = mph), (l.windDir = 90))) });
-    expect(at(19).call).toBe("flyable");
+    expect(at(19).call).toBe("good");
     expect(kinds(at(20))).toContain("overTheBack");
     expect(at(20).call).toBe("noGo");
   });
@@ -337,8 +337,8 @@ describe("boundaries", () => {
     const below = hourWith((h) => ((h.tempC = spreadFor(1499)), (h.dewpointC = 0))).build();
     const at = hourWith((h) => ((h.tempC = spreadFor(1500)), (h.dewpointC = 0))).build();
     // Preconditions: the inputs really straddle the threshold.
-    expect(cloudBaseAboveLaunchM(below)).toBeLessThan(lowCloudBaseMarginalM());
-    expect(cloudBaseAboveLaunchM(at)).toBeGreaterThanOrEqual(lowCloudBaseMarginalM());
+    expect(cloudBaseAboveLaunchM(below)).toBeLessThan(lowCloudBaseCautionM());
+    expect(cloudBaseAboveLaunchM(at)).toBeGreaterThanOrEqual(lowCloudBaseCautionM());
     expect(kinds(evalWith({ launch, hour: below }))).toContain("lowCloud");
     expect(kinds(evalWith({ launch, hour: at }))).not.toContain("lowCloud");
   });
@@ -349,15 +349,15 @@ describe("boundaries", () => {
   });
 
   it("neighbor 60 / 61 degrees (neighbor < 10 mph)", () => {
-    expect(evalWith({ neighbors: rrfsNeighborAt(180, nw(9.9, 330)) }).call).toBe("flyable");
+    expect(evalWith({ neighbors: rrfsNeighborAt(180, nw(9.9, 330)) }).call).toBe("good");
     const r = evalWith({ neighbors: rrfsNeighborAt(180, nw(9.9, 331)) });
-    expect(r.call).toBe("marginal");
+    expect(r.call).toBe("flyable");
     expect(kinds(r)).toContain("neighborWind");
   });
 
   it("neighbor 90 / 91 degrees (neighbor < 10 mph)", () => {
     const at90 = evalWith({ neighbors: rrfsNeighborAt(180, nw(9.9, 0)) });
-    expect(at90.call).toBe("marginal");
+    expect(at90.call).toBe("flyable");
     expect(kinds(at90)).toContain("neighborWind");
     const at91 = evalWith({ neighbors: rrfsNeighborAt(180, nw(9.9, 1)) });
     expect(at91.call).toBe("noGo");
@@ -373,12 +373,12 @@ describe("boundaries", () => {
   });
 
   it("neighbor 4.9 / 5 mph minimum, on both sides", () => {
-    expect(evalWith({ neighbors: rrfsNeighborAt(180, nw(4.9, 90)) }).call).toBe("flyable");
+    expect(evalWith({ neighbors: rrfsNeighborAt(180, nw(4.9, 90)) }).call).toBe("good");
     expect(evalWith({ neighbors: rrfsNeighborAt(180, nw(5, 90)) }).call).toBe("noGo");
     const weakCenter: NeighborSample = { ecmwf: nw(10, 270), rrfs: nw(4.9, 270) };
     expect(
       evalWith({ neighborCenter: weakCenter, neighbors: rrfsNeighborAt(180, nw(12, 90)) }).call,
-    ).toBe("flyable");
+    ).toBe("good");
     const minCenter: NeighborSample = { ecmwf: nw(10, 270), rrfs: nw(5, 270) };
     expect(
       evalWith({ neighborCenter: minCenter, neighbors: rrfsNeighborAt(180, nw(12, 90)) }).call,
@@ -425,7 +425,7 @@ describe("nil handling", () => {
   });
 
   it("undefined precipitation in h+1 only falls back to hour h", () => {
-    expect(evalWith({ next: nextWith((h) => (h.precipMm = undefined)) }).call).toBe("flyable");
+    expect(evalWith({ next: nextWith((h) => (h.precipMm = undefined)) }).call).toBe("good");
     const r = evalWith({
       hour: hourWith((h) => (h.precipMm = 1)),
       next: nextWith((h) => (h.precipMm = undefined)),
@@ -434,7 +434,7 @@ describe("nil handling", () => {
   });
 
   it("the last hour (no next) uses hour h alone", () => {
-    expect(evalWith({ last: true }).call).toBe("flyable");
+    expect(evalWith({ last: true }).call).toBe("good");
     expect(kinds(evalWith({ last: true, hour: hourWith((h) => (h.precipMm = 1)) }))).toContain(
       "precipitation",
     );
@@ -445,7 +445,7 @@ describe("nil handling", () => {
       hour: hourWith((h) => (h.gustMph = undefined)),
       next: nextWith((h) => (h.gustMph = undefined)),
     });
-    expect(r.call).toBe("flyable");
+    expect(r.call).toBe("good");
     expect(kinds(r)).toEqual(kinds(PERFECT));
     expect(r.reasons.filter((x) => /gust/i.test(x.text))).toEqual([]);
   });
@@ -485,7 +485,7 @@ describe("nil handling", () => {
     });
     expect(kinds(r)).not.toContain("preThermal");
     expect(kinds(r)).toEqual(expect.arrayContaining(["blhUnavailable", "thermalIndexUnavailable"]));
-    expect(r.call).toBe("flyable");
+    expect(r.call).toBe("good");
   });
 
   it("missing CAPE, cloud inputs and aloft levels are skipped as n/a, not failed", () => {
@@ -499,7 +499,7 @@ describe("nil handling", () => {
         .withoutLevel(600)
         .withoutLevel(500),
     });
-    expect(r.call).toBe("flyable");
+    expect(r.call).toBe("good");
     expect(kinds(r)).toEqual(
       expect.arrayContaining([
         "capeUnavailable",
@@ -512,12 +512,12 @@ describe("nil handling", () => {
 });
 
 describe("empty ok", () => {
-  it("a 10 mph wind and a 25 mph tailwind aloft are marginal 'not curated', not no-go", () => {
+  it("a 10 mph wind and a 25 mph tailwind aloft are flyable 'not curated', not no-go", () => {
     const r = evalWith({
       launch: makeLaunch({ ok: [], ideal: [] }),
       hour: hourWith((h) => (h.windDir = 90)).level(700, (l) => ((l.windMph = 25), (l.windDir = 90))),
     });
-    expect(r.call).toBe("marginal");
+    expect(r.call).toBe("flyable");
     expect(kinds(r)).toContain("notCurated");
     expect(kinds(r)).not.toContain("wrongDirection");
     expect(kinds(r)).not.toContain("overTheBack");
@@ -556,7 +556,7 @@ describe("gusts are not scored", () => {
       hour: hourWith((h) => (h.gustMph = 40)),
       next: nextWith((h) => (h.gustMph = 40)),
     });
-    expect(r.call).toBe("flyable");
+    expect(r.call).toBe("good");
     expect(r.call).toBe(base.call);
     expect(r.score).toBe(base.score);
     expect(r.unpenalizedScore).toBe(base.unpenalizedScore);
@@ -570,7 +570,7 @@ describe("gusts are not scored", () => {
       next: nextWith((h) => (h.gustMph = 40)),
     });
     expect(kinds(r)).toContain("highGusts");
-    expect(r.call).toBe("flyable");
+    expect(r.call).toBe("good");
     expect(r.call).toBe(base.call);
     expect(r.score).toBe(base.score);
     expect(r.unpenalizedScore).toBe(base.unpenalizedScore);
@@ -579,11 +579,11 @@ describe("gusts are not scored", () => {
 
   it("a warning never lifts or lowers another call", () => {
     const gusty = (h: ModelHour) => (h.gustMph = 40);
-    const marginal = evalWith({ hour: hourWith((h) => ((h.capeJkg = 600), gusty(h))) });
-    const plainMarginal = evalWith({ hour: hourWith((h) => (h.capeJkg = 600)) });
-    expect(kinds(marginal)).toContain("highGusts");
-    expect(marginal.call).toBe("marginal");
-    expect(marginal.score).toBe(plainMarginal.score);
+    const gustyFlyable = evalWith({ hour: hourWith((h) => ((h.capeJkg = 600), gusty(h))) });
+    const plainFlyable = evalWith({ hour: hourWith((h) => (h.capeJkg = 600)) });
+    expect(kinds(gustyFlyable)).toContain("highGusts");
+    expect(gustyFlyable.call).toBe("flyable");
+    expect(gustyFlyable.score).toBe(plainFlyable.score);
     const noGo = evalWith({ hour: hourWith((h) => ((h.precipMm = 1), gusty(h))) });
     expect(kinds(noGo)).toContain("highGusts");
     expect(noGo.call).toBe("noGo");
@@ -600,7 +600,7 @@ describe("high gusts warning", () => {
     const warning = at.reasons.find((x) => x.kind === "highGusts");
     expect(warning?.severity).toBe("warning");
     expect(warning?.text).toMatch(/^high gusts possible/);
-    expect(at.call).toBe("flyable");
+    expect(at.call).toBe("good");
     expect(at.score).toBe(PERFECT.score);
     expect(kinds(evalWith({ hour: hourWith((h) => (h.gustMph = 27.9)) }))).not.toContain("highGusts");
   });
@@ -678,7 +678,7 @@ describe("neighbor check, mixed cases", () => {
     const neighbors = calmNeighbors().points.map((p) =>
       p.bearingDeg === 180 ? { ...p, ecmwf: nw(12, 0) } : p,
     );
-    expect(evalWith({ neighbors }).call).toBe("flyable");
+    expect(evalWith({ neighbors }).call).toBe("good");
   });
 
   it("falls back to ECMWF when the RRFS center wind is undefined", () => {
@@ -731,7 +731,7 @@ describe("neighbor check, mixed cases", () => {
       neighbors: calmNeighbors().points.map((p) => ({ bearingDeg: p.bearingDeg })),
     });
     expect(kinds(r)).toContain("neighborUnavailable");
-    expect(r.call).toBe("flyable");
+    expect(r.call).toBe("good");
   });
 
   it("a peak launch with a strong westerly launch wind and 10 m winds matching the neighbors is not flagged", () => {
@@ -769,9 +769,9 @@ describe("neighbor check, mixed cases", () => {
 describe("RRFS sees storms", () => {
   const stormy = hourWith((h) => (h.precipMm = 1)).build();
 
-  it("caps the ECMWF hour at marginal, not no-go", () => {
+  it("caps the ECMWF hour at flyable, not no-go", () => {
     const r = evalWith({ other: { hour: stormy, next: undefined } });
-    expect(r.call).toBe("marginal");
+    expect(r.call).toBe("flyable");
     expect(kinds(r)).toContain("rrfsSeesStorms");
   });
 
@@ -785,18 +785,18 @@ describe("RRFS sees storms", () => {
     const gusty = hourWith((h) => (h.gustMph = 45)).build();
     const r = evalWith({ other: { hour: gusty, next: undefined } });
     expect(kinds(r)).not.toContain("rrfsSeesStorms");
-    expect(r.call).toBe("flyable");
+    expect(r.call).toBe("good");
   });
 
   it("is not raised when RRFS is calm or missing", () => {
-    expect(evalWith({ other: { hour: perfectHour().build(), next: undefined } }).call).toBe("flyable");
-    expect(evalWith({ other: { hour: undefined, next: undefined } }).call).toBe("flyable");
+    expect(evalWith({ other: { hour: perfectHour().build(), next: undefined } }).call).toBe("good");
+    expect(evalWith({ other: { hour: undefined, next: undefined } }).call).toBe("good");
   });
 
   it("is not applied when evaluating RRFS", () => {
     const r = evalWith({ model: "rrfs", other: { hour: stormy, next: undefined } });
     expect(kinds(r)).not.toContain("rrfsSeesStorms");
-    expect(r.call).toBe("flyable");
+    expect(r.call).toBe("good");
   });
 });
 
@@ -823,19 +823,19 @@ describe("storm look-ahead", () => {
     // no-go; hour 3 is convective via max(CAPE 3, CAPE 4) = 300.
     const { hours, results } = series(stormAt(4, 7, 300));
     expect(results.map((r) => r.call)).toEqual([
-      "flyable",
-      "flyable",
-      "flyable",
+      "good",
+      "good",
+      "good",
       "noGo",
       "noGo",
-      "flyable",
-      "flyable",
+      "good",
+      "good",
     ]);
     const out = applyStormLookahead(results, hours);
     expect(marked(out)).toEqual([1, 2]);
     const reason = out[1]?.reasons.find((x) => x.kind === "stormsComing");
     expect(reason?.text).toBe(`storms forecast by ${formatDenverTime(REFERENCE_TIME + 3 * HOUR_MS)}`);
-    expect(reason?.severity).toBe("marginal");
+    expect(reason?.severity).toBe("caution");
   });
 
   it("gusts alone are not convective, even with high CAPE", () => {
@@ -865,12 +865,12 @@ describe("storm look-ahead", () => {
     expect(marked(applyStormLookahead(results, hours))).toEqual([]);
   });
 
-  it("a marked hour becomes marginal and its score drops by the marginal penalty", () => {
+  it("a marked hour becomes flyable and its score drops by the caution penalty", () => {
     const { hours, results } = series(stormAt(4, 7, 300));
     const out = applyStormLookahead(results, hours);
-    expect(results[2]?.call).toBe("flyable");
-    expect(out[2]?.call).toBe("marginal");
-    expect((results[2]?.score ?? 0) - (out[2]?.score ?? 0)).toBe(d.marginalReasonPenalty);
+    expect(results[2]?.call).toBe("good");
+    expect(out[2]?.call).toBe("flyable");
+    expect((results[2]?.score ?? 0) - (out[2]?.score ?? 0)).toBe(d.cautionReasonPenalty);
   });
 
   it("leaves no-go hours unchanged", () => {
@@ -953,14 +953,14 @@ describe("wrapping arc", () => {
       .level(700, (l) => (l.windDir = 0))
       .level(600, (l) => (l.windDir = 0));
 
-  it("ideal across north is flyable", () => {
-    expect(evalWith({ launch, hour: aloftNorth(0) }).call).toBe("flyable");
-    expect(evalWith({ launch, hour: aloftNorth(355) }).call).toBe("flyable");
+  it("ideal across north is good", () => {
+    expect(evalWith({ launch, hour: aloftNorth(0) }).call).toBe("good");
+    expect(evalWith({ launch, hour: aloftNorth(355) }).call).toBe("good");
   });
 
-  it("in ok but not ideal across north is marginal", () => {
+  it("in ok but not ideal across north is flyable", () => {
     const r = evalWith({ launch, hour: aloftNorth(20) });
-    expect(r.call).toBe("marginal");
+    expect(r.call).toBe("flyable");
     expect(kinds(r)).toContain("directionNotIdeal");
   });
 
@@ -981,7 +981,7 @@ describe("ideal-arc fallback", () => {
   it("an empty ideal makes anywhere in ok ideal", () => {
     const launch = makeLaunch({ ideal: [] });
     const r = evalWith({ launch, hour: hourWith((h) => (h.windDir = 230)) });
-    expect(r.call).toBe("flyable");
+    expect(r.call).toBe("good");
     expect(kinds(r)).not.toContain("directionNotIdeal");
     expect(r.unpenalizedScore).toBe(PERFECT.unpenalizedScore);
   });
@@ -995,12 +995,12 @@ describe("ideal-arc fallback", () => {
     const launch = makeLaunch({ ideal: [{ from: 270, to: 270 }] });
     for (const dir of [255, 270, 285]) {
       const r = evalWith({ launch, hour: hourWith((h) => (h.windDir = dir)) });
-      expect(r.call, String(dir)).toBe("flyable");
+      expect(r.call, String(dir)).toBe("good");
       expect(r.unpenalizedScore, String(dir)).toBe(PERFECT.unpenalizedScore);
     }
     for (const dir of [254, 286]) {
       const r = evalWith({ launch, hour: hourWith((h) => (h.windDir = dir)) });
-      expect(r.call, String(dir)).toBe("marginal");
+      expect(r.call, String(dir)).toBe("flyable");
       expect(kinds(r), String(dir)).toContain("directionNotIdeal");
       expect(r.unpenalizedScore, String(dir)).toBe(PERFECT.unpenalizedScore - d.idealDirectionBonus);
     }
@@ -1013,15 +1013,15 @@ describe("ideal-arc fallback", () => {
         launch,
         hour: hourWith((h) => (h.windDir = dir)).level(700, (l) => (l.windDir = 0)).level(600, (l) => (l.windDir = 0)),
       });
-    expect(at(345).call).toBe("flyable");
-    expect(at(15).call).toBe("flyable");
+    expect(at(345).call).toBe("good");
+    expect(at(15).call).toBe("good");
     expect(kinds(at(16))).toContain("directionNotIdeal");
   });
 
   it("zero-width arcs are expanded one by one in a mixed list", () => {
     const launch = makeLaunch({ ideal: [{ from: 240, to: 240 }, { from: 290, to: 300 }] });
-    expect(evalWith({ launch, hour: hourWith((h) => (h.windDir = 230)) }).call).toBe("flyable");
-    expect(evalWith({ launch, hour: hourWith((h) => (h.windDir = 295)) }).call).toBe("flyable");
+    expect(evalWith({ launch, hour: hourWith((h) => (h.windDir = 230)) }).call).toBe("good");
+    expect(evalWith({ launch, hour: hourWith((h) => (h.windDir = 295)) }).call).toBe("good");
     expect(kinds(evalWith({ launch, hour: hourWith((h) => (h.windDir = 270)) }))).toContain(
       "directionNotIdeal",
     );
@@ -1065,16 +1065,16 @@ describe("score", () => {
     expect(PERFECT.score).toBeGreaterThan(lowBase.score);
   });
 
-  it("more marginal reasons score lower", () => {
+  it("more caution reasons score lower", () => {
     const one = evalWith({ hour: hourWith((h) => (h.capeJkg = 600)) });
     const two = evalWith({ hour: hourWith((h) => ((h.capeJkg = 600), (h.lowCloudPct = 70))) });
     expect(one.score).toBeGreaterThan(two.score);
   });
 
   it("is clamped to 0-100", () => {
-    const harsh: ScoringDefaults = { ...d, marginalReasonPenalty: 150 };
+    const harsh: ScoringDefaults = { ...d, cautionReasonPenalty: 150 };
     const low = evalWith({ hour: hourWith((h) => (h.capeJkg = 600)) }, harsh);
-    expect(low.call).toBe("marginal");
+    expect(low.call).toBe("flyable");
     expect(low.score).toBe(d.minScore);
     const generous: ScoringDefaults = { ...d, baseScore: 90 };
     expect(evalWith({}, generous).score).toBe(d.maxScore);
@@ -1092,15 +1092,15 @@ describe("score", () => {
     expect(results[0]?.score).toBe(d.maxScore);
     const out = applyStormLookahead(results, hours, generous);
     expect(kinds(out[0] as HourResult)).toContain("stormsComing");
-    expect(out[0]?.call).toBe("marginal");
+    expect(out[0]?.call).toBe("flyable");
     expect(out[0]?.score).toBe(d.maxScore);
   });
 });
 
 describe("Nov 7 2026 at Golden North (gusts not scored)", () => {
-  // Flyable 11:00-16:00 with weak, intermittently soarable lift. ECMWF hours from Open-Meteo's
+  // Good 11:00-16:00 with weak, intermittently soarable lift. ECMWF hours from Open-Meteo's
   // past-days data, Denver time: [hour, 10 m wind mph, dir deg, gust mph, BLH m]. The old
-  // gust-factor rule capped every one of these at marginal (gust factor 9-13 mph over a limit of 5).
+  // gust-factor rule capped every one of these at flyable (gust factor 9-13 mph over a limit of 5).
   const OBSERVED: [number, number, number, number, number][] = [
     [10, 3, 3, 12, 770],
     [11, 3, 37, 12, 1010],
@@ -1158,12 +1158,12 @@ describe("Nov 7 2026 at Golden North (gusts not scored)", () => {
     }
   });
 
-  it("every hour is flyable, with no gust reason or warning", () => {
+  it("every hour is good, with no gust reason or warning", () => {
     const results = evaluate();
-    expect(results.map((r) => r.call)).toEqual(Array(6).fill("flyable"));
+    expect(results.map((r) => r.call)).toEqual(Array(6).fill("good"));
     for (const r of results) {
       expect(r.reasons.filter((x) => /gust/i.test(x.text)), formatDenverTime(r.time)).toEqual([]);
-      expect(r.reasons.filter((x) => x.severity === "marginal" || x.severity === "noGo")).toEqual([]);
+      expect(r.reasons.filter((x) => x.severity === "caution" || x.severity === "noGo")).toEqual([]);
     }
   });
 

@@ -214,47 +214,47 @@ describe("mainReason", () => {
     expect(mainReason([evaluation("a", hours)]).kind).toBe("precipitation");
   });
 
-  it("noGoOutranksAMoreFrequentMarginalKind", () => {
+  it("noGoOutranksAMoreFrequentCautionKind", () => {
     const hours = [
-      hourResult(T0, ["overdevelopment"], "marginal"),
-      hourResult(T0 + HOUR_MS, ["overdevelopment"], "marginal"),
+      hourResult(T0, ["overdevelopment"], "flyable"),
+      hourResult(T0 + HOUR_MS, ["overdevelopment"], "flyable"),
       hourResult(T0 + 2 * HOUR_MS, ["windTooWeak"]),
     ];
     expect(mainReason([evaluation("a", hours)]).kind).toBe("windTooWeak");
   });
 
-  it("fallsBackToTheMostFrequentMarginalKind", () => {
+  it("fallsBackToTheMostFrequentCautionKind", () => {
     const hours = [
-      hourResult(T0, ["preThermal", "capeUnavailable"], "marginal"),
-      hourResult(T0 + HOUR_MS, ["preThermal", "overdevelopment"], "marginal"),
-      hourResult(T0 + 2 * HOUR_MS, ["overdevelopment", "capeUnavailable"], "marginal"),
+      hourResult(T0, ["preThermal", "capeUnavailable"], "flyable"),
+      hourResult(T0 + HOUR_MS, ["preThermal", "overdevelopment"], "flyable"),
+      hourResult(T0 + 2 * HOUR_MS, ["overdevelopment", "capeUnavailable"], "flyable"),
     ];
     // overdevelopment 2, preThermal 2: overdevelopment is declared first. Info kinds are ignored.
     expect(mainReason([evaluation("a", hours)])).toEqual({
       kind: "overdevelopment",
-      severity: "marginal",
+      severity: "caution",
       text: "text overdevelopment",
     });
   });
 
   it("saysNoFlyableHourWhenThereIsNothingToCount", () => {
-    const quiet = evaluation("a", [hourResult(T0, ["capeUnavailable"], "marginal")]);
+    const quiet = evaluation("a", [hourResult(T0, ["capeUnavailable"], "flyable")]);
     expect(mainReason([quiet])).toEqual({
-      kind: "noFlyableHour",
+      kind: "noGoodHour",
       severity: "info",
-      text: "no flyable hour",
+      text: "no good hour",
     });
-    expect(mainReason([]).kind).toBe("noFlyableHour");
+    expect(mainReason([]).kind).toBe("noGoodHour");
   });
 
   it("ignoresWarnings", () => {
     const gusty = evaluation("a", [
-      hourResult(T0, ["highGusts"], "marginal"),
-      hourResult(T0 + HOUR_MS, ["highGusts", "lowCloud"], "marginal"),
+      hourResult(T0, ["highGusts"], "flyable"),
+      hourResult(T0 + HOUR_MS, ["highGusts", "lowCloud"], "flyable"),
     ]);
     expect(mainReason([gusty]).kind).toBe("lowCloud");
-    const onlyWarnings = evaluation("a", [hourResult(T0, ["highGusts"], "flyable")]);
-    expect(mainReason([onlyWarnings]).kind).toBe("noFlyableHour");
+    const onlyWarnings = evaluation("a", [hourResult(T0, ["highGusts"], "good")]);
+    expect(mainReason([onlyWarnings]).kind).toBe("noGoodHour");
   });
 
   it("noDataCountsAsANoGoKind", () => {

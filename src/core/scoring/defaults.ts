@@ -20,23 +20,23 @@ export interface ScoringDefaults {
   // Neighbor wind (5 mi away)
   /** Both the center and the neighbor 10 m wind must be at least this for the check to apply. */
   neighborMinWindMph: number;
-  /** A direction difference greater than this is marginal. */
-  neighborMarginalDiffDeg: number;
+  /** A direction difference greater than this is a caution. */
+  neighborCautionDiffDeg: number;
   /** A direction difference greater than this is no-go. */
   neighborNoGoDiffDeg: number;
-  /** A difference > `neighborMarginalDiffDeg` with the neighbor at or above this is no-go. */
+  /** A difference > `neighborCautionDiffDeg` with the neighbor at or above this is no-go. */
   neighborNoGoMinNeighborMph: number;
-  // Marginal
-  /** Launch wind within this of the site's max is marginal. */
+  // Caution
+  /** Launch wind within this of the site's max is a caution. */
   nearMaxMarginMph: number;
-  /** CAPE at or above this is marginal ("overdevelopment risk"). */
-  capeMarginalJkg: number;
-  /** Aloft wind at or above this (and not already no-go) is marginal. */
-  aloftMarginalMph: number;
-  /** Computed cloud base below this many feet above launch is marginal. */
-  lowCloudBaseMarginalFt: number;
-  /** `cloud_cover_low` at or above this percentage is marginal. */
-  lowCloudCoverMarginalPct: number;
+  /** CAPE at or above this is a caution ("overdevelopment risk"). */
+  capeCautionJkg: number;
+  /** Aloft wind at or above this (and not already no-go) is a caution. */
+  aloftCautionMph: number;
+  /** Computed cloud base below this many feet above launch is a caution. */
+  lowCloudBaseCautionFt: number;
+  /** `cloud_cover_low` at or above this percentage is a caution. */
+  lowCloudCoverCautionPct: number;
   /** Pre-thermal: BLH below this (m above model terrain) ... */
   preThermalBLHBelowM: number;
   /** ... and TI above this (degrees C) gives "pre-thermal: sled ride". */
@@ -50,7 +50,7 @@ export interface ScoringDefaults {
    */
   highGustWarningFactorMultiple: number;
   // Storm look-ahead
-  /** Hours before a convective no-go that are capped at marginal ("storms forecast by HH:00"). */
+  /** Hours before a convective no-go that are capped at flyable ("storms forecast by HH:00"). */
   stormLookaheadHours: number;
   /** A precipitation no-go hour is convective when max(CAPE h, CAPE h+1) is at least this. */
   stormCapeJkg: number;
@@ -78,8 +78,8 @@ export interface ScoringDefaults {
   /** Cloud base at or above this many feet above launch earns `cloudBaseBonus`. */
   cloudBaseBonusMinFt: number;
   cloudBaseBonus: number;
-  /** Subtracted once per marginal reason. */
-  marginalReasonPenalty: number;
+  /** Subtracted once per caution reason. */
+  cautionReasonPenalty: number;
   minScore: number;
   maxScore: number;
   // Derived values
@@ -130,15 +130,15 @@ export const SCORING_DEFAULTS: Readonly<ScoringDefaults> = Object.freeze({
   strongAloftNoGoMph: 35,
   // Neighbor wind (5 mi away)
   neighborMinWindMph: 5,
-  neighborMarginalDiffDeg: 60,
+  neighborCautionDiffDeg: 60,
   neighborNoGoDiffDeg: 90,
   neighborNoGoMinNeighborMph: 10,
-  // Marginal
+  // Caution
   nearMaxMarginMph: 2,
-  capeMarginalJkg: 500,
-  aloftMarginalMph: 25,
-  lowCloudBaseMarginalFt: 1500,
-  lowCloudCoverMarginalPct: 60,
+  capeCautionJkg: 500,
+  aloftCautionMph: 25,
+  lowCloudBaseCautionFt: 1500,
+  lowCloudCoverCautionPct: 60,
   preThermalBLHBelowM: 500,
   preThermalTIAboveC: 0,
   // Warnings (shown, never scored)
@@ -159,7 +159,7 @@ export const SCORING_DEFAULTS: Readonly<ScoringDefaults> = Object.freeze({
   blhBonus: 5,
   cloudBaseBonusMinFt: 3000,
   cloudBaseBonus: 5,
-  marginalReasonPenalty: 5,
+  cautionReasonPenalty: 5,
   minScore: 0,
   maxScore: 100,
   // Derived values
@@ -188,8 +188,8 @@ export const SCORING_DEFAULTS: Readonly<ScoringDefaults> = Object.freeze({
   forcedRefreshMinIntervalMs: 5 * 60 * 1000,
 } as const satisfies ScoringDefaults);
 
-export function lowCloudBaseMarginalM(defaults: ScoringDefaults = SCORING_DEFAULTS): number {
-  return defaults.lowCloudBaseMarginalFt * METERS_PER_FOOT;
+export function lowCloudBaseCautionM(defaults: ScoringDefaults = SCORING_DEFAULTS): number {
+  return defaults.lowCloudBaseCautionFt * METERS_PER_FOOT;
 }
 
 export function cloudBaseBonusM(defaults: ScoringDefaults = SCORING_DEFAULTS): number {

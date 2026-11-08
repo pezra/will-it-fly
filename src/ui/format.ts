@@ -67,10 +67,10 @@ export function arcsLabel(arcs: readonly DegreeArc[]): string {
 
 export function callLabel(call: HourCall): string {
   switch (call) {
+    case "good":
+      return "Good";
     case "flyable":
       return "Flyable";
-    case "marginal":
-      return "Marginal";
     case "noGo":
       return "No-go";
     case "noData":
@@ -81,9 +81,9 @@ export function callLabel(call: HourCall): string {
 /** A glyph that backs up the color, so a call never relies on color alone. */
 export function callGlyph(call: HourCall): string {
   switch (call) {
-    case "flyable":
+    case "good":
       return "✓";
-    case "marginal":
+    case "flyable":
       return "~";
     case "noGo":
       return "✕";

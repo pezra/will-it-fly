@@ -5,7 +5,7 @@ import type { DegreeArc, Launch, Site, WindLimits } from "../sites/site";
 import { DEFAULT_WIND_LIMITS, elevationM } from "../sites/site";
 import { formatDenverTime } from "../time";
 import { METERS_PER_FOOT } from "../units";
-import { SCORING_DEFAULTS, cloudBaseBonusM, lowCloudBaseMarginalM } from "./defaults";
+import { SCORING_DEFAULTS, cloudBaseBonusM, lowCloudBaseCautionM } from "./defaults";
 import type { ScoringDefaults } from "./defaults";
 import {
   aloftWind,
@@ -18,13 +18,13 @@ import type { Wind } from "./derived";
 
 export type ModelName = "ecmwf" | "rrfs";
 
-export type HourCall = "flyable" | "marginal" | "noGo" | "noData";
+export type HourCall = "good" | "flyable" | "noGo" | "noData";
 
 /** A `"warning"` is shown to the pilot but never changes an hour's call or score. */
-export type Severity = "info" | "warning" | "marginal" | "noGo";
+export type Severity = "info" | "warning" | "caution" | "noGo";
 
 /**
- * Every reason kind, declared roughly most-severe first: no-go kinds, then marginal, then warning,
+ * Every reason kind, declared roughly most-severe first: no-go kinds, then caution, then warning,
  * then info ("n/a"). Ties in reason counts are broken by this order.
  */
 export const REASON_KIND_ORDER = [
@@ -37,7 +37,7 @@ export const REASON_KIND_ORDER = [
   "overTheBack",
   "strongAloft",
   "neighborWindStrong",
-  // Marginal
+  // Caution
   "stormsComing",
   "rrfsSeesStorms",
   "overdevelopment",
@@ -72,16 +72,16 @@ export const REASON_SEVERITY: Readonly<Record<ReasonKind, Severity>> = Object.fr
   overTheBack: "noGo",
   strongAloft: "noGo",
   neighborWindStrong: "noGo",
-  stormsComing: "marginal",
-  rrfsSeesStorms: "marginal",
-  overdevelopment: "marginal",
-  aloftWind: "marginal",
-  nearMaxWind: "marginal",
-  lowCloud: "marginal",
-  neighborWind: "marginal",
-  preThermal: "marginal",
-  directionNotIdeal: "marginal",
-  notCurated: "marginal",
+  stormsComing: "caution",
+  rrfsSeesStorms: "caution",
+  overdevelopment: "caution",
+  aloftWind: "caution",
+  nearMaxWind: "caution",
+  lowCloud: "caution",
+  neighborWind: "caution",
+  preThermal: "caution",
+  directionNotIdeal: "caution",
+  notCurated: "caution",
   highGusts: "warning",
   capeUnavailable: "info",
   aloftWindUnavailable: "info",
@@ -110,7 +110,7 @@ export interface HourResult {
   /** The launch wind used for the speed and direction checks. Undefined when it's missing. */
   launchWind?: Wind | undefined;
   /**
-   * Base score plus bonuses, before marginal penalties and clamping. Kept so the storm look-ahead
+   * Base score plus bonuses, before caution penalties and clamping. Kept so the storm look-ahead
    * can add a reason and recompute the score exactly.
    */
   unpenalizedScore: number;
@@ -192,14 +192,14 @@ function finish(
   let call: HourCall;
   if (sorted.some((r) => r.kind === "noData")) call = "noData";
   else if (has("noGo")) call = "noGo";
-  else if (has("marginal")) call = "marginal";
-  else call = "flyable";
+  else if (has("caution")) call = "flyable";
+  else call = "good";
 
   let score = defaults.minScore;
-  if (call === "flyable" || call === "marginal") {
+  if (call === "good" || call === "flyable") {
     // Warnings and info reasons cost nothing.
     const penalties =
-      sorted.filter((r) => r.severity === "marginal").length * defaults.marginalReasonPenalty;
+      sorted.filter((r) => r.severity === "caution").length * defaults.cautionReasonPenalty;
     score = Math.min(defaults.maxScore, Math.max(defaults.minScore, unpenalizedScore - penalties));
   }
   return { time, call, score, reasons: sorted, launchWind: wind, unpenalizedScore };
@@ -257,7 +257,7 @@ function neighborReason(ctx: HourContext, defaults: ScoringDefaults): Reason | u
         continue;
       }
       const diff = angularDifference(center.dirDeg, wind.dirDeg);
-      if (diff <= defaults.neighborMarginalDiffDeg) continue;
+      if (diff <= defaults.neighborCautionDiffDeg) continue;
       const noGo =
         diff > defaults.neighborNoGoDiffDeg || wind.speedMph >= defaults.neighborNoGoMinNeighborMph;
       const kind: ReasonKind = noGo ? "neighborWindStrong" : "neighborWind";
@@ -354,7 +354,7 @@ export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORI
       curated && aloft.speedMph >= defaults.overTheBackAloftNoGoMph && !arcsContain(ok, aloft.dirDeg);
     if (strong) reasons.push(reason("strongAloft", `wind aloft ${windText(aloft)}`));
     if (overTheBack) reasons.push(reason("overTheBack", `over the back aloft: ${windText(aloft)}`));
-    if (!strong && !overTheBack && aloft.speedMph >= defaults.aloftMarginalMph) {
+    if (!strong && !overTheBack && aloft.speedMph >= defaults.aloftCautionMph) {
       reasons.push(reason("aloftWind", `wind aloft ${windText(aloft)}`));
     }
   }
@@ -362,7 +362,7 @@ export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORI
   // CAPE (instantaneous, hour h).
   if (hour.capeJkg === undefined) {
     reasons.push(reason("capeUnavailable", "CAPE: n/a"));
-  } else if (hour.capeJkg >= defaults.capeMarginalJkg) {
+  } else if (hour.capeJkg >= defaults.capeCautionJkg) {
     reasons.push(reason("overdevelopment", `overdevelopment risk (CAPE ${Math.round(hour.capeJkg)} J/kg)`));
   }
 
@@ -371,12 +371,12 @@ export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORI
   const lowCloud: string[] = [];
   if (cloudBase === undefined) {
     reasons.push(reason("cloudBaseUnavailable", "cloud base: n/a"));
-  } else if (cloudBase < lowCloudBaseMarginalM(defaults)) {
+  } else if (cloudBase < lowCloudBaseCautionM(defaults)) {
     lowCloud.push(`base ≈${Math.round(cloudBase / METERS_PER_FOOT)} ft above launch`);
   }
   if (hour.lowCloudPct === undefined) {
     reasons.push(reason("lowCloudCoverUnavailable", "low cloud cover: n/a"));
-  } else if (hour.lowCloudPct >= defaults.lowCloudCoverMarginalPct) {
+  } else if (hour.lowCloudPct >= defaults.lowCloudCoverCautionPct) {
     lowCloud.push(`${Math.round(hour.lowCloudPct)}% low cloud`);
   }
   if (lowCloud.length > 0) reasons.push(reason("lowCloud", `low cloud: ${lowCloud.join(", ")}`));
@@ -420,7 +420,7 @@ export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORI
 
 /**
  * Second pass over one model's hours for one launch: caps the hours within
- * `stormLookaheadHours` before a convective no-go at marginal ("storms forecast by HH:00").
+ * `stormLookaheadHours` before a convective no-go at flyable ("storms forecast by HH:00").
  * A convective no-go has a precipitation no-go and max(CAPE h, CAPE h+1) at or above
  * `stormCapeJkg`. `results[i]` must be the evaluation of `hours[i]`, with hours contiguous.
  * No-go and no-data hours are left unchanged. Returns a new array; the input is not mutated.

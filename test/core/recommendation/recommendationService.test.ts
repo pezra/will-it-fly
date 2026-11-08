@@ -133,7 +133,7 @@ describe("getRecommendations", () => {
     const firstWithout = result.sites.findIndex((r) => r.best === undefined);
     expect(result.sites.slice(firstWithout).every((r) => r.best === undefined)).toBe(true);
     // Gusts aren't scored: with the real limits, the recorded day's ECMWF gust factors (up to
-    // 14 mph) no longer cap Boulder at marginal, so it gets its window.
+    // 14 mph) no longer cap Boulder at flyable, so it gets its window.
     const boulder = result.sites.find((r) => r.site.id === "rmhpa/boulder-wonderland");
     expect(windowLabel(boulder?.best?.window ?? never())).toBe("11:00\u201317:00");
 
