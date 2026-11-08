@@ -1,0 +1,57 @@
+{
+  "curatedOn": "2026-11-07",
+  "sites": [
+    {
+      "id": "rmhpa/glenwood-lookout",
+      "name": "Glenwood Lookout",
+      "sourceURL": "https://www.rmhpa.org/flying-sites/glenwood-lookout",
+      "notes": "Three launches.",
+      "rating": "P3",
+      "status": { "state": "open" },
+      "limits": { "minMph": 0, "idealMph": 8, "maxMph": 15, "gustFactorMph": 7 },
+      "launches": [
+        {
+          "id": "rmhpa/glenwood-lookout/north",
+          "name": "North Launch",
+          "coordinate": { "latitude": 39.5428, "longitude": -107.3003 },
+          "elevationFt": 7875,
+          "elevationSource": "open-meteo",
+          "limitsSource": "page",
+          "landingZones": [ { "latitude": 39.55, "longitude": -107.31 } ],
+          "directions": {
+            "ok": [ { "from": 330, "to": 30 } ],
+            "ideal": [ { "from": 350, "to": 10 } ]
+          }
+        },
+        {
+          "id": "rmhpa/glenwood-lookout/south",
+          "name": "South Launch",
+          "coordinate": { "latitude": 39.5400, "longitude": -107.3000 },
+          "elevationFt": 7800,
+          "directions": {
+            "ok": [ { "from": 135, "to": 225 } ],
+            "ideal": [ { "from": 160, "to": 200 } ]
+          },
+          "limits": { "minMph": 3, "maxMph": 12 }
+        }
+      ]
+    },
+    {
+      "id": "rmhpa/wolcott",
+      "name": "Wolcott",
+      "sourceURL": "https://www.rmhpa.org/flying-sites/wolcott",
+      "rating": "P2",
+      "status": { "state": "closed", "reason": "CURRENTLY CLOSED" },
+      "limits": { "minMph": 0, "maxMph": 15, "gustFactorMph": 5 },
+      "launches": [
+        {
+          "id": "rmhpa/wolcott/main",
+          "name": "Main",
+          "coordinate": { "latitude": 39.7, "longitude": -106.7 },
+          "elevationFt": 7000,
+          "directions": { "ok": [], "ideal": [] }
+        }
+      ]
+    }
+  ]
+}
