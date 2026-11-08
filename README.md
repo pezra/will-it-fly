@@ -1,0 +1,1 @@
+iOS app to look at weather forecases and paragliding sites near you to provide recommendations on where to fly today.
