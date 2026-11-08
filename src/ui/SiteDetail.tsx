@@ -1,17 +1,18 @@
 import type { LaunchEvaluation } from "../core/recommendation/types";
 import { windowLabel } from "../core/scoring/windowFinder";
+import { effectiveLimits } from "../core/sites/site";
 import type { Launch, Site } from "../core/sites/site";
 import { CallBadge } from "./CallBadge";
-import { arcsLabel, confidenceLabel, feet, miles } from "./format";
+import { ForecastStatus } from "./ForecastStatus";
+import { arcsLabel, confidenceLabel, dayLabel, feet, miles } from "./format";
 import { HourlyTable } from "./HourlyTable";
-import { siteCall } from "./SiteRow";
 import type { Recommendations } from "./useRecommendations";
 
 function limitsLine(site: Site, launch: Launch): string {
-  const l = launch.limits ?? site.limits;
+  const l = effectiveLimits(site, launch);
   const parts = [`${l.minMph}–${l.maxMph} mph`];
   if (l.idealMph !== undefined) parts.push(`ideal ${l.idealMph} mph`);
-  if (l.gustFactorMph !== undefined) parts.push(`gust factor ${l.gustFactorMph} mph`);
+  parts.push(`gust factor ${l.gustFactorMph} mph`);
   return parts.join(", ");
 }
 
@@ -45,23 +46,11 @@ export function SiteDetail({ siteId, recs }: { siteId: string; recs: Recommendat
   const { state, location } = recs;
   const back = <a class="back" href="#/">← All sites</a>;
 
-  if (state.status === "loading") {
+  if (state.status !== "loaded") {
     return (
       <>
         {back}
-        <p class="status" role="status">Loading forecast…</p>
-      </>
-    );
-  }
-  if (state.status === "failed") {
-    return (
-      <>
-        {back}
-        <div class="error" role="alert">
-          <p><strong>Couldn't load the forecast.</strong></p>
-          <p>{state.message}</p>
-          <button type="button" onClick={recs.retry}>Retry</button>
-        </div>
+        <ForecastStatus state={state} retry={recs.retry} />
       </>
     );
   }
@@ -84,7 +73,7 @@ export function SiteDetail({ siteId, recs }: { siteId: string; recs: Recommendat
       {back}
       <h1>{site.name}</h1>
       <p class="detail-head">
-        <CallBadge call={siteCall(rec)} /> <span>{state.result.day === "today" ? "Today" : "Tomorrow"}</span>
+        <CallBadge call={rec.call} /> <span>{dayLabel(state.result.day)}</span>
       </p>
       <dl class="facts">
         <dt>Rating</dt>

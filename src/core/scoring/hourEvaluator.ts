@@ -1,10 +1,10 @@
 import type { ModelHour, NeighborWind } from "../forecast/models";
 import { NEIGHBOR_DISTANCE_M } from "../forecast/openMeteoClient";
-import { angularDifference, arcsContain, normalizedDegrees } from "../sites/degreeArc";
+import { angularDifference, arcsContain } from "../sites/degreeArc";
 import type { DegreeArc, Launch, Site, WindLimits } from "../sites/site";
-import { DEFAULT_WIND_LIMITS, elevationM } from "../sites/site";
-import { formatDenverTime } from "../time";
-import { METERS_PER_FOOT } from "../units";
+import { effectiveLimits, elevationM } from "../sites/site";
+import { HOUR_MS, byTime, formatDenverTime } from "../time";
+import { METERS_PER_FOOT, METERS_PER_MILE, compass, definedMax, mph } from "../units";
 import { SCORING_DEFAULTS, cloudBaseBonusM, lowCloudBaseCautionM } from "./defaults";
 import type { ScoringDefaults } from "./defaults";
 import {
@@ -62,6 +62,15 @@ export const REASON_KIND_ORDER = [
 
 export type ReasonKind = (typeof REASON_KIND_ORDER)[number];
 
+const REASON_RANK: ReadonlyMap<ReasonKind, number> = new Map(
+  REASON_KIND_ORDER.map((kind, i) => [kind, i] as const),
+);
+
+/** A kind's position in `REASON_KIND_ORDER` (lower is more severe). */
+export function reasonRank(kind: ReasonKind): number {
+  return REASON_RANK.get(kind) ?? REASON_KIND_ORDER.length;
+}
+
 /** Each kind has exactly one severity. */
 export const REASON_SEVERITY: Readonly<Record<ReasonKind, Severity>> = Object.freeze({
   noData: "noGo",
@@ -114,7 +123,17 @@ export interface HourResult {
    * can add a reason and recompute the score exactly.
    */
   unpenalizedScore: number;
+  /** Cloud base above launch (m), as evaluated. Undefined when it can't be computed. */
+  cloudBaseM?: number | undefined;
+  /** Thermal index (°C), as evaluated. Undefined when it can't be computed. */
+  thermalIndexC?: number | undefined;
 }
+
+/** The fields of a result that don't depend on its reasons. */
+type HourFields = Pick<
+  HourResult,
+  "time" | "launchWind" | "unpenalizedScore" | "cloudBaseM" | "thermalIndexC"
+>;
 
 /** One point's 10 m wind at the evaluated hour, for each model. */
 export interface NeighborSample {
@@ -146,20 +165,6 @@ export interface HourContext {
 }
 
 const MODEL_LABEL: Readonly<Record<ModelName, string>> = { ecmwf: "ECMWF", rrfs: "RRFS" };
-const METERS_PER_MILE = 1609.344;
-const COMPASS_16 = [
-  "N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
-  "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW",
-] as const;
-
-function compass(deg: number): string {
-  return COMPASS_16[Math.round(normalizedDegrees(deg) / 22.5) % 16] ?? "N";
-}
-
-function mph(speed: number): string {
-  return `${Math.round(speed)} mph`;
-}
-
 function windText(w: Wind): string {
   return `${compass(w.dirDeg)} ${mph(w.speedMph)}`;
 }
@@ -168,25 +173,13 @@ function reason(kind: ReasonKind, text: string): Reason {
   return { kind, severity: REASON_SEVERITY[kind], text };
 }
 
-function definedMax(...values: (number | undefined)[]): number | undefined {
-  const present = values.filter((v): v is number => v !== undefined);
-  return present.length > 0 ? Math.max(...present) : undefined;
-}
-
 function sortedReasons(reasons: Reason[]): Reason[] {
-  return [...reasons].sort(
-    (a, b) => REASON_KIND_ORDER.indexOf(a.kind) - REASON_KIND_ORDER.indexOf(b.kind),
-  );
+  return [...reasons].sort((a, b) => reasonRank(a.kind) - reasonRank(b.kind));
 }
 
 /** The call and score from a reason list and the unpenalized score. */
-function finish(
-  time: number,
-  reasons: Reason[],
-  unpenalizedScore: number,
-  wind: Wind | undefined,
-  defaults: ScoringDefaults,
-): HourResult {
+function finish(fields: HourFields, reasons: Reason[], defaults: ScoringDefaults): HourResult {
+  const { unpenalizedScore } = fields;
   const sorted = sortedReasons(reasons);
   const has = (s: Severity) => sorted.some((r) => r.severity === s);
   let call: HourCall;
@@ -202,12 +195,16 @@ function finish(
       sorted.filter((r) => r.severity === "caution").length * defaults.cautionReasonPenalty;
     score = Math.min(defaults.maxScore, Math.max(defaults.minScore, unpenalizedScore - penalties));
   }
-  return { time, call, score, reasons: sorted, launchWind: wind, unpenalizedScore };
-}
-
-/** Launch limits override the site limits as a whole. */
-function effectiveLimits(launch: Launch, site: Site): WindLimits {
-  return launch.limits ?? site.limits;
+  return {
+    time: fields.time,
+    call,
+    score,
+    reasons: sorted,
+    launchWind: fields.launchWind,
+    unpenalizedScore,
+    cloudBaseM: fields.cloudBaseM,
+    thermalIndexC: fields.thermalIndexC,
+  };
 }
 
 /**
@@ -277,9 +274,14 @@ function neighborReason(ctx: HourContext, defaults: ScoringDefaults): Reason | u
   return reason("neighborUnavailable", "wind nearby: n/a");
 }
 
+/** Precipitation for the flying hour: the preceding-hour values, so max(h, h+1). */
+function precipMaxMm(hour: ModelHour, next: ModelHour | undefined): number | undefined {
+  return definedMax(hour.precipMm, next?.precipMm);
+}
+
 /** True if this hour has a precipitation no-go by max(h, h+1). */
 function precipNoGo(hour: ModelHour, next: ModelHour | undefined, defaults: ScoringDefaults): boolean {
-  const precip = definedMax(hour.precipMm, next?.precipMm);
+  const precip = precipMaxMm(hour, next);
   return precip !== undefined && precip >= defaults.precipNoGoMm;
 }
 
@@ -288,23 +290,33 @@ export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORI
   const { hour, next, launch } = ctx;
   const elev = elevationM(launch);
   const wind = launchWind(hour, elev);
+  // Shown for every hour, no-data ones included.
+  const cloudBase = cloudBaseAboveLaunchM(hour, defaults);
+  const ti = thermalIndex(hour, elev, defaults);
+  const fields = (unpenalizedScore: number): HourFields => ({
+    time: hour.time,
+    launchWind: wind,
+    unpenalizedScore,
+    cloudBaseM: cloudBase,
+    thermalIndexC: ti,
+  });
 
   // Core fields: the launch wind (10 m speed and direction) and precipitation at h.
   const missing: string[] = [];
   if (wind === undefined) missing.push("wind");
   if (hour.precipMm === undefined) missing.push("precipitation");
   if (wind === undefined || missing.length > 0) {
-    return finish(hour.time, [reason("noData", `no data: ${missing.join(", ")}`)], 0, wind, defaults);
+    return finish(fields(0), [reason("noData", `no data: ${missing.join(", ")}`)], defaults);
   }
 
   const reasons: Reason[] = [];
-  const limits = effectiveLimits(launch, ctx.site);
+  const limits = effectiveLimits(ctx.site, launch);
   const { ok } = launch.directions;
   const curated = ok.length > 0;
   const directional = wind.speedMph >= defaults.variableDirectionBelowMph;
 
   // Precipitation and gusts: the preceding-hour values, so max(h, h+1).
-  const precip = definedMax(hour.precipMm, next?.precipMm) ?? 0;
+  const precip = precipMaxMm(hour, next) ?? 0;
   if (precip >= defaults.precipNoGoMm) {
     reasons.push(reason("precipitation", `rain ${precip.toFixed(1)} mm`));
   }
@@ -314,8 +326,7 @@ export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORI
     // Both sides from this model's 10 m wind, never the interpolated launch wind.
     const surface = hour.windMph ?? 0;
     const factor = Math.max(0, gust - surface);
-    const limit = limits.gustFactorMph ?? DEFAULT_WIND_LIMITS.gustFactorMph ?? 0;
-    if (factor >= defaults.highGustWarningFactorMultiple * limit) {
+    if (factor >= defaults.highGustWarningFactorMultiple * limits.gustFactorMph) {
       reasons.push(reason("highGusts", `high gusts possible (gust factor ${mph(factor)})`));
     }
   }
@@ -367,7 +378,6 @@ export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORI
   }
 
   // Low cloud.
-  const cloudBase = cloudBaseAboveLaunchM(hour, defaults);
   const lowCloud: string[] = [];
   if (cloudBase === undefined) {
     reasons.push(reason("cloudBaseUnavailable", "cloud base: n/a"));
@@ -387,7 +397,6 @@ export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORI
 
   // Pre-thermal: BLH low and TI positive. With one missing, the other decides.
   const blh = hour.blhM;
-  const ti = thermalIndex(hour, elev, defaults);
   if (blh === undefined) reasons.push(reason("blhUnavailable", "BLH: n/a"));
   if (ti === undefined) reasons.push(reason("thermalIndexUnavailable", "thermal index: n/a"));
   if (blh !== undefined || ti !== undefined) {
@@ -415,40 +424,39 @@ export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORI
     unpenalized += defaults.cloudBaseBonus;
   }
 
-  return finish(hour.time, reasons, unpenalized, wind, defaults);
+  return finish(fields(unpenalized), reasons, defaults);
 }
 
 /**
  * Second pass over one model's hours for one launch: caps the hours within
  * `stormLookaheadHours` before a convective no-go at flyable ("storms forecast by HH:00").
  * A convective no-go has a precipitation no-go and max(CAPE h, CAPE h+1) at or above
- * `stormCapeJkg`. `results[i]` must be the evaluation of `hours[i]`, with hours contiguous.
- * No-go and no-data hours are left unchanged. Returns a new array; the input is not mutated.
+ * `stormCapeJkg`. `results` are the evaluations of `hours`, matched by time; hour h+k is the result
+ * at `time + k * HOUR_MS`, so a gap in the series is simply a missing hour. No-go and no-data hours
+ * are left unchanged. Returns a new array in the input order; the input is not mutated.
  */
 export function applyStormLookahead(
   results: readonly HourResult[],
   hours: readonly ModelHour[],
   defaults: ScoringDefaults = SCORING_DEFAULTS,
 ): HourResult[] {
-  const convective = results.map((r, j) => {
-    if (!r.reasons.some((x) => x.kind === "precipitation")) return false;
-    const cape = definedMax(hours[j]?.capeJkg, hours[j + 1]?.capeJkg);
+  const resultAt = byTime(results);
+  const hourAt = byTime(hours);
+  const convective = (t: number): boolean => {
+    const r = resultAt.get(t);
+    if (r === undefined || !r.reasons.some((x) => x.kind === "precipitation")) return false;
+    const cape = definedMax(hourAt.get(t)?.capeJkg, hourAt.get(t + HOUR_MS)?.capeJkg);
     return cape !== undefined && cape >= defaults.stormCapeJkg;
-  });
+  };
 
-  return results.map((r, i) => {
+  return results.map((r) => {
     if (r.call === "noGo" || r.call === "noData") return r;
-    if (r.reasons.some((x) => x.kind === "stormsComing")) return r;
-    let storm: number | undefined;
-    for (let j = i + 1; j <= i + defaults.stormLookaheadHours && j < results.length; j++) {
-      if (convective[j]) {
-        storm = j;
-        break;
-      }
+    for (let k = 1; k <= defaults.stormLookaheadHours; k++) {
+      const t = r.time + k * HOUR_MS;
+      if (!convective(t)) continue;
+      const added = reason("stormsComing", `storms forecast by ${formatDenverTime(t)}`);
+      return finish(r, [...r.reasons, added], defaults);
     }
-    const stormResult = storm === undefined ? undefined : results[storm];
-    if (stormResult === undefined) return r;
-    const added = reason("stormsComing", `storms forecast by ${formatDenverTime(stormResult.time)}`);
-    return finish(r.time, [...r.reasons, added], r.unpenalizedScore, r.launchWind, defaults);
+    return r;
   });
 }

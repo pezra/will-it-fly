@@ -1,15 +1,10 @@
 import type { ModelHour } from "../core/forecast/models";
 import type { LaunchEvaluation } from "../core/recommendation/types";
-import { cloudBaseAboveLaunchM, thermalIndex } from "../core/scoring/derived";
 import type { HourResult } from "../core/scoring/hourEvaluator";
-import { elevationM } from "../core/sites/site";
 import { formatDenverTime } from "../core/time";
+import { compass } from "../core/units";
 import { CallBadge } from "./CallBadge";
-import { approxFeet, compass, oneDecimal, whole } from "./format";
-
-function byTime<T extends { time: number }>(items: readonly T[]): Map<number, T> {
-  return new Map(items.map((i) => [i.time, i] as const));
-}
+import { approxFeet, oneDecimal, whole } from "./format";
 
 /** "12 g18 W" style cell pieces. */
 function windCell(hour: ModelHour | undefined, withGust: boolean): string {
@@ -19,19 +14,11 @@ function windCell(hour: ModelHour | undefined, withGust: boolean): string {
   return `${Math.round(hour.windMph)}${gust}${dir}`;
 }
 
-function timeLabel(ms: number): string {
-  return formatDenverTime(ms);
-}
-
 function ReasonList({ result, label }: { result: HourResult; label: string }) {
   return (
     <li>
       <strong>{label}</strong> <CallBadge call={result.call} />
-      {result.reasons.length === 0 ? (
-        result.call === "noData" ? (
-          <span> no ECMWF data for this hour</span>
-        ) : null
-      ) : (
+      {result.reasons.length > 0 && (
         <ul>
           {result.reasons.map((r) => (
             <li key={r.kind} class={`reason reason-${r.severity}`}>
@@ -52,11 +39,6 @@ export function HourlyTable({ evaluation }: { evaluation: LaunchEvaluation }) {
   const { launch, daylight } = evaluation;
   if (daylight.length === 0) return <p class="note">No daylight hours left in this forecast.</p>;
 
-  const ecmwfHours = byTime(evaluation.ecmwfHours);
-  const rrfsHours = byTime(evaluation.rrfsHours);
-  const rrfsResults = byTime(evaluation.rrfs);
-  const launchM = elevationM(launch);
-
   return (
     <>
       <div class="table-wrap" tabIndex={0} role="region" aria-label={`${launch.name} hourly conditions`}>
@@ -74,31 +56,26 @@ export function HourlyTable({ evaluation }: { evaluation: LaunchEvaluation }) {
             </tr>
           </thead>
           <tbody>
-            {daylight.map((result) => {
-              const e = ecmwfHours.get(result.time);
-              const r = rrfsHours.get(result.time);
-              const rr = rrfsResults.get(result.time);
-              return (
-                <tr key={result.time} class={result.call === "noData" ? "no-data" : undefined}>
-                  <th scope="row">{timeLabel(result.time)}</th>
-                  <td><CallBadge call={result.call} /></td>
-                  <td>{result.call === "noData" ? "no data" : windCell(e, true)}</td>
-                  <td>{rr === undefined ? "n/a" : <CallBadge call={rr.call} />}</td>
-                  <td>{windCell(r, false)}</td>
-                  <td>{whole(e?.capeJkg)}</td>
-                  <td>{e === undefined ? "n/a" : approxFeet(cloudBaseAboveLaunchM(e))}</td>
-                  <td>{e === undefined ? "n/a" : oneDecimal(thermalIndex(e, launchM))}</td>
-                </tr>
-              );
-            })}
+            {daylight.map(({ time, ecmwf, ecmwfHour, rrfs, rrfsHour }) => (
+              <tr key={time} class={ecmwf.call === "noData" ? "no-data" : undefined}>
+                <th scope="row">{formatDenverTime(time)}</th>
+                <td><CallBadge call={ecmwf.call} /></td>
+                <td>{ecmwf.call === "noData" ? "no data" : windCell(ecmwfHour, true)}</td>
+                <td>{rrfs === undefined ? "n/a" : <CallBadge call={rrfs.call} />}</td>
+                <td>{windCell(rrfsHour, false)}</td>
+                <td>{whole(ecmwfHour.capeJkg)}</td>
+                <td>{approxFeet(ecmwf.cloudBaseM)}</td>
+                <td>{oneDecimal(ecmwf.thermalIndexC)}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
       <p class="note">Cloud base is above launch, from temperature minus dewpoint. It runs high at launches well above model terrain.</p>
       <h4>Why, hour by hour</h4>
       <ul class="reasons">
-        {daylight.map((result) => (
-          <ReasonList key={result.time} result={result} label={timeLabel(result.time)} />
+        {daylight.map(({ time, ecmwf }) => (
+          <ReasonList key={time} result={ecmwf} label={formatDenverTime(time)} />
         ))}
       </ul>
     </>

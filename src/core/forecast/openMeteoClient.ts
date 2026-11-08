@@ -1,3 +1,4 @@
+import { isRecord } from "../isRecord";
 import { offset } from "../sites/coordinate";
 import { elevationM } from "../sites/site";
 import type { Coordinate, Launch } from "../sites/site";
@@ -144,7 +145,7 @@ function makeURL(
 
 export interface FetchOptions {
   transport: Transport;
-  baseURL?: string;
+  baseURL?: string | undefined;
 }
 
 export async function fetchForecasts(
@@ -168,7 +169,8 @@ export async function fetchForecasts(
 async function load(transport: Transport, url: string): Promise<string> {
   const { status, body } = await transport(url);
   if (status === 400) {
-    const reason = apiErrorReason(body);
+    const parsed = tryParseJSON(body);
+    const reason = parsed.ok ? apiErrorReason(parsed.value) : undefined;
     if (reason !== undefined) throw new OpenMeteoError("api", reason);
   }
   if (status !== 200) throw new OpenMeteoError("http", "request failed", { status });
@@ -197,14 +199,10 @@ function tryParseJSON(text: string): { ok: true; value: unknown } | { ok: false;
   }
 }
 
-function isRecord(v: unknown): v is Record<string, unknown> {
-  return typeof v === "object" && v !== null && !Array.isArray(v);
-}
-
-function apiErrorReason(body: string): string | undefined {
-  const parsed = tryParseJSON(body);
-  if (!parsed.ok || !isRecord(parsed.value) || parsed.value["error"] !== true) return undefined;
-  const reason = parsed.value["reason"];
+/** The reason from an Open-Meteo error body (`{ "error": true, "reason": ... }`), already parsed. */
+function apiErrorReason(value: unknown): string | undefined {
+  if (!isRecord(value) || value["error"] !== true) return undefined;
+  const reason = value["reason"];
   return typeof reason === "string" ? reason : "Unknown API error";
 }
 
@@ -231,11 +229,11 @@ function toLocation(v: unknown, where: string): Location {
 }
 
 function locations(body: string): Location[] {
-  const reason = apiErrorReason(body);
-  if (reason !== undefined) throw new OpenMeteoError("api", reason);
   const parsed = tryParseJSON(body);
   if (!parsed.ok) throw shape("body is not valid JSON", parsed.error);
   const value = parsed.value;
+  const reason = apiErrorReason(value);
+  if (reason !== undefined) throw new OpenMeteoError("api", reason);
   if (Array.isArray(value)) return value.map((el, i) => toLocation(el, `location ${i}`));
   return [toLocation(value, "location")];
 }
@@ -267,19 +265,11 @@ export function parseForecasts(
     const rrfs = dates.map((time, i) => modelHour(time, i, hourly, "ncep_rrfs_conus"));
 
     const base = index * NEIGHBOR_POINTS_PER_LAUNCH;
-    const center = neighborSeries(neighborLocs[base]);
-    const neighborCenter: NeighborCenter = {
-      ecmwf: neighborWinds(center.dates, center.hourly, "ecmwf_ifs"),
-      rrfs: neighborWinds(center.dates, center.hourly, "ncep_rrfs_conus"),
-    };
-    const neighbors: NeighborForecast[] = NEIGHBOR_BEARINGS.map((bearingDeg, b) => {
-      const n = neighborSeries(neighborLocs[base + 1 + b]);
-      return {
-        bearingDeg,
-        ecmwf: neighborWinds(n.dates, n.hourly, "ecmwf_ifs"),
-        rrfs: neighborWinds(n.dates, n.hourly, "ncep_rrfs_conus"),
-      };
-    });
+    const neighborCenter = modelWinds(neighborLocs[base]);
+    const neighbors: NeighborForecast[] = NEIGHBOR_BEARINGS.map((bearingDeg, b) => ({
+      bearingDeg,
+      ...modelWinds(neighborLocs[base + 1 + b]),
+    }));
     return {
       launchID: launch.id,
       ecmwf,
@@ -291,11 +281,16 @@ export function parseForecasts(
   });
 }
 
-function neighborSeries(loc: Location | undefined): { hourly: SeriesMap; dates: number[] } {
+/** One neighbor-request location's 10 m wind series, per model. */
+function modelWinds(loc: Location | undefined): NeighborCenter {
   const hourly = loc?.hourly;
   const times = hourly?.["time"];
   if (hourly === undefined || times === undefined) throw shape("neighbor location has no hourly time");
-  return { hourly, dates: times.map(timestamp) };
+  const dates = times.map(timestamp);
+  return {
+    ecmwf: neighborWinds(dates, hourly, "ecmwf_ifs"),
+    rrfs: neighborWinds(dates, hourly, "ncep_rrfs_conus"),
+  };
 }
 
 /** Unix seconds to epoch ms. */

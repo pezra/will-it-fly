@@ -10,19 +10,14 @@ import type { Transport } from "../../../src/core/forecast/openMeteoClient";
 import type { LaunchForecast } from "../../../src/core/forecast/models";
 import type { Launch } from "../../../src/core/sites/site";
 import { denverDayKey, denverHour } from "../../../src/core/time";
+import { testLaunch } from "../../support/builders";
 import launchesJSON from "../../fixtures/openmeteo-launches.json?raw";
 import neighborsJSON from "../../fixtures/openmeteo-neighbors.json?raw";
 import launchesURL from "../../fixtures/openmeteo-launches.url.txt?raw";
 import neighborsURL from "../../fixtures/openmeteo-neighbors.url.txt?raw";
 
 function launch(id: string, latitude: number, longitude: number, elevationFt: number): Launch {
-  return {
-    id,
-    name: id,
-    coordinate: { latitude, longitude },
-    elevationFt,
-    directions: { ok: [], ideal: [] },
-  };
+  return testLaunch({ id, name: id, coordinate: { latitude, longitude }, elevationFt });
 }
 
 /** Elevations match rmhpa-sites.json. Ids never reach the URLs. */

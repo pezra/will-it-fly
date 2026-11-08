@@ -39,10 +39,8 @@ export interface NeighborCenter {
   rrfs: NeighborWind[];
 }
 
-export interface NeighborForecast {
+export interface NeighborForecast extends NeighborCenter {
   bearingDeg: number;
-  ecmwf: NeighborWind[];
-  rrfs: NeighborWind[];
 }
 
 export interface DaylightDay {

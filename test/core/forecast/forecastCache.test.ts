@@ -2,23 +2,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createForecastCache } from "../../../src/core/forecast/forecastCache";
 import type { KeyValueStore } from "../../../src/core/forecast/forecastCache";
 import type { Launch } from "../../../src/core/sites/site";
+import { mapStore, testLaunch } from "../../support/builders";
 
 function launch(id: string, latitude: number, longitude: number, elevationFt = 7000): Launch {
-  return {
-    id,
-    name: id,
-    coordinate: { latitude, longitude },
-    elevationFt,
-    directions: { ok: [], ideal: [] },
-  };
+  return testLaunch({ id, name: id, coordinate: { latitude, longitude }, elevationFt });
 }
 
 const launches = [launch("a", 39.5, -107.3), launch("b", 38.9, -106.9)];
 const entry = { launchRaw: "[1]", neighborRaw: "[2]", fetchedAt: 1_000, launches };
-
-function mapStore(map = new Map<string, string>()): KeyValueStore {
-  return { get: (k) => map.get(k), set: (k, v) => void map.set(k, v) };
-}
 
 afterEach(() => vi.restoreAllMocks());
 

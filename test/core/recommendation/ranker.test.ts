@@ -16,34 +16,27 @@ import type { HourResult, ReasonKind } from "../../../src/core/scoring/hourEvalu
 import type { FlyingWindow } from "../../../src/core/scoring/windowFinder";
 import type { Launch, Site } from "../../../src/core/sites/site";
 import { distanceM } from "../../../src/core/sites/coordinate";
+import { testLaunch, testSite } from "../../support/builders";
 
 const HOUR_MS = 3_600_000;
 const T0 = 1_784_138_400_000;
 
 function launch(id: string, latitude = 39.5, longitude = -106): Launch {
-  return {
-    id,
-    name: id,
-    coordinate: { latitude, longitude },
-    elevationFt: 8000,
-    directions: { ok: [], ideal: [] },
-  };
+  return testLaunch({ id, name: id, coordinate: { latitude, longitude }, elevationFt: 8000 });
 }
 
 function site(name: string, o: { closed?: boolean; launches?: Launch[] } = {}): Site {
-  return {
+  return testSite({
     id: `test/${name}`,
     name,
-    sourceURL: "https://example.com",
-    rating: "P2",
     status: o.closed === true ? { state: "closed", reason: "closed" } : { state: "open" },
     launches: o.launches ?? [launch(`test/${name}/main`)],
     limits: { minMph: 0, maxMph: 15 },
-  };
+  });
 }
 
-function window(score: number): FlyingWindow {
-  return { start: T0, end: T0 + HOUR_MS, hours: [], score, confidence: "high" };
+function window(score: number, hours: HourResult[] = []): FlyingWindow {
+  return { start: T0, end: T0 + HOUR_MS, hours, score, confidence: "high", warnings: [] };
 }
 
 function rec(
@@ -54,6 +47,7 @@ function rec(
   const first = s.launches[0] as Launch;
   return {
     site: s,
+    call: o.closed === true ? "closed" : o.score === undefined ? "noGo" : "good",
     distanceM: o.distance,
     best: o.score === undefined ? undefined : { launch: first, window: window(o.score) },
     launches: [],
@@ -158,15 +152,12 @@ function evaluation(
   id: string,
   daylight: HourResult[],
   windowScore?: number,
+  windowHours: HourResult[] = [],
 ): LaunchEvaluation {
   return {
     launch: launch(id),
-    ecmwfHours: [],
-    rrfsHours: [],
-    ecmwf: daylight,
-    rrfs: [],
-    daylight,
-    window: windowScore === undefined ? undefined : window(windowScore),
+    daylight: daylight.map((ecmwf) => ({ time: ecmwf.time, ecmwf, ecmwfHour: { time: ecmwf.time, levels: {} } })),
+    window: windowScore === undefined ? undefined : window(windowScore, windowHours),
   };
 }
 
@@ -265,24 +256,43 @@ describe("mainReason", () => {
 describe("recommendSite", () => {
   it("anOpenSiteWithAWindowHasBestAndNoMainReason", () => {
     const s = site("s");
-    const r = recommendSite(s, [evaluation("x", [], 60)], undefined);
+    const r = recommendSite(s, [evaluation("x", [], 60)]);
     expect(r.best?.window.score).toBe(60);
     expect(r.mainReason).toBeUndefined();
     expect(r.distanceM).toBeUndefined();
   });
 
   it("anOpenSiteWithoutAWindowHasAMainReason", () => {
-    const r = recommendSite(site("s"), [evaluation("x", [hourResult(T0, ["precipitation"])])], undefined);
+    const r = recommendSite(site("s"), [evaluation("x", [hourResult(T0, ["precipitation"])])]);
     expect(r.best).toBeUndefined();
     expect(r.mainReason?.kind).toBe("precipitation");
   });
 
   it("aClosedSiteHasNoLaunchesBestOrReason", () => {
     const where = { latitude: 39.5, longitude: -106 };
-    const r = recommendSite(site("s", { closed: true }), [evaluation("x", [], 99)], where);
+    const r = recommendSite(site("s", { closed: true }), [evaluation("x", [], 99)]);
     expect(r.launches).toEqual([]);
     expect(r.best).toBeUndefined();
     expect(r.mainReason).toBeUndefined();
-    expect(r.distanceM).toBe(0);
+    expect(r.call).toBe("closed");
+    const result: RecommendationResult = { day: "today", fetchedAt: 0, isOffline: false, sites: [r] };
+    expect(withDistances(result, where).sites[0]?.distanceM).toBe(0);
+  });
+
+  it("callsTheSiteGoodOnlyWhenEveryWindowHourIsGood", () => {
+    const good = hourResult(T0, [], "good");
+    const flyable = hourResult(T0 + HOUR_MS, ["nearMaxWind"], "flyable");
+    const s = site("s");
+    expect(recommendSite(s, [evaluation("x", [], 60, [good])]).call).toBe("good");
+    expect(recommendSite(s, [evaluation("x", [], 60, [good, flyable])]).call).toBe("flyable");
+    expect(recommendSite(s, [evaluation("x", [hourResult(T0, ["precipitation"])])]).call).toBe("noGo");
+  });
+
+  it("ranksByTheCall", () => {
+    const open = (name: string, hours: HourResult[] | undefined): SiteRecommendation =>
+      recommendSite(site(name), hours === undefined ? [] : [evaluation(name, [], 50, hours)]);
+    const closed = recommendSite(site("closed", { closed: true }), []);
+    const ranked = rankSites([closed, open("none", undefined), open("flyable", [hourResult(T0, ["lowCloud"], "flyable")])]);
+    expect(names(ranked)).toEqual(["flyable", "none", "closed"]);
   });
 });

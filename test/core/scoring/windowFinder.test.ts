@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { SCORING_DEFAULTS } from "../../../src/core/scoring/defaults";
-import type { HourCall, HourResult } from "../../../src/core/scoring/hourEvaluator";
+import type { HourCall, HourResult, Reason } from "../../../src/core/scoring/hourEvaluator";
 import {
   daylightDayFor,
   daylightHours,
@@ -9,7 +9,7 @@ import {
   windowLabel,
 } from "../../../src/core/scoring/windowFinder";
 import type { Confidence } from "../../../src/core/scoring/windowFinder";
-import { HOUR_MS, formatDenverTime } from "../../../src/core/time";
+import { HOUR_MS, byTime, formatDenverTime } from "../../../src/core/time";
 
 // 2026-06-15, MDT (UTC-6). Denver hour h is (h + 6):00Z.
 const at = (h: number): number => Date.UTC(2026, 5, 15, h + 6);
@@ -119,7 +119,7 @@ describe("findBestWindow", () => {
     ecmwf: HourResult[],
     rrfs: HourResult[] = [],
     now = NOW_EARLY,
-  ) => findBestWindow(ecmwf, rrfs, DAY, now);
+  ) => findBestWindow(daylightHours(ecmwf, DAY, now), byTime(rrfs));
 
   it("is undefined with no hours", () => {
     expect(find([])).toBeUndefined();
@@ -304,9 +304,53 @@ describe("findBestWindow", () => {
     });
   });
 
+  it("takes the daylight hours as given and doesn't reselect them", () => {
+    // Hours 3 and 4 are before DAY's sunrise; daylightHours would drop them, findBestWindow doesn't.
+    const w = findBestWindow([hr(3, "good"), hr(4, "good")], new Map());
+    expect(w?.start).toBe(at(3));
+    expect(w?.hours.length).toBe(2);
+  });
+
+  it("looks RRFS up by time in the given map", () => {
+    const daylight = [hr(10, "good"), hr(11, "good")];
+    const agreeing = byTime([rrfsHr(10, true), rrfsHr(11, true)]);
+    expect(findBestWindow(daylight, agreeing)?.confidence).toBe("high");
+    expect(findBestWindow(daylight, new Map())?.confidence).toBe("ecmwfOnly");
+  });
+
+  describe("warnings", () => {
+    const gusts = (text: string): Reason => ({ kind: "highGusts", severity: "warning", text });
+    const caution: Reason = { kind: "nearMaxWind", severity: "caution", text: "near max" };
+    const withReasons = (h: number, call: HourCall, reasons: Reason[]): HourResult => ({
+      ...hr(h, call),
+      reasons,
+    });
+
+    it("are the run's warning reasons, one per kind, first occurrence kept", () => {
+      const w = find([
+        withReasons(10, "good", [gusts("first")]),
+        withReasons(11, "flyable", [caution, gusts("second")]),
+        hr(12, "good"),
+      ]);
+      expect(w?.warnings).toEqual([gusts("first")]);
+    });
+
+    it("are empty without warning reasons, and ignore hours outside the run", () => {
+      const w = find([
+        withReasons(8, "good", [gusts("outside")]),
+        hr(9, "noGo"),
+        hr(10, "good", 90),
+        withReasons(11, "flyable", [caution]),
+        hr(12, "good", 90),
+      ]);
+      expect(w?.start).toBe(at(10));
+      expect(w?.warnings).toEqual([]);
+    });
+  });
+
   it("uses the supplied defaults", () => {
     const d = { ...SCORING_DEFAULTS, oneHourRunWeight: 0.5, ecmwfOnlyConfidenceWeight: 1 };
-    const w = findBestWindow([hr(11, "good", 80)], [], DAY, NOW_EARLY, d);
+    const w = findBestWindow([hr(11, "good", 80)], new Map(), d);
     expect(w?.score).toBeCloseTo(40, 9);
   });
 });
@@ -328,13 +372,13 @@ describe("DST fall-back (2026-11-01, 25-hour day)", () => {
 
   it("labels a window from 18Z to 21Z as 11:00-14:00 local", () => {
     const sel = results.filter((r) => r.time >= Date.UTC(2026, 10, 1, 18) && r.time < Date.UTC(2026, 10, 1, 21));
-    const w = findBestWindow(sel, [], day, Date.UTC(2026, 10, 1, 7));
+    const w = findBestWindow(daylightHours(sel, day, Date.UTC(2026, 10, 1, 7)), new Map());
     expect(w).toBeDefined();
     expect(windowLabel(w!)).toBe("11:00–14:00");
   });
 
   it("labels the daylight hours after the change in MST", () => {
-    const w = findBestWindow(results, [], day, midnight);
+    const w = findBestWindow(daylightHours(results, day, midnight), new Map());
     // First daylight hour is 14Z (07:00 MST); last is 23Z (16:00 MST).
     expect(windowLabel(w!)).toBe("07:00–17:00");
     expect(w!.hours.length).toBe(10);
@@ -343,7 +387,7 @@ describe("DST fall-back (2026-11-01, 25-hour day)", () => {
   it("a window across the repeated hour: 06Z-09Z labels 00:00-03:00 and shows 01:00 twice", () => {
     // 06Z is 00:00 MDT, 07Z is 01:00 MDT, 08Z is 01:00 MST (the change), 09Z is 02:00 MST.
     const early = { sunrise: midnight, sunset: midnight + 4 * HOUR_MS };
-    const w = findBestWindow(results, [], early, midnight);
+    const w = findBestWindow(daylightHours(results, early, midnight), new Map());
     expect(w?.hours.map((h) => h.time)).toEqual(dayHours.slice(0, 4));
     expect(windowLabel(w!)).toBe("00:00–03:00");
     expect(formatDenverTime(w!.hours[1]!.time)).toBe("01:00");

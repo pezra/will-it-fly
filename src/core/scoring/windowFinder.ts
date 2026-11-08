@@ -2,7 +2,7 @@ import type { DaylightDay } from "../forecast/models";
 import { HOUR_MS, denverDayKey, formatDenverTime } from "../time";
 import { SCORING_DEFAULTS, runLengthWeight } from "./defaults";
 import type { ScoringDefaults } from "./defaults";
-import type { HourResult } from "./hourEvaluator";
+import type { HourResult, Reason } from "./hourEvaluator";
 import { confidenceWeight, runConfidence } from "./modelAgreement";
 import type { Confidence } from "./modelAgreement";
 
@@ -20,6 +20,8 @@ export interface FlyingWindow {
   /** Mean hour score x run-length weight x confidence weight. */
   score: number;
   confidence: Confidence;
+  /** The run's warning reasons, one per kind (the first occurrence), for the summary. */
+  warnings: Reason[];
 }
 
 /** Today, unless `now` is after today's sunset. */
@@ -85,21 +87,30 @@ function buildWindow(
     hours: run,
     score: mean * runLengthWeight(run.length, defaults) * confidenceWeight(confidence, defaults),
     confidence,
+    warnings: windowWarnings(run),
   };
 }
 
+function windowWarnings(run: readonly HourResult[]): Reason[] {
+  const byKind = new Map<Reason["kind"], Reason>();
+  for (const h of run) {
+    for (const r of h.reasons) {
+      if (r.severity === "warning" && !byKind.has(r.kind)) byKind.set(r.kind, r);
+    }
+  }
+  return [...byKind.values()];
+}
+
 /**
- * The highest-scoring run of consecutive non-no-go ECMWF daylight hours with at least one good
- * hour. A no-go, no-data or missing hour breaks a run. Ties go to the earlier run.
+ * The highest-scoring run of consecutive non-no-go ECMWF hours with at least one good hour, from
+ * `daylight` (the target day's ECMWF results from `daylightHours`, in time order). A no-go, no-data
+ * or missing hour breaks a run. Ties go to the earlier run.
  */
 export function findBestWindow(
-  ecmwf: readonly HourResult[],
-  rrfs: readonly HourResult[],
-  day: DaylightDay,
-  now: number,
+  daylight: readonly HourResult[],
+  rrfsByTime: ReadonlyMap<number, HourResult>,
   defaults: ScoringDefaults = SCORING_DEFAULTS,
 ): FlyingWindow | undefined {
-  const rrfsByTime = new Map(rrfs.map((r) => [r.time, r] as const));
   let best: FlyingWindow | undefined;
   let run: HourResult[] = [];
 
@@ -111,7 +122,7 @@ export function findBestWindow(
     run = [];
   };
 
-  for (const h of daylightHours(ecmwf, day, now)) {
+  for (const h of daylight) {
     const prev = run[run.length - 1];
     if (prev !== undefined && h.time !== prev.time + HOUR_MS) close();
     if (h.call === "noGo" || h.call === "noData") close();

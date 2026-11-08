@@ -1,8 +1,9 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { createForecastCache } from "../../../src/core/forecast/forecastCache";
-import type { ForecastCache, KeyValueStore } from "../../../src/core/forecast/forecastCache";
+import type { ForecastCache } from "../../../src/core/forecast/forecastCache";
 import { OpenMeteoError } from "../../../src/core/forecast/openMeteoClient";
 import type { Transport } from "../../../src/core/forecast/openMeteoClient";
+import { withDistances } from "../../../src/core/recommendation/ranker";
 import { getRecommendations } from "../../../src/core/recommendation/recommendationService";
 import type { RecommendationDeps } from "../../../src/core/recommendation/recommendationService";
 import { SCORING_DEFAULTS } from "../../../src/core/scoring/defaults";
@@ -14,6 +15,7 @@ import launchesJSON from "../../fixtures/openmeteo-launches.json?raw";
 import neighborsJSON from "../../fixtures/openmeteo-neighbors.json?raw";
 import launchesURL from "../../fixtures/openmeteo-launches.url.txt?raw";
 import neighborsURL from "../../fixtures/openmeteo-neighbors.url.txt?raw";
+import { mapStore } from "../../support/builders";
 
 const MIN_MS = 60_000;
 
@@ -86,11 +88,6 @@ function throwingTransport(): Stub {
   return { transport, urls };
 }
 
-function mapStore(): KeyValueStore {
-  const map = new Map<string, string>();
-  return { get: (k) => map.get(k), set: (k, v) => void map.set(k, v) };
-}
-
 function deps(stub: Stub, cache: ForecastCache, now = NOW): RecommendationDeps {
   return {
     siteProvider: { sites: async () => sites },
@@ -123,8 +120,10 @@ describe("getRecommendations", () => {
     expect(last?.best).toBeUndefined();
     for (const r of result.sites.slice(0, 3)) {
       expect(r.launches).toHaveLength(1);
-      expect(r.launches[0]?.ecmwf.length).toBe(48);
-      expect(r.launches[0]?.rrfs.length).toBe(48);
+      const daylight = r.launches[0]?.daylight ?? [];
+      expect(daylight.length).toBeGreaterThan(0);
+      // Both models are evaluated for every daylight hour.
+      expect(daylight.every((row) => row.rrfs !== undefined && row.rrfsHour !== undefined)).toBe(true);
       expect(r.best === undefined).toBe(r.mainReason !== undefined);
     }
     // Windows come first, ordered by score.
@@ -335,10 +334,9 @@ describe("getRecommendations", () => {
 
   it("withALocationAddsDistancesToTheFirstLaunch", async () => {
     const cache = createForecastCache(mapStore());
-    const result = await getRecommendations(
-      { forceRefresh: false, userLocation: { latitude: 39.5428, longitude: -107.3003 } },
-      deps(fixtureTransport(), cache),
-    );
+    const fetched = await getRecommendations({ forceRefresh: false }, deps(fixtureTransport(), cache));
+    expect(fetched.sites.every((r) => r.distanceM === undefined)).toBe(true);
+    const result = withDistances(fetched, { latitude: 39.5428, longitude: -107.3003 });
     const glenwood = result.sites.find((r) => r.site.id === "rmhpa/glenwood-lookout-mtn");
     expect(glenwood?.distanceM).toBeCloseTo(0, 0);
     expect(result.sites.every((r) => r.distanceM !== undefined)).toBe(true);

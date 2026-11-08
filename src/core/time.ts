@@ -9,20 +9,28 @@ const partsFormat = new Intl.DateTimeFormat("en-US", {
   hour: "2-digit",
 });
 
-function part(ms: number, type: "year" | "month" | "day" | "hour"): string {
-  const found = partsFormat.formatToParts(ms).find((p) => p.type === type);
-  if (found === undefined) throw new Error(`Intl returned no ${type} part`);
-  return found.value;
+type PartType = "year" | "month" | "day" | "hour";
+
+/** The Denver calendar parts of ms, from a single `formatToParts` call. */
+function parts(ms: number): Record<PartType, string> {
+  const found = new Map<string, string>(partsFormat.formatToParts(ms).map((p) => [p.type, p.value]));
+  const get = (type: PartType): string => {
+    const value = found.get(type);
+    if (value === undefined) throw new Error(`Intl returned no ${type} part`);
+    return value;
+  };
+  return { year: get("year"), month: get("month"), day: get("day"), hour: get("hour") };
 }
 
 /** Calendar day in America/Denver, as "YYYY-MM-DD". */
 export function denverDayKey(ms: number): string {
-  return `${part(ms, "year")}-${part(ms, "month")}-${part(ms, "day")}`;
+  const { year, month, day } = parts(ms);
+  return `${year}-${month}-${day}`;
 }
 
 /** Hour of day (0-23) in America/Denver. */
 export function denverHour(ms: number): number {
-  return Number(part(ms, "hour"));
+  return Number(parts(ms).hour);
 }
 
 /** "HH:00" for the Denver hour containing ms. */
@@ -32,3 +40,8 @@ export function formatDenverTime(ms: number): string {
 
 /** One hour in milliseconds. */
 export const HOUR_MS = 3_600_000;
+
+/** Indexes items by their `time`. A later item with the same time wins. */
+export function byTime<T extends { time: number }>(items: readonly T[]): Map<number, T> {
+  return new Map(items.map((item) => [item.time, item] as const));
+}

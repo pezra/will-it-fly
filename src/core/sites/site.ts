@@ -46,12 +46,24 @@ export interface Site {
   limits: WindLimits;
 }
 
+/** Limits with every default filled in. */
+export type EffectiveLimits = WindLimits & { gustFactorMph: number };
+
 /** Used when an RMHPA page lists no PG limits. */
-export const DEFAULT_WIND_LIMITS: Readonly<WindLimits> = Object.freeze({
+export const DEFAULT_WIND_LIMITS: Readonly<EffectiveLimits> = Object.freeze({
   minMph: 0,
   maxMph: 15,
   gustFactorMph: 5,
 });
+
+/**
+ * The limits that apply at a launch: launch limits override the site limits as a whole, and a
+ * missing gust factor falls back to `DEFAULT_WIND_LIMITS`.
+ */
+export function effectiveLimits(site: Site, launch: Launch): EffectiveLimits {
+  const limits = launch.limits ?? site.limits;
+  return { ...limits, gustFactorMph: limits.gustFactorMph ?? DEFAULT_WIND_LIMITS.gustFactorMph };
+}
 
 export function elevationM(launch: Launch): number {
   return launch.elevationFt * METERS_PER_FOOT;

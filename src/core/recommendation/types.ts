@@ -13,17 +13,21 @@ export interface MainReason {
   text: string;
 }
 
+/** One daylight hour: both models' results (after the storm look-ahead) and forecast hours. */
+export interface DaylightRow {
+  time: number;
+  ecmwf: HourResult;
+  ecmwfHour: ModelHour;
+  /** Undefined when RRFS has no hour at this time. */
+  rrfs?: HourResult | undefined;
+  rrfsHour?: ModelHour | undefined;
+}
+
 /** One launch's forecast, evaluated for the detail view. */
 export interface LaunchEvaluation {
   launch: Launch;
-  /** Every ECMWF and RRFS hour in the response, as parsed. */
-  ecmwfHours: ModelHour[];
-  rrfsHours: ModelHour[];
-  /** Hourly results after the storm look-ahead, in time order. Not limited to daylight. */
-  ecmwf: HourResult[];
-  rrfs: HourResult[];
-  /** The ECMWF results inside the target day's daylight (and not yet over), in time order. */
-  daylight: HourResult[];
+  /** The ECMWF hours inside the target day's daylight (and not yet over), in time order. */
+  daylight: DaylightRow[];
   /** The launch's best window for the target day. */
   window?: FlyingWindow | undefined;
 }
@@ -33,8 +37,12 @@ export interface BestWindow {
   window: FlyingWindow;
 }
 
+/** A site's headline call: closed, no-go (no window), good (every window hour good) or flyable. */
+export type SiteCall = "closed" | "noGo" | "good" | "flyable";
+
 export interface SiteRecommendation {
   site: Site;
+  call: SiteCall;
   /** Great-circle distance from the user to the site's first launch. */
   distanceM?: number | undefined;
   /** The best launch's best window. Undefined when no launch has one, and for closed sites. */

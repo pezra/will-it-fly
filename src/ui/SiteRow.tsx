@@ -1,16 +1,8 @@
 import type { SiteRecommendation } from "../core/recommendation/types";
 import { windowLabel } from "../core/scoring/windowFinder";
 import { CallBadge } from "./CallBadge";
-import type { BadgeCall } from "./CallBadge";
 import { siteHref } from "./route";
 import { confidenceLabel, miles } from "./format";
-
-/** The site's headline call: closed, no-go, or good (every hour good) / flyable. */
-export function siteCall(rec: SiteRecommendation): BadgeCall {
-  if (rec.site.status.state === "closed") return "closed";
-  if (rec.best === undefined) return "noGo";
-  return rec.best.window.hours.every((h) => h.call === "good") ? "good" : "flyable";
-}
 
 export function SiteRow({ rec }: { rec: SiteRecommendation }) {
   const { site, best } = rec;
@@ -22,14 +14,14 @@ export function SiteRow({ rec }: { rec: SiteRecommendation }) {
       : best === undefined
         ? rec.mainReason?.text
         : undefined;
-  const highGusts = best?.window.hours.some((h) => h.reasons.some((r) => r.kind === "highGusts")) ?? false;
+  const highGusts = best?.window.warnings.some((r) => r.kind === "highGusts") ?? false;
 
   return (
     <li>
       <a class="row" href={siteHref(site.id)}>
         <div class="row-top">
           <span class="row-name">{site.name}</span>
-          <CallBadge call={siteCall(rec)} />
+          <CallBadge call={rec.call} />
         </div>
         <div class="row-meta">
           <span>{site.rating}</span>

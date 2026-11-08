@@ -16,7 +16,7 @@ import type {
   NeighborSample,
   ReasonKind,
 } from "../../../src/core/scoring/hourEvaluator";
-import { findBestWindow, windowLabel } from "../../../src/core/scoring/windowFinder";
+import { daylightHours, findBestWindow, windowLabel } from "../../../src/core/scoring/windowFinder";
 import type { FlyingWindow } from "../../../src/core/scoring/windowFinder";
 import type { DegreeArc, Launch, Site, WindLimits } from "../../../src/core/sites/site";
 import { DEFAULT_WIND_LIMITS, elevationM } from "../../../src/core/sites/site";
@@ -29,13 +29,12 @@ import {
   perfectHour,
 } from "../../support/hourBuilder";
 import type { HourBuilder } from "../../support/hourBuilder";
+import { TEST_LIMITS, kinds, testLaunch, testSite } from "../../support/builders";
 
 const HOUR_MS = 3_600_000;
 const d = SCORING_DEFAULTS;
 const sites: Site[] = await bundledSiteProvider().sites();
 
-/** Limits that put the perfect hour's 10 mph at ideal, with a min > 0. */
-const LIMITS: WindLimits = { minMph: 5, idealMph: 10, maxMph: 18, gustFactorMph: 6 };
 const OK: DegreeArc[] = [{ from: 225, to: 315 }];
 const IDEAL: DegreeArc[] = [{ from: 250, to: 290 }];
 
@@ -47,27 +46,16 @@ interface LaunchOptions {
 }
 
 function makeLaunch(o: LaunchOptions = {}): Launch {
-  const launch: Launch = {
-    id: "test/site/launch",
-    name: "Test launch",
-    coordinate: { latitude: 39.5, longitude: -106 },
+  const launch = testLaunch({
     elevationFt: (o.elevationM ?? PERFECT_LAUNCH_ELEVATION_M) / METERS_PER_FOOT,
     directions: { ok: o.ok ?? OK, ideal: o.ideal ?? IDEAL },
-  };
+  });
   if (o.limits !== undefined) launch.limits = o.limits;
   return launch;
 }
 
-function makeSite(launch: Launch, limits: WindLimits = LIMITS): Site {
-  return {
-    id: "test/site",
-    name: "Test site",
-    sourceURL: "https://example.com",
-    rating: "P2",
-    status: { state: "open" },
-    launches: [launch],
-    limits,
-  };
+function makeSite(launch: Launch, limits: WindLimits = TEST_LIMITS): Site {
+  return testSite({ launches: [launch], limits });
 }
 
 function nw(windMph: number | undefined, windDir: number | undefined): NeighborWind {
@@ -120,10 +108,6 @@ function ctx(o: CtxOptions = {}): HourContext {
   return c;
 }
 
-function kinds(r: HourResult): ReasonKind[] {
-  return r.reasons.map((x) => x.kind);
-}
-
 function evalWith(o: CtxOptions, defaults?: ScoringDefaults): HourResult {
   return evaluateHour(ctx(o), defaults);
 }
@@ -172,6 +156,19 @@ describe("baseline", () => {
     expect(PERFECT.score).toBeGreaterThanOrEqual(80);
     expect(PERFECT.time).toBe(REFERENCE_TIME);
     expect(PERFECT.launchWind).toEqual({ speedMph: 10, dirDeg: 270 });
+  });
+
+  it("carries the cloud base and thermal index it evaluated, no-data hours included", () => {
+    const hour = perfectHour().build();
+    const elev = elevationM(makeLaunch());
+    expect(PERFECT.cloudBaseM).toBe(cloudBaseAboveLaunchM(hour));
+    expect(PERFECT.thermalIndexC).toBe(thermalIndex(hour, elev));
+    expect(PERFECT.cloudBaseM).toBeDefined();
+    expect(PERFECT.thermalIndexC).toBeDefined();
+    const noData = evalWith({ hour: hourWith((h) => (h.windMph = undefined)) });
+    expect(noData.call).toBe("noData");
+    expect(noData.cloudBaseM).toBe(PERFECT.cloudBaseM);
+    expect(noData.thermalIndexC).toBe(PERFECT.thermalIndexC);
   });
 });
 
@@ -549,7 +546,7 @@ describe("gusts are not scored", () => {
   }
 
   it("a 40 mph gust (no warning) leaves the call, score and reasons as without gusts", () => {
-    const limits: WindLimits = { ...LIMITS, gustFactorMph: 20 };
+    const limits: WindLimits = { ...TEST_LIMITS, gustFactorMph: 20 };
     const base = withoutGusts({ siteLimits: limits });
     const r = evalWith({
       siteLimits: limits,
@@ -591,7 +588,7 @@ describe("gusts are not scored", () => {
 });
 
 describe("high gusts warning", () => {
-  // LIMITS.gustFactorMph is 6, so the warning threshold is 3 x 6 = 18 mph over the 10 mph wind.
+  // TEST_LIMITS.gustFactorMph is 6, so the warning threshold is 3 x 6 = 18 mph over the 10 mph wind.
   it("fires at exactly 3x the gust-factor limit and not just below it", () => {
     expect(d.highGustWarningFactorMultiple).toBe(3);
     const at = evalWith({ hour: hourWith((h) => (h.gustMph = 28)) });
@@ -618,7 +615,7 @@ describe("high gusts warning", () => {
   });
 
   it("a gust below the 10 m wind doesn't warn", () => {
-    const limits: WindLimits = { ...LIMITS, gustFactorMph: 0.1 };
+    const limits: WindLimits = { ...TEST_LIMITS, gustFactorMph: 0.1 };
     const r = evalWith({
       siteLimits: limits,
       hour: hourWith((h) => (h.gustMph = 8)),
@@ -630,7 +627,7 @@ describe("high gusts warning", () => {
   it("falls back to the default gust-factor limit when the limits omit it", () => {
     const limits: WindLimits = { minMph: 5, idealMph: 10, maxMph: 18 };
     expect(DEFAULT_WIND_LIMITS.gustFactorMph).toBe(5);
-    const threshold = 10 + 3 * (DEFAULT_WIND_LIMITS.gustFactorMph ?? 0);
+    const threshold = 10 + 3 * DEFAULT_WIND_LIMITS.gustFactorMph;
     expect(
       kinds(evalWith({ siteLimits: limits, hour: hourWith((h) => (h.gustMph = threshold)) })),
     ).toContain("highGusts");
@@ -936,6 +933,27 @@ describe("storm look-ahead", () => {
     );
   });
 
+  it("matches hours by time, so a missing hour isn't skipped over", () => {
+    // Drop hour 2 of the series: hour 3 is the first convective no-go. Hour 1 is two hours before
+    // it and is marked; hour 0 is three hours before it, though it's only two results back.
+    const { hours, results } = series(stormAt(4, 7, 300));
+    const gapped = <T extends { time: number }>(xs: readonly T[]): T[] =>
+      xs.filter((x) => x.time !== REFERENCE_TIME + 2 * HOUR_MS);
+    const out = applyStormLookahead(gapped(results), gapped(hours));
+    expect(out.map((r) => (r.time - REFERENCE_TIME) / HOUR_MS)).toEqual([0, 1, 3, 4, 5, 6]);
+    expect(marked(out)).toEqual([1]);
+    expect(out[1]?.reasons.find((x) => x.kind === "stormsComing")?.text).toBe(
+      `storms forecast by ${formatDenverTime(REFERENCE_TIME + 3 * HOUR_MS)}`,
+    );
+  });
+
+  it("keeps the input order", () => {
+    const { hours, results } = series(stormAt(4, 7, 300));
+    const out = applyStormLookahead([...results].reverse(), [...hours].reverse());
+    expect(out.map((r) => r.time)).toEqual([...results].reverse().map((r) => r.time));
+    expect(marked([...out].reverse())).toEqual([1, 2]);
+  });
+
   it("ignores no-data hours", () => {
     const builders = stormAt(4, 7, 300);
     builders[2] = perfectHour().with((h) => (h.windMph = undefined));
@@ -1169,7 +1187,7 @@ describe("Nov 7 2026 at Golden North (gusts not scored)", () => {
 
   it("gives a 10:00-16:00 window", () => {
     const day = { sunrise: denver(6, 35), sunset: denver(16, 50) };
-    const window = findBestWindow(evaluate(), [], day, denver(7));
+    const window = findBestWindow(daylightHours(evaluate(), day, denver(7)), new Map());
     expect(window).toBeDefined();
     expect(windowLabel(window as FlyingWindow)).toBe("10:00–16:00");
   });
