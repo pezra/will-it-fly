@@ -41,13 +41,14 @@ function window(score: number, hours: HourResult[] = []): FlyingWindow {
 
 function rec(
   name: string,
-  o: { score?: number; distance?: number; closed?: boolean } = {},
+  o: { score?: number; distance?: number; closed?: boolean; flyable?: boolean } = {},
 ): SiteRecommendation {
   const s = site(name, o.closed === undefined ? {} : { closed: o.closed });
   const first = s.launches[0] as Launch;
   return {
     site: s,
-    call: o.closed === true ? "closed" : o.score === undefined ? "noGo" : "good",
+    call:
+      o.closed === true ? "closed" : o.score === undefined ? "noGo" : o.flyable === true ? "flyable" : "good",
     distanceM: o.distance,
     best: o.score === undefined ? undefined : { launch: first, window: window(o.score) },
     launches: [],
@@ -90,6 +91,16 @@ describe("rankSites", () => {
     const input = [rec("a", { score: 50 }), rec("b", { score: 50 }), rec("c", { score: 50 })];
     expect(names(rankSites(input))).toEqual(["a", "b", "c"]);
     expect(names(input)).toEqual(["a", "b", "c"]);
+  });
+
+  it("goodSitesComeBeforeHigherScoringFlyableSites", () => {
+    const ranked = rankSites([
+      rec("none"),
+      rec("flyable", { score: 90, flyable: true }),
+      rec("good", { score: 40 }),
+      rec("flyable2", { score: 95, flyable: true }),
+    ]);
+    expect(names(ranked)).toEqual(["good", "flyable2", "flyable", "none"]);
   });
 
   it("closedSitesAreOrderedByNameIgnoringDistance", () => {
@@ -231,11 +242,11 @@ describe("mainReason", () => {
   it("saysNoFlyableHourWhenThereIsNothingToCount", () => {
     const quiet = evaluation("a", [hourResult(T0, ["capeUnavailable"], "flyable")]);
     expect(mainReason([quiet])).toEqual({
-      kind: "noGoodHour",
+      kind: "noFlyableHour",
       severity: "info",
-      text: "no good hour",
+      text: "no flyable hour",
     });
-    expect(mainReason([]).kind).toBe("noGoodHour");
+    expect(mainReason([]).kind).toBe("noFlyableHour");
   });
 
   it("ignoresWarnings", () => {
@@ -245,7 +256,7 @@ describe("mainReason", () => {
     ]);
     expect(mainReason([gusty]).kind).toBe("lowCloud");
     const onlyWarnings = evaluation("a", [hourResult(T0, ["highGusts"], "good")]);
-    expect(mainReason([onlyWarnings]).kind).toBe("noGoodHour");
+    expect(mainReason([onlyWarnings]).kind).toBe("noFlyableHour");
   });
 
   it("noDataCountsAsANoGoKind", () => {
@@ -279,12 +290,13 @@ describe("recommendSite", () => {
     expect(withDistances(result, where).sites[0]?.distanceM).toBe(0);
   });
 
-  it("callsTheSiteGoodOnlyWhenEveryWindowHourIsGood", () => {
+  it("callsTheSiteGoodWhenTheWindowHasAGoodHour", () => {
     const good = hourResult(T0, [], "good");
     const flyable = hourResult(T0 + HOUR_MS, ["nearMaxWind"], "flyable");
     const s = site("s");
     expect(recommendSite(s, [evaluation("x", [], 60, [good])]).call).toBe("good");
-    expect(recommendSite(s, [evaluation("x", [], 60, [good, flyable])]).call).toBe("flyable");
+    expect(recommendSite(s, [evaluation("x", [], 60, [good, flyable])]).call).toBe("good");
+    expect(recommendSite(s, [evaluation("x", [], 60, [flyable])]).call).toBe("flyable");
     expect(recommendSite(s, [evaluation("x", [hourResult(T0, ["precipitation"])])]).call).toBe("noGo");
   });
 

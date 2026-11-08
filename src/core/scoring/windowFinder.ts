@@ -102,9 +102,9 @@ function windowWarnings(run: readonly HourResult[]): Reason[] {
 }
 
 /**
- * The highest-scoring run of consecutive non-no-go ECMWF hours with at least one good hour, from
- * `daylight` (the target day's ECMWF results from `daylightHours`, in time order). A no-go, no-data
- * or missing hour breaks a run. Ties go to the earlier run.
+ * The highest-scoring run of consecutive good or flyable ECMWF hours, from `daylight` (the target
+ * day's ECMWF results from `daylightHours`, in time order). A no-go, no-data or missing hour breaks
+ * a run. Ties go to the earlier run.
  */
 export function findBestWindow(
   daylight: readonly HourResult[],
@@ -115,7 +115,7 @@ export function findBestWindow(
   let run: HourResult[] = [];
 
   const close = (): void => {
-    if (run.some((h) => h.call === "good")) {
+    if (run.length > 0) {
       const w = buildWindow(run, rrfsByTime, defaults);
       if (best === undefined || w.score > best.score) best = w;
     }

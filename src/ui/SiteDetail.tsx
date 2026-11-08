@@ -100,7 +100,7 @@ export function SiteDetail({ siteId, recs }: { siteId: string; recs: Recommendat
       </dl>
       {closedReason !== undefined && <p class="banner">Closed: {closedReason}</p>}
       {closedReason === undefined && best === undefined && rec.mainReason !== undefined && (
-        <p class="banner">No good window: {rec.mainReason.text}</p>
+        <p class="banner">No flyable window: {rec.mainReason.text}</p>
       )}
       {site.notes !== undefined && (
         <details class="notes">
