@@ -29,3 +29,6 @@ export function denverHour(ms: number): number {
 export function formatDenverTime(ms: number): string {
   return `${String(denverHour(ms)).padStart(2, "0")}:00`;
 }
+
+/** One hour in milliseconds. */
+export const HOUR_MS = 3_600_000;
