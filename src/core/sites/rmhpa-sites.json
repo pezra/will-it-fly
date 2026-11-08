@@ -1,0 +1,691 @@
+{
+  "curatedOn": "2026-11-07",
+  "sites": [
+    {
+      "id": "rmhpa/boulder-wonderland",
+      "name": "Boulder - Wonderland",
+      "sourceURL": "https://www.rmhpa.org/flying-sites/boulder---wonderland",
+      "notes": "Mid-day: H3/P3/M2 or higher recommended, with TUR special skill for PG; only advanced pilots should launch midday. High Altitude special skill required. Tree on Upper launch can cause rotor in NNE wind. Lee-side site: don't get caught in west winds; look for winds aloft <20 mph at 14,000'. Upper/Halfway/Three-Quarter: page gives only 'NE to SE' (used as ok, no ideal). South Wonderland Lake: page gives only 'works best with E to NE' (used as ideal 45-90; ok = 67.5 +/-45 per design fallback). Halfway Bench and Three-Quarter are primarily used by students. Elevations from Open-Meteo.",
+      "rating": "P2",
+      "status": { "state": "open" },
+      "limits": { "minMph": 0, "maxMph": 15, "idealMph": 8, "gustFactorMph": 5 },
+      "limitsSource": "page",
+      "launches": [
+        {
+          "id": "rmhpa/boulder-wonderland/upper",
+          "name": "Upper Launch",
+          "coordinate": { "latitude": 40.0562, "longitude": -105.3 },
+          "elevationFt": 6260,
+          "elevationSource": "open-meteo",
+          "directionsSource": "explicit-ok-only: 'NE to SE'",
+          "directions": {
+            "ok": [ { "from": 45, "to": 135 } ],
+            "ideal": []
+          }
+        },
+        {
+          "id": "rmhpa/boulder-wonderland/south-wonderland-lake",
+          "name": "South Wonderland Lake Launch",
+          "coordinate": { "latitude": 40.0481, "longitude": -105.3015 },
+          "elevationFt": 6070,
+          "elevationSource": "open-meteo",
+          "directionsSource": "ideal-midpoint+-45: 'works best with E to NE'",
+          "directions": {
+            "ok": [ { "from": 22.5, "to": 112.5 } ],
+            "ideal": [ { "from": 45, "to": 90 } ]
+          }
+        },
+        {
+          "id": "rmhpa/boulder-wonderland/halfway-bench",
+          "name": "Halfway Bench Launch",
+          "coordinate": { "latitude": 40.0559, "longitude": -105.2982 },
+          "elevationFt": 6060,
+          "elevationSource": "open-meteo",
+          "directionsSource": "explicit-ok-only: 'NE to SE'",
+          "directions": {
+            "ok": [ { "from": 45, "to": 135 } ],
+            "ideal": []
+          }
+        },
+        {
+          "id": "rmhpa/boulder-wonderland/three-quarter",
+          "name": "Three-Quarter Launch",
+          "coordinate": { "latitude": 40.0553, "longitude": -105.2998 },
+          "elevationFt": 6240,
+          "elevationSource": "open-meteo",
+          "directionsSource": "explicit-ok-only: 'NE to SE'",
+          "directions": {
+            "ok": [ { "from": 45, "to": 135 } ],
+            "ideal": []
+          }
+        }
+      ],
+      "landingZones": [ { "name": "North Boulder Park LZ", "latitude": 40.0551, "longitude": -105.29 } ]
+    },
+    {
+      "id": "rmhpa/wolcott",
+      "name": "Wolcott",
+      "sourceURL": "https://www.rmhpa.org/flying-sites/wolcott",
+      "notes": "CURRENTLY CLOSED: no access by foot or road. Page says launch 'is near 9,000''; elevation taken from Open-Meteo instead. Direction 220-280 is unlabeled on the page; used as ok. Ideal 225-270 from 'west and southwest wind direction being the most favorable'. Winds aloft 25-30 mph too strong. Mid-day: P3 with TUR recommended.",
+      "rating": "P3",
+      "status": { "state": "closed", "reason": "CURRENTLY CLOSED. No access (by foot or road) is permitted." },
+      "limits": { "minMph": 0, "maxMph": 17, "idealMph": 8, "gustFactorMph": 5 },
+      "limitsSource": "page",
+      "launches": [
+        {
+          "id": "rmhpa/wolcott/main",
+          "name": "Launch",
+          "coordinate": { "latitude": 39.7001, "longitude": -106.6335 },
+          "elevationFt": 8770,
+          "elevationSource": "open-meteo",
+          "directionsSource": "explicit ok 'Direction: 220 - 280 degrees'; ideal from prose 'west and southwest wind direction being the most favorable'",
+          "directions": {
+            "ok": [ { "from": 220, "to": 280 } ],
+            "ideal": [ { "from": 225, "to": 270 } ]
+          }
+        }
+      ],
+      "landingZones": [ { "name": "Main LZ", "latitude": 39.6962, "longitude": -106.665 } ]
+    },
+    {
+      "id": "rmhpa/copper-mountain",
+      "name": "Copper Mountain",
+      "sourceURL": "https://www.rmhpa.org/flying-sites/copper-mountain",
+      "notes": "Open only on limited days in winter and summer in tight coordination with ski patrol and a site coordinator; site overview, waiver and check-in required. Page also says 'Copper Mountain is NOT OPEN in summer 2025!' (page updated 8/2/26); status left open, verify before flying. Paragliders only. No direction range on page: ok = west (270) +/-45 from stated facing, no ideal. Elevation from Open-Meteo.",
+      "rating": "P4",
+      "status": { "state": "open" },
+      "limits": { "minMph": 0, "maxMph": 12, "idealMph": 5, "gustFactorMph": 5 },
+      "limitsSource": "page",
+      "launches": [
+        {
+          "id": "rmhpa/copper-mountain/main",
+          "name": "Hallelujah Ridge (top of Storm King lift)",
+          "coordinate": { "latitude": 39.4734, "longitude": -106.1574 },
+          "elevationFt": 12130,
+          "elevationSource": "open-meteo",
+          "directionsSource": "stated-facing+-45: 'West Facing'",
+          "directions": {
+            "ok": [ { "from": 225, "to": 315 } ],
+            "ideal": []
+          }
+        }
+      ],
+      "landingZones": [ { "name": "Far East Lot (summer)", "latitude": 39.4982, "longitude": -106.1371 } ]
+    },
+    {
+      "id": "rmhpa/glenwood-lookout-mtn",
+      "name": "Glenwood - Lookout Mountain",
+      "sourceURL": "https://www.rmhpa.org/flying-sites/glenwood---lookout-mtn",
+      "notes": "Mid-day XC requires a high-level P4 with a strong mountain flying background; afternoon/evening flights suit P3. Page gives one launch coordinate for all three launches; it is reused for North, Middle and South. Elevation from Open-Meteo. Page says 'Gust factor < 5mph is ideal' (not stated as a hard limit); 5 mph used. Re-evaluate plans after 12:00 (overdevelopment almost daily).",
+      "rating": "P3",
+      "status": { "state": "open" },
+      "limits": { "minMph": 0, "maxMph": 15, "idealMph": 8, "gustFactorMph": 5 },
+      "limitsSource": "page",
+      "launches": [
+        {
+          "id": "rmhpa/glenwood-lookout-mtn/north",
+          "name": "North Launch",
+          "coordinate": { "latitude": 39.5428, "longitude": -107.3003 },
+          "elevationFt": 7830,
+          "elevationSource": "open-meteo",
+          "directionsSource": "explicit",
+          "directions": {
+            "ok": [ { "from": 240, "to": 285 } ],
+            "ideal": [ { "from": 250, "to": 285 } ]
+          }
+        },
+        {
+          "id": "rmhpa/glenwood-lookout-mtn/middle",
+          "name": "Middle Launch",
+          "coordinate": { "latitude": 39.5428, "longitude": -107.3003 },
+          "elevationFt": 7830,
+          "elevationSource": "open-meteo",
+          "directionsSource": "explicit",
+          "directions": {
+            "ok": [ { "from": 180, "to": 270 } ],
+            "ideal": [ { "from": 220, "to": 270 } ]
+          }
+        },
+        {
+          "id": "rmhpa/glenwood-lookout-mtn/south",
+          "name": "South Launch",
+          "coordinate": { "latitude": 39.5428, "longitude": -107.3003 },
+          "elevationFt": 7830,
+          "elevationSource": "open-meteo",
+          "directionsSource": "explicit",
+          "directions": {
+            "ok": [ { "from": 120, "to": 270 } ],
+            "ideal": [ { "from": 180, "to": 230 } ]
+          }
+        }
+      ],
+      "landingZones": [ { "name": "LZ (by high school)", "latitude": 39.5375, "longitude": -107.33 } ]
+    },
+    {
+      "id": "rmhpa/crested-butte",
+      "name": "Crested Butte",
+      "sourceURL": "https://www.rmhpa.org/flying-sites/crested-butte",
+      "notes": "H4/P4 launch; a P3 with 20+ hours/flights this season and a check-off flight may fly at a guide's discretion. Must be accompanied by a CBSS guide pilot; special paperwork required. HA and TUR required. A southerly component is normal and not a good one (rotor off rocks, trees and ridges; gust factor increases rapidly). Silver Queen lift has a 300 ft no-fly zone. Bail Out LZ at 9,720 ft south of the West Wall lift (no coordinate on page).",
+      "rating": "P4",
+      "status": { "state": "open" },
+      "limits": { "minMph": 0, "maxMph": 20, "idealMph": 10, "gustFactorMph": 5 },
+      "limitsSource": "page",
+      "launches": [
+        {
+          "id": "rmhpa/crested-butte/browns",
+          "name": "Brown's Launch",
+          "coordinate": { "latitude": 38.8897, "longitude": -106.9455 },
+          "elevationFt": 11300,
+          "elevationSource": "page",
+          "directionsSource": "explicit",
+          "directions": {
+            "ok": [ { "from": 250, "to": 325 } ],
+            "ideal": [ { "from": 270, "to": 310 } ]
+          }
+        }
+      ],
+      "landingZones": [ { "name": "Town Ranch Main LZ", "latitude": 38.8641, "longitude": -106.9738 } ]
+    },
+    {
+      "id": "rmhpa/golden-lookout-mountain",
+      "name": "Golden - Lookout Mountain",
+      "sourceURL": "https://www.rmhpa.org/flying-sites/golden---lookout-mountain",
+      "notes": "Sponsored site: all pilots need a site briefing from a designated sponsor; P3s can fly only via the Lookout Sponsorship Program (usually 10 sponsored flights); P2s may not fly. Do not fly in strong SE wind or any time the wind is S or W. Mid Launch is steep and rocky, for advanced P4s. Lee-side site: look for winds aloft <20 mph at 14,000'. Jeffco waiver required annually. Elevations from Open-Meteo.",
+      "rating": "P4",
+      "status": { "state": "open" },
+      "limits": { "minMph": 0, "maxMph": 15, "idealMph": 7, "gustFactorMph": 5 },
+      "limitsSource": "page",
+      "launches": [
+        {
+          "id": "rmhpa/golden-lookout-mountain/north",
+          "name": "North Launch",
+          "coordinate": { "latitude": 39.7461, "longitude": -105.2407 },
+          "elevationFt": 6770,
+          "elevationSource": "open-meteo",
+          "directionsSource": "explicit ('OK: 360-135' written as 0-135)",
+          "directions": {
+            "ok": [ { "from": 0, "to": 135 } ],
+            "ideal": [ { "from": 45, "to": 90 } ]
+          }
+        },
+        {
+          "id": "rmhpa/golden-lookout-mountain/mid",
+          "name": "Mid Launch",
+          "coordinate": { "latitude": 39.7437, "longitude": -105.2414 },
+          "elevationFt": 7000,
+          "elevationSource": "open-meteo",
+          "directionsSource": "explicit",
+          "directions": {
+            "ok": [ { "from": 45, "to": 100 } ],
+            "ideal": [ { "from": 55, "to": 100 } ]
+          }
+        },
+        {
+          "id": "rmhpa/golden-lookout-mountain/south",
+          "name": "South Launch",
+          "coordinate": { "latitude": 39.7423, "longitude": -105.2424 },
+          "elevationFt": 6970,
+          "elevationSource": "open-meteo",
+          "directionsSource": "explicit",
+          "directions": {
+            "ok": [ { "from": 45, "to": 145 } ],
+            "ideal": [ { "from": 55, "to": 100 } ]
+          }
+        }
+      ],
+      "landingZones": [
+        { "name": "Main LZ", "latitude": 39.7501, "longitude": -105.2304 },
+        { "name": "Water Tower LZ", "latitude": 39.7388, "longitude": -105.2297 }
+      ]
+    },
+    {
+      "id": "rmhpa/bellyache",
+      "name": "Bellyache",
+      "sourceURL": "https://www.rmhpa.org/flying-sites/bellyache",
+      "notes": "Morning site, usually flyable 7am to 11-12; by noon the prevailing west mixes down and flying is done. Mid-day: P3 or higher recommended. Page gives 'SE to NNW' in the launch section and 'southeast to north' in the Winds section; the narrower SE-to-N (via E) range is used as ok, no ideal. LZ wind can be W even when launch is E. Elevation from Open-Meteo.",
+      "rating": "P2",
+      "status": { "state": "open" },
+      "limits": { "minMph": 0, "maxMph": 15, "idealMph": 7, "gustFactorMph": 5 },
+      "limitsSource": "page",
+      "launches": [
+        {
+          "id": "rmhpa/bellyache/main",
+          "name": "Launch",
+          "coordinate": { "latitude": 39.66, "longitude": -106.6576 },
+          "elevationFt": 8630,
+          "elevationSource": "open-meteo",
+          "directionsSource": "explicit-ok-only: 'from the southeast to north' (more restrictive than launch text 'SE to NNW')",
+          "directions": {
+            "ok": [ { "from": 0, "to": 135 } ],
+            "ideal": []
+          }
+        }
+      ],
+      "landingZones": [ { "name": "LZ", "latitude": 39.6692, "longitude": -106.6464 } ]
+    },
+    {
+      "id": "rmhpa/peak-6",
+      "name": "Peak 6",
+      "sourceURL": "https://www.rmhpa.org/flying-sites/peak-6",
+      "notes": "Morning site; winds can ramp up very quickly, be on the ground before they get strong. Mid-day only generally in fall. Page lists 'Ideal 240-300, Okay 250-310'; ideal is not inside ok (likely a page typo), kept verbatim. Far East Lot landing requires USHPA+RMHPA, waiver and LZ walkthrough; Bike Path LZ is the alternative. Elevation from Open-Meteo. Page mentions launching from Peak 4 (popular with miniwings); not included as a launch because the page gives no coordinate or directions for it.",
+      "rating": "P2+",
+      "status": { "state": "open" },
+      "limits": { "minMph": 0, "maxMph": 10, "idealMph": 5, "gustFactorMph": 5 },
+      "limitsSource": "page",
+      "launches": [
+        {
+          "id": "rmhpa/peak-6/main",
+          "name": "Launch",
+          "coordinate": { "latitude": 39.4957, "longitude": -106.112 },
+          "elevationFt": 12400,
+          "elevationSource": "open-meteo",
+          "directionsSource": "explicit (ideal 240-300 extends outside ok 250-310 on the page; kept verbatim)",
+          "directions": {
+            "ok": [ { "from": 250, "to": 310 } ],
+            "ideal": [ { "from": 240, "to": 300 } ]
+          }
+        }
+      ],
+      "landingZones": [ { "name": "Far East Lot", "latitude": 39.4982, "longitude": -106.1371 } ]
+    },
+    {
+      "id": "rmhpa/glenwood-red-mtn",
+      "name": "Glenwood - Red Mountain",
+      "sourceURL": "https://www.rmhpa.org/flying-sites/glenwood---red-mtn",
+      "notes": "Morning site: conditions usually best until about 10am, then switchy and/or over the back. No miniwings or hang gliders. Page states 'Gusts: 5mph'; recorded as gust factor 5 mph. Elevation from Open-Meteo.",
+      "rating": "P2",
+      "status": { "state": "open" },
+      "limits": { "minMph": 0, "maxMph": 10, "idealMph": 8, "gustFactorMph": 5 },
+      "limitsSource": "page",
+      "launches": [
+        {
+          "id": "rmhpa/glenwood-red-mtn/main",
+          "name": "Launch",
+          "coordinate": { "latitude": 39.5331, "longitude": -107.3417 },
+          "elevationFt": 7460,
+          "elevationSource": "open-meteo",
+          "directionsSource": "explicit",
+          "directions": {
+            "ok": [ { "from": 30, "to": 130 } ],
+            "ideal": [ { "from": 60, "to": 120 } ]
+          }
+        }
+      ],
+      "landingZones": [ { "name": "LZ (by high school)", "latitude": 39.5375, "longitude": -107.33 } ]
+    },
+    {
+      "id": "rmhpa/blodgett-open-space",
+      "name": "Blodgett Open Space",
+      "sourceURL": "https://www.rmhpa.org/flying-sites/blodgett-open-space",
+      "notes": "Closed. Coming soon. Page has no wind or direction information; limits are WindLimits.default. Launch and LZ coordinates on the page are identical (likely placeholders). Elevation from Open-Meteo.",
+      "rating": "P2",
+      "status": { "state": "closed", "reason": "Closed. Coming soon." },
+      "limits": { "minMph": 0, "maxMph": 15, "gustFactorMph": 5 },
+      "limitsSource": "default",
+      "launches": [
+        {
+          "id": "rmhpa/blodgett-open-space/main",
+          "name": "Launch",
+          "coordinate": { "latitude": 38.9489, "longitude": -104.8863 },
+          "elevationFt": 7090,
+          "elevationSource": "open-meteo",
+          "directionsSource": "not curated (page: 'Closed. Coming soon.')",
+          "directions": {
+            "ok": [],
+            "ideal": []
+          }
+        }
+      ],
+      "landingZones": [ { "name": "LZ", "latitude": 38.9489, "longitude": -104.8863 } ]
+    },
+    {
+      "id": "rmhpa/williams-peak",
+      "name": "Williams Peak",
+      "sourceURL": "https://www.rmhpa.org/flying-sites/williams-peak",
+      "notes": "Backcountry site. Page gives one launch coordinate (Open-Meteo puts it at ~9,370 ft, so probably Lower Launch); it is reused for all three launches. Elevations are the page's per-launch values. Upper: don't use if winds trend W or NW (rotor off ridge). Lower: NW-NNW cross on the NNW streamer means likely rotor. Strong valley winds last past sunset. Ideal day: 5-10 mph on launch for PG and winds aloft below 20 mph at 18k. Don't fly if the reservoir is white-capping. Ideal directions are single degrees on the page. The Practice Hill (350' hike-up hill NE of the LZ, 'S to WNW facing') is not included as a launch: no coordinate on the page.",
+      "rating": "P2+",
+      "status": { "state": "open" },
+      "limits": { "minMph": 0, "maxMph": 15, "idealMph": 8, "gustFactorMph": 5 },
+      "limitsSource": "page",
+      "launches": [
+        {
+          "id": "rmhpa/williams-peak/upper",
+          "name": "Upper Launch",
+          "coordinate": { "latitude": 39.9189, "longitude": -106.2861 },
+          "elevationFt": 10400,
+          "elevationSource": "page",
+          "directionsSource": "explicit (single-degree ideal 200)",
+          "directions": {
+            "ok": [ { "from": 160, "to": 225 } ],
+            "ideal": [ { "from": 200, "to": 200 } ]
+          }
+        },
+        {
+          "id": "rmhpa/williams-peak/lower",
+          "name": "Lower Launch",
+          "coordinate": { "latitude": 39.9189, "longitude": -106.2861 },
+          "elevationFt": 9450,
+          "elevationSource": "page",
+          "directionsSource": "explicit (single-degree ideal 250)",
+          "directions": {
+            "ok": [ { "from": 200, "to": 300 } ],
+            "ideal": [ { "from": 250, "to": 250 } ]
+          }
+        },
+        {
+          "id": "rmhpa/williams-peak/dinosaur",
+          "name": "Dinosaur Launch",
+          "coordinate": { "latitude": 39.9189, "longitude": -106.2861 },
+          "elevationFt": 8930,
+          "elevationSource": "page",
+          "directionsSource": "explicit (single-degree ideal 315)",
+          "directions": {
+            "ok": [ { "from": 270, "to": 340 } ],
+            "ideal": [ { "from": 315, "to": 315 } ]
+          }
+        }
+      ],
+      "landingZones": [ { "name": "Postage Stamp LZ", "latitude": 39.9154, "longitude": -106.3245 } ]
+    },
+    {
+      "id": "rmhpa/kenosha-pass",
+      "name": "Kenosha Pass",
+      "sourceURL": "https://www.rmhpa.org/flying-sites/kenosha-pass",
+      "notes": "Conditions can change rapidly (quickly becoming P3+). Valley flow: northerly/upslope during daytime heating, southerly/downslope otherwise; winds can ramp up quickly, leading to blowback. No direction range on page: ok = S (180) +/-45 from the stated launch aspect, no ideal. Great when winds aloft are S-SW; light winds aloft through 18k. Launch elevation 'about 10,400''. Respect private property lines at the LZ.",
+      "rating": "P2",
+      "status": { "state": "open" },
+      "limits": { "minMph": 3, "maxMph": 10, "idealMph": 5, "gustFactorMph": 5 },
+      "limitsSource": "page",
+      "launches": [
+        {
+          "id": "rmhpa/kenosha-pass/main",
+          "name": "Launch",
+          "coordinate": { "latitude": 39.4144, "longitude": -105.773 },
+          "elevationFt": 10400,
+          "elevationSource": "page",
+          "directionsSource": "stated-facing+-45: 'ideal launch aspects: SSW-S-SSE' (facing 180)",
+          "directions": {
+            "ok": [ { "from": 135, "to": 225 } ],
+            "ideal": []
+          }
+        }
+      ],
+      "landingZones": [ { "name": "Main LZ (USFS)", "latitude": 39.4082, "longitude": -105.7729 } ]
+    },
+    {
+      "id": "rmhpa/mt-victoria",
+      "name": "Mt. Victoria",
+      "sourceURL": "https://www.rmhpa.org/flying-sites/mt.-victoria",
+      "notes": "Backcountry site. Do not fly on strong N or S wind days (strong rotor). Morning site before the west wind takes over. West Launch is not recommended unless very experienced in the area; page gives no separate coordinate, so the East Launch coordinate and Open-Meteo elevation are reused. West Launch has its own PG limits (min 2 mph). A secondary East Launch just up the hill works better in slight SE wind (no data).",
+      "rating": "P3",
+      "status": { "state": "open" },
+      "limits": { "minMph": 0, "maxMph": 10, "idealMph": 5, "gustFactorMph": 5 },
+      "limitsSource": "page",
+      "launches": [
+        {
+          "id": "rmhpa/mt-victoria/east",
+          "name": "East Launch",
+          "coordinate": { "latitude": 39.5543, "longitude": -106.1152 },
+          "elevationFt": 11630,
+          "elevationSource": "open-meteo",
+          "directionsSource": "explicit",
+          "directions": {
+            "ok": [ { "from": 10, "to": 75 } ],
+            "ideal": [ { "from": 15, "to": 60 } ]
+          }
+        },
+        {
+          "id": "rmhpa/mt-victoria/west",
+          "name": "West Launch",
+          "coordinate": { "latitude": 39.5543, "longitude": -106.1152 },
+          "elevationFt": 11630,
+          "elevationSource": "open-meteo",
+          "directionsSource": "explicit",
+          "directions": {
+            "ok": [ { "from": 200, "to": 260 } ],
+            "ideal": [ { "from": 225, "to": 250 } ]
+          },
+          "limits": { "minMph": 2, "maxMph": 10, "idealMph": 5, "gustFactorMph": 5 },
+          "limitsSource": "page"
+        }
+      ],
+      "landingZones": [ { "name": "Lake meadows LZ", "latitude": 39.5854, "longitude": -106.0885 } ]
+    },
+    {
+      "id": "rmhpa/stovepipe",
+      "name": "Stovepipe",
+      "sourceURL": "https://www.rmhpa.org/flying-sites/stovepipe",
+      "notes": "Evening site: in summer launch at 6pm or later; mid-day launching in summer is highly discouraged. Strong launching skills needed, little room to abort. Page says 'Launch faces WSW' (247.5), which is outside its own 'Okay 140-240'; the explicit range is used. Elevation from Open-Meteo.",
+      "rating": "P3",
+      "status": { "state": "open" },
+      "limits": { "minMph": 0, "maxMph": 17, "idealMph": 8, "gustFactorMph": 5 },
+      "limitsSource": "page",
+      "launches": [
+        {
+          "id": "rmhpa/stovepipe/main",
+          "name": "Launch",
+          "coordinate": { "latitude": 39.3933, "longitude": -108.7727 },
+          "elevationFt": 6480,
+          "elevationSource": "open-meteo",
+          "directionsSource": "explicit (page also says 'Launch faces WSW', outside the stated ok)",
+          "directions": {
+            "ok": [ { "from": 140, "to": 240 } ],
+            "ideal": [ { "from": 170, "to": 220 } ]
+          }
+        }
+      ],
+      "landingZones": [ { "name": "LZ", "latitude": 39.3853, "longitude": -108.7853 } ]
+    },
+    {
+      "id": "rmhpa/villa-grove",
+      "name": "Villa Grove",
+      "sourceURL": "https://www.rmhpa.org/flying-sites/villa-grove",
+      "notes": "P2 mornings and late evenings only; P3-P4 other times; paragliding not recommended mid-day in warmer months. Upper Launch is P3/H3. Recommended PG winds aloft below 5 to 15 mph at 18,000'. 15 mph in the valley can compress at the ridgeline enough to blow you over the back. Hayden Pass venturi at 15+ mph. Upper Launch has no coordinate on the page; main coordinate reused. Its elevation is derived from '40 feet above the main launch area' (9,760 + 40).",
+      "rating": "P2",
+      "status": { "state": "open" },
+      "limits": { "minMph": 0, "maxMph": 18, "idealMph": 8, "gustFactorMph": 5 },
+      "limitsSource": "page",
+      "launches": [
+        {
+          "id": "rmhpa/villa-grove/main",
+          "name": "Main Launches",
+          "coordinate": { "latitude": 38.2916, "longitude": -105.8822 },
+          "elevationFt": 9760,
+          "elevationSource": "page",
+          "directionsSource": "explicit",
+          "directions": {
+            "ok": [ { "from": 200, "to": 260 } ],
+            "ideal": [ { "from": 220, "to": 250 } ]
+          }
+        },
+        {
+          "id": "rmhpa/villa-grove/upper",
+          "name": "Upper Launch",
+          "coordinate": { "latitude": 38.2916, "longitude": -105.8822 },
+          "elevationFt": 9800,
+          "elevationSource": "page-derived",
+          "directionsSource": "explicit",
+          "directions": {
+            "ok": [ { "from": 200, "to": 280 } ],
+            "ideal": [ { "from": 200, "to": 260 } ]
+          }
+        }
+      ],
+      "landingZones": [ { "name": "LZs (near road)", "latitude": 38.268, "longitude": -105.8981 } ]
+    },
+    {
+      "id": "rmhpa/the-duck",
+      "name": "The Duck",
+      "sourceURL": "https://www.rmhpa.org/flying-sites/the-duck",
+      "notes": "Requires a 10:1 glide to the LZ; only launch if confident the wind will hold. First-time pilots are encouraged to watch, not fly. Needs sun all day. Southwest is not ideal (headwind prevents glide to LZ). Crosswind up to 45 degrees from the north is common on launch. Ideal direction is a single degree on the page. Elevation from Open-Meteo.",
+      "rating": "P3",
+      "status": { "state": "open" },
+      "limits": { "minMph": 5, "maxMph": 15, "idealMph": 8, "gustFactorMph": 5 },
+      "limitsSource": "page",
+      "launches": [
+        {
+          "id": "rmhpa/the-duck/main",
+          "name": "Launch",
+          "coordinate": { "latitude": 39.5859, "longitude": -106.041 },
+          "elevationFt": 9620,
+          "elevationSource": "open-meteo",
+          "directionsSource": "explicit (single-degree ideal 270)",
+          "directions": {
+            "ok": [ { "from": 230, "to": 300 } ],
+            "ideal": [ { "from": 270, "to": 270 } ]
+          }
+        }
+      ],
+      "landingZones": [ { "name": "RC field LZ", "latitude": 39.5703, "longitude": -106.0535 } ]
+    },
+    {
+      "id": "rmhpa/mt-herman",
+      "name": "Mt. Herman",
+      "sourceURL": "https://www.rmhpa.org/flying-sites/mt.-herman",
+      "notes": "Midday flying recommended for P3+; P2s mornings and evenings on light days. Call the Air Force Academy before flying. North Launch: the launch section says '20-90 acceptable, 40-75 ideal' and 'Do not launch here when wind is S', but the Winds section says 'Ideal 40-140, okay 20-160'; the narrower launch-section values are used. South Launch is not recommended until very experienced with the site; page gives no separate coordinate, so one coordinate is used for both. Elevation 9,053' is the page's summit figure, used for both launches.",
+      "rating": "P2",
+      "status": { "state": "open" },
+      "limits": { "minMph": 0, "maxMph": 10, "idealMph": 5, "gustFactorMph": 5 },
+      "limitsSource": "page",
+      "launches": [
+        {
+          "id": "rmhpa/mt-herman/north",
+          "name": "North Launch",
+          "coordinate": { "latitude": 39.0814, "longitude": -104.9259 },
+          "elevationFt": 9053,
+          "elevationSource": "page",
+          "directionsSource": "explicit, more restrictive of two conflicting page statements",
+          "directions": {
+            "ok": [ { "from": 20, "to": 90 } ],
+            "ideal": [ { "from": 40, "to": 75 } ]
+          }
+        },
+        {
+          "id": "rmhpa/mt-herman/south",
+          "name": "South Launch",
+          "coordinate": { "latitude": 39.0814, "longitude": -104.9259 },
+          "elevationFt": 9053,
+          "elevationSource": "page",
+          "directionsSource": "explicit",
+          "directions": {
+            "ok": [ { "from": 120, "to": 160 } ],
+            "ideal": [ { "from": 130, "to": 150 } ]
+          }
+        }
+      ],
+      "landingZones": [ { "name": "Primary LZ", "latitude": 39.0893, "longitude": -104.9117 } ]
+    },
+    {
+      "id": "rmhpa/douglas-pass",
+      "name": "Douglas Pass",
+      "sourceURL": "https://www.rmhpa.org/flying-sites/douglas-pass",
+      "notes": "Private land used with permission; stay clear of the radio towers. LZ winds switch unexpectedly, especially in the evenings. Elevation from Open-Meteo.",
+      "rating": "P3",
+      "status": { "state": "open" },
+      "limits": { "minMph": 0, "maxMph": 15, "idealMph": 5, "gustFactorMph": 5 },
+      "limitsSource": "page",
+      "launches": [
+        {
+          "id": "rmhpa/douglas-pass/main",
+          "name": "Launch",
+          "coordinate": { "latitude": 39.5989, "longitude": -108.7963 },
+          "elevationFt": 8790,
+          "elevationSource": "open-meteo",
+          "directionsSource": "explicit",
+          "directions": {
+            "ok": [ { "from": 160, "to": 280 } ],
+            "ideal": [ { "from": 180, "to": 270 } ]
+          }
+        }
+      ],
+      "landingZones": [ { "name": "LZ (west side of Hwy 139)", "latitude": 39.5737, "longitude": -108.8045 } ]
+    },
+    {
+      "id": "rmhpa/ottos-ridge",
+      "name": "Otto's Ridge",
+      "sourceURL": "https://www.rmhpa.org/flying-sites/otto's-ridge",
+      "notes": "Secondary site, not maintained by RMHPA; fly at your own risk. Morning ridge soaring site (dawn to late morning). Don't park near, or land/kite in, the parking area. Elevation from Open-Meteo.",
+      "rating": "P2",
+      "status": { "state": "open" },
+      "limits": { "minMph": 0, "maxMph": 15, "idealMph": 10, "gustFactorMph": 5 },
+      "limitsSource": "page",
+      "launches": [
+        {
+          "id": "rmhpa/ottos-ridge/east",
+          "name": "East Launch",
+          "coordinate": { "latitude": 39.2777, "longitude": -108.9943 },
+          "elevationFt": 5050,
+          "elevationSource": "open-meteo",
+          "directionsSource": "explicit",
+          "directions": {
+            "ok": [ { "from": 20, "to": 140 } ],
+            "ideal": [ { "from": 40, "to": 120 } ]
+          }
+        }
+      ],
+      "landingZones": [ { "name": "Top landing / lower LZ", "latitude": 39.2781, "longitude": -108.9921 } ]
+    },
+    {
+      "id": "rmhpa/aspen",
+      "name": "Aspen",
+      "sourceURL": "https://www.rmhpa.org/flying-sites/aspen",
+      "notes": "Secondary site, not managed by RMHPA; obtain permission from Parapente Aspen, whose site guide takes precedence. Page has no standard PG limits. It says 'wind gust not to exceed 12 mph with gusts no higher than 18', so max 12 mph is used (stricter than the 15 mph default); gust factor kept at the default 5 mph (the page's 18-12 would imply 6). Also keep airport winds below 15 mph. A southerly component is normally not good (gust factor increases rapidly). No direction ranges: ok = stated facing +/-45, no ideal. Page gives one coordinate, reused for both launches. Elevation from Open-Meteo.",
+      "rating": "P3",
+      "status": { "state": "open" },
+      "limits": { "minMph": 0, "maxMph": 12, "gustFactorMph": 5 },
+      "limitsSource": "page-prose",
+      "launches": [
+        {
+          "id": "rmhpa/aspen/walshes",
+          "name": "Walshes (East Facing)",
+          "coordinate": { "latitude": 39.1642, "longitude": -106.8273 },
+          "elevationFt": 10510,
+          "elevationSource": "open-meteo",
+          "directionsSource": "stated-facing+-45: 'Walshes (East Facing)'",
+          "directions": {
+            "ok": [ { "from": 45, "to": 135 } ],
+            "ideal": []
+          }
+        },
+        {
+          "id": "rmhpa/aspen/ruthies",
+          "name": "Ruthie's (West Facing)",
+          "coordinate": { "latitude": 39.1642, "longitude": -106.8273 },
+          "elevationFt": 10510,
+          "elevationSource": "open-meteo",
+          "directionsSource": "stated-facing+-45: 'Ruthie's (West Facing)'",
+          "directions": {
+            "ok": [ { "from": 225, "to": 315 } ],
+            "ideal": []
+          }
+        }
+      ],
+      "landingZones": [ { "name": "Marlot LZ", "latitude": 39.1689, "longitude": -106.7903 } ]
+    },
+    {
+      "id": "rmhpa/loveland-pass",
+      "name": "Loveland Pass",
+      "sourceURL": "https://www.rmhpa.org/flying-sites/loveland-pass",
+      "notes": "Secondary site, not maintained by RMHPA. Only consider launching when upper winds are very low; best with light winds under 10 mph. Only go when conditions are excellent. Do NOT land in the Loveland parking lots. Launch prose says 'Launchable winds from S to W to NW' (180-315), narrower than the explicit 'Okay 190-340'; the explicit degrees are used, so NNW (316-340) is ok here only per the degree range.",
+      "rating": "P3",
+      "status": { "state": "open" },
+      "limits": { "minMph": 0, "maxMph": 10, "idealMph": 2, "gustFactorMph": 5 },
+      "limitsSource": "page",
+      "launches": [
+        {
+          "id": "rmhpa/loveland-pass/main",
+          "name": "Launch",
+          "coordinate": { "latitude": 39.6675, "longitude": -105.8647 },
+          "elevationFt": 12850,
+          "elevationSource": "page",
+          "directionsSource": "explicit",
+          "directions": {
+            "ok": [ { "from": 190, "to": 340 } ],
+            "ideal": [ { "from": 220, "to": 320 } ]
+          }
+        }
+      ],
+      "landingZones": [ { "name": "LZ (field on map)", "latitude": 39.6575, "longitude": -105.8719 } ]
+    }
+  ]
+}
