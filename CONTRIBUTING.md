@@ -13,13 +13,14 @@ npm ci
 
 ```
 src/core/            all logic, with no DOM or browser globals
-  sites/             site types, arcs, coordinates, rmhpa-sites.json
+  sites/             site types, arcs, coordinates
   forecast/          Open-Meteo client and parser, forecast cache
   scoring/           SCORING_DEFAULTS, derived values, hour evaluator,
                      model agreement, window finder
   recommendation/    per-launch evaluation, ranking, getRecommendations
   time.ts            America/Denver calendar helpers
 src/ui/              Preact components, location, storage, debug params
+sites.json           the curated RMHPA site catalog
 public/              manifest, icons, service worker template
 test/                Vitest tests, mirroring src/core
 scripts/             make-icons.mjs
@@ -67,7 +68,7 @@ The rules are in `src/core/scoring/hourEvaluator.ts`, and every threshold and we
 
 ## Site data
 
-Sites live in `src/core/sites/rmhpa-sites.json`, curated by hand from the [RMHPA site pages](https://www.rmhpa.org/flying-sites). `parseSites` validates the file when it loads, and `test/core/sites/rmhpaSitesData.test.ts` checks it for plausible values.
+Sites live in `sites.json`, curated by hand from the [RMHPA site pages](https://www.rmhpa.org/flying-sites). `parseSites` validates the file when it loads, and `test/core/sites/rmhpaSitesData.test.ts` checks it for plausible values.
 
 Each site has an `id` (`rmhpa/<slug>`), `name`, `sourceURL`, `rating`, `status` (`{"state": "open"}` or `{"state": "closed", "reason": "..."}`), site-level PG `limits` in mph (`minMph`, `idealMph`, `maxMph`, `gustFactorMph`), optional `notes`, and `launches`. Each launch has an `id` (`<site id>/<slug>`), `name`, `coordinate`, `elevationFt`, `directions` and optional `limits` that replace the site's.
 

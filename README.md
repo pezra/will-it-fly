@@ -24,7 +24,7 @@ If you allow location access you'll see distances. Without it everything still w
 ## Data
 
 - Weather data by [Open-Meteo.com](https://open-meteo.com/) (CC BY 4.0), using the free non-commercial tier.
-- Site information from [RMHPA](https://www.rmhpa.org/flying-sites), curated by hand into `src/core/sites/rmhpa-sites.json`. Each site links to its RMHPA page. Verify before flying.
+- Site information from [RMHPA](https://www.rmhpa.org/flying-sites), curated by hand into `sites.json`. Each site links to its RMHPA page. Verify before flying.
 
 ## How sites are scored
 

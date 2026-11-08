@@ -3,7 +3,7 @@ import { arcsContain } from "../../../src/core/sites/degreeArc";
 import type { Launch, Site, WindLimits } from "../../../src/core/sites/site";
 import { bundledSiteProvider } from "../../../src/core/sites/siteProvider";
 
-/** Sanity checks on the real curated rmhpa-sites.json. */
+/** Sanity checks on the real curated sites.json. */
 const sites: Site[] = await bundledSiteProvider().sites();
 
 function allLimits(site: Site): WindLimits[] {
@@ -14,7 +14,7 @@ function inRange(x: number, lo: number, hi: number): boolean {
   return x >= lo && x <= hi;
 }
 
-describe("rmhpa-sites.json", () => {
+describe("sites.json", () => {
   it("hasAll21SitesWithUniqueIds", () => {
     expect(sites.length).toBe(21);
     expect(new Set(sites.map((s) => s.id)).size).toBe(sites.length);
