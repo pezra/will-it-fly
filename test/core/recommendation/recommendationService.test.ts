@@ -1,10 +1,19 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { createForecastCache } from "../../../src/core/forecast/forecastCache";
 import type { ForecastCache } from "../../../src/core/forecast/forecastCache";
-import { OpenMeteoError, parseForecasts } from "../../../src/core/forecast/openMeteoClient";
+import {
+  OpenMeteoError,
+  launchRequestURL,
+  neighborRequestURL,
+  parseForecasts,
+} from "../../../src/core/forecast/openMeteoClient";
 import type { Transport } from "../../../src/core/forecast/openMeteoClient";
 import { withDistances } from "../../../src/core/recommendation/ranker";
-import { getRecommendations, resolveTargetDay } from "../../../src/core/recommendation/recommendationService";
+import {
+  DayOutOfRangeError,
+  getRecommendations,
+  resolveTargetDay,
+} from "../../../src/core/recommendation/recommendationService";
 import type { RecommendationDeps } from "../../../src/core/recommendation/recommendationService";
 import { SCORING_DEFAULTS } from "../../../src/core/scoring/defaults";
 import { denverDayKey } from "../../../src/core/time";
@@ -28,6 +37,8 @@ const NOW = Date.UTC(2026, 10, 7, 18, 0, 0);
 const NOW_EVENING = Date.UTC(2026, 10, 8, 1, 0, 0);
 /** 2026-11-08 18:00 MST: tomorrow (Nov 9) is not in the fixture. */
 const NOW_UNCOVERED = Date.UTC(2026, 10, 9, 1, 0, 0);
+/** 2026-11-05 11:00 MST: the fixture's Nov 7 is the day after tomorrow, so it is fetched on its own. */
+const NOW_EARLIER = Date.UTC(2026, 10, 5, 18, 0, 0);
 
 /** The three real sites the fixture was recorded for, trimmed to the recorded launch, and Copper (closed). */
 let sites: Site[] = [];
@@ -70,6 +81,18 @@ function fixtureTransport(): Stub {
   return { transport, urls };
 }
 
+/** Serves the recorded bodies for the single-day URLs of `day`. */
+function dayTransport(day: string): Stub {
+  const urls: string[] = [];
+  const transport: Transport = async (url) => {
+    urls.push(url);
+    if (url === launchRequestURL(openLaunches(), undefined, day)) return { status: 200, body: launchesJSON };
+    if (url === neighborRequestURL(openLaunches(), undefined, day)) return { status: 200, body: neighborsJSON };
+    throw new Error(`unexpected request: ${url}`);
+  };
+  return { transport, urls };
+}
+
 function failingTransport(status = 500): Stub {
   const urls: string[] = [];
   const transport: Transport = async (url) => {
@@ -88,11 +111,17 @@ function throwingTransport(): Stub {
   return { transport, urls };
 }
 
-function deps(stub: Stub, cache: ForecastCache, now = NOW): RecommendationDeps {
+function deps(
+  stub: Stub,
+  cache: ForecastCache,
+  now = NOW,
+  dayCache: ForecastCache = createForecastCache(mapStore()),
+): RecommendationDeps {
   return {
     siteProvider: { sites: async () => sites },
     transport: stub.transport,
     cache,
+    dayCache,
     now: () => now,
   };
 }
@@ -110,7 +139,9 @@ describe("getRecommendations", () => {
     const result = await getRecommendations({ forceRefresh: false }, deps(stub, cache));
 
     expect(stub.urls.sort()).toEqual([launchesURL.trim(), neighborsURL.trim()].sort());
-    expect(result.day).toBe("today");
+    expect(result.day).toBe("2026-11-07");
+    expect(result.today).toBe("2026-11-07");
+    expect(result.dayOver).toBe(false);
     expect(result.fetchedAt).toBe(NOW);
     expect(result.isOffline).toBe(false);
     expect(result.sites.map((r) => r.site.id).sort()).toEqual(sites.map((s) => s.id).sort());
@@ -325,7 +356,8 @@ describe("getRecommendations", () => {
   it("targetsTomorrowAfterTodaysSunset", async () => {
     const cache = createForecastCache(mapStore());
     const result = await getRecommendations({ forceRefresh: false }, deps(fixtureTransport(), cache, NOW_EVENING));
-    expect(result.day).toBe("tomorrow");
+    expect(result.day).toBe("2026-11-08");
+    expect(result.today).toBe("2026-11-07");
     const open = result.sites.filter((r) => r.site.status.state === "open");
     expect(open).toHaveLength(3);
     for (const r of open) {
@@ -333,6 +365,84 @@ describe("getRecommendations", () => {
       expect(daylight.length).toBeGreaterThan(0);
       expect(daylight.every((h) => denverDayKey(h.time) === "2026-11-08")).toBe(true);
     }
+  });
+
+  it("aRequestedTomorrowComesFromTheMainForecast", async () => {
+    const stub = fixtureTransport();
+    const cache = createForecastCache(mapStore());
+    const result = await getRecommendations({ forceRefresh: false, day: "2026-11-08" }, deps(stub, cache));
+    expect(stub.urls.sort()).toEqual([launchesURL.trim(), neighborsURL.trim()].sort());
+    expect(result.day).toBe("2026-11-08");
+    expect(result.dayOver).toBe(false);
+    const daylight = result.sites[0]?.launches[0]?.daylight ?? [];
+    expect(daylight.length).toBeGreaterThan(0);
+    expect(daylight.every((h) => denverDayKey(h.time) === "2026-11-08")).toBe(true);
+    // Switching back to today reuses the cached main forecast.
+    const today = await getRecommendations({ forceRefresh: false, day: "2026-11-07" }, deps(stub, cache));
+    expect(stub.urls).toHaveLength(2);
+    expect(today.day).toBe("2026-11-07");
+  });
+
+  it("aRequestedTodayAfterSunsetIsOver", async () => {
+    const cache = createForecastCache(mapStore());
+    const result = await getRecommendations(
+      { forceRefresh: false, day: "2026-11-07" },
+      deps(fixtureTransport(), cache, NOW_EVENING),
+    );
+    expect(result.day).toBe("2026-11-07");
+    expect(result.dayOver).toBe(true);
+    expect(result.sites.every((r) => r.best === undefined)).toBe(true);
+  });
+
+  it("aLaterDayIsFetchedOnItsOwnIntoTheDayCache", async () => {
+    const stub = dayTransport("2026-11-07");
+    const cache = createForecastCache(mapStore());
+    const dayCache = createForecastCache(mapStore());
+    const request = { forceRefresh: false, day: "2026-11-07" };
+    const result = await getRecommendations(request, deps(stub, cache, NOW_EARLIER, dayCache));
+    expect(stub.urls).toHaveLength(2);
+    expect(stub.urls.every((u) => u.includes("start_date=2026-11-07&end_date=2026-11-07"))).toBe(true);
+    expect(result.day).toBe("2026-11-07");
+    expect(result.today).toBe("2026-11-05");
+    expect(result.dayOver).toBe(false);
+    expect(cache.load(openLaunches())).toBeUndefined();
+    expect(dayCache.load(openLaunches())?.fetchedAt).toBe(NOW_EARLIER);
+    // Not today, so the morning counts too (at 11:00 on the day itself, the window started at 11:00).
+    const boulder = result.sites.find((r) => r.site.id === "rmhpa/boulder-wonderland");
+    expect(windowLabel(boulder?.best?.window ?? never())).toBe("09:00\u201317:00");
+
+    // The same day again is served from the day cache.
+    await getRecommendations(request, deps(stub, cache, NOW_EARLIER + MIN_MS, dayCache));
+    expect(stub.urls).toHaveLength(2);
+  });
+
+  it("aDayCacheForAnotherDayIsNotUsed", async () => {
+    const dayCache = createForecastCache(mapStore());
+    seed(dayCache, NOW_EARLIER - MIN_MS);
+    // The cached responses cover Nov 7 and 8, not Nov 9.
+    const stub = throwingTransport();
+    await expect(
+      getRecommendations(
+        { forceRefresh: false, day: "2026-11-09" },
+        deps(stub, createForecastCache(mapStore()), NOW_EARLIER, dayCache),
+      ),
+    ).rejects.toThrow("offline");
+    expect(stub.urls).toHaveLength(2);
+  });
+
+  it("aDayOutsideTheRangeIsRejectedWithoutFetching", async () => {
+    const stub = fixtureTransport();
+    const cache = createForecastCache(mapStore());
+    for (const day of ["2026-11-06", "2026-11-22"]) {
+      await expect(
+        getRecommendations({ forceRefresh: false, day }, deps(stub, cache)),
+      ).rejects.toBeInstanceOf(DayOutOfRangeError);
+    }
+    expect(stub.urls).toEqual([]);
+    // 14 days out is still allowed.
+    await expect(
+      getRecommendations({ forceRefresh: false, day: "2026-11-21" }, deps(stub, cache)),
+    ).rejects.toThrow("unexpected request");
   });
 
   it("withALocationAddsDistancesToTheFirstLaunch", async () => {
@@ -372,7 +482,7 @@ describe("resolveTargetDay", () => {
   it("uses the first forecast that has daylight days", () => {
     const [a, b] = parseForecasts(launchesJSON, neighborsJSON, openLaunches());
     if (a === undefined || b === undefined) never();
-    expect(resolveTargetDay([{ ...a, days: [] }, b], NOW)).toBe("today");
+    expect(resolveTargetDay([{ ...a, days: [] }, b], NOW)).toBe("2026-11-07");
     expect(resolveTargetDay([{ ...a, days: [] }, { ...b, days: [] }], NOW)).toBeUndefined();
   });
 });

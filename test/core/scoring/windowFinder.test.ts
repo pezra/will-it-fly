@@ -35,9 +35,9 @@ const NOW_EARLY = at(0);
 
 describe("targetDay", () => {
   it("is today before sunset and at sunset, tomorrow after", () => {
-    expect(targetDay(DAY.sunset - 1, DAY.sunset)).toBe("today");
-    expect(targetDay(DAY.sunset, DAY.sunset)).toBe("today");
-    expect(targetDay(DAY.sunset + 1, DAY.sunset)).toBe("tomorrow");
+    expect(targetDay(DAY.sunset - 1, DAY.sunset)).toBe("2026-06-15");
+    expect(targetDay(DAY.sunset, DAY.sunset)).toBe("2026-06-15");
+    expect(targetDay(DAY.sunset + 1, DAY.sunset)).toBe("2026-06-16");
   });
 });
 
@@ -45,23 +45,16 @@ describe("daylightDayFor", () => {
   const tomorrow = { sunrise: DAY.sunrise + 24 * HOUR_MS, sunset: DAY.sunset + 24 * HOUR_MS };
   const days = [DAY, tomorrow];
 
-  it("picks today's entry by Denver day key", () => {
-    expect(daylightDayFor(days, "today", at(12))).toBe(DAY);
-  });
-
-  it("picks the next day for tomorrow", () => {
-    expect(daylightDayFor(days, "tomorrow", at(22))).toBe(tomorrow);
+  it("picks the entry by Denver day key", () => {
+    expect(daylightDayFor(days, "2026-06-15")).toBe(DAY);
+    expect(daylightDayFor(days, "2026-06-16")).toBe(tomorrow);
   });
 
   it("is undefined when the day isn't in the response", () => {
-    expect(daylightDayFor([DAY], "tomorrow", at(22))).toBeUndefined();
-    expect(daylightDayFor([tomorrow], "today", at(12))).toBeUndefined();
-    expect(daylightDayFor([], "today", at(12))).toBeUndefined();
-  });
-
-  it("uses the Denver calendar, not UTC: 22:00 MDT is already the next UTC day", () => {
-    expect(daylightDayFor(days, "today", at(22))).toBe(DAY);
-    expect(daylightDayFor(days, "tomorrow", at(22))).toBe(tomorrow);
+    expect(daylightDayFor([DAY], "2026-06-16")).toBeUndefined();
+    expect(daylightDayFor([tomorrow], "2026-06-15")).toBeUndefined();
+    expect(daylightDayFor([], "2026-06-15")).toBeUndefined();
+    expect(daylightDayFor(days, "2026-06-17")).toBeUndefined();
   });
 });
 
@@ -99,8 +92,8 @@ describe("daylightHours", () => {
     const tomorrow = { sunrise: DAY.sunrise + 24 * HOUR_MS, sunset: DAY.sunset + 24 * HOUR_MS };
     const now = DAY.sunset + 30 * 60_000;
     const which = targetDay(now, DAY.sunset);
-    expect(which).toBe("tomorrow");
-    const day = daylightDayFor([DAY, tomorrow], which, now);
+    expect(which).toBe("2026-06-16");
+    const day = daylightDayFor([DAY, tomorrow], which);
     expect(day).toBe(tomorrow);
     const twoDays = Array.from({ length: 48 }, (_, h) => hr(h, "good"));
     const got = daylightHours(twoDays, tomorrow, now).map((r) => (r.time - at(0)) / HOUR_MS);
@@ -412,8 +405,8 @@ describe("DST fall-back (2026-11-01, 25-hour day)", () => {
   it("daylight selection and day lookup use the Denver calendar", () => {
     const nextDay = { sunrise: day.sunrise + 24 * HOUR_MS, sunset: day.sunset + 24 * HOUR_MS };
     const now = Date.UTC(2026, 10, 1, 5, 30); // 23:30 MDT on Oct 31
-    expect(daylightDayFor([nextDay, day], "tomorrow", now)).toBe(day);
-    expect(daylightDayFor([day, nextDay], "today", now)).toBeUndefined();
+    expect(daylightDayFor([nextDay, day], "2026-11-01")).toBe(day);
+    expect(daylightDayFor([day, nextDay], "2026-10-31")).toBeUndefined();
     const sel = daylightHours(results, day, now);
     expect(sel.length).toBe(10);
   });
@@ -421,7 +414,7 @@ describe("DST fall-back (2026-11-01, 25-hour day)", () => {
   it("after sunset on Oct 31 the target is Nov 1", () => {
     const oct31 = { sunrise: Date.UTC(2026, 9, 31, 13, 20), sunset: Date.UTC(2026, 9, 31, 23, 55) };
     const now = oct31.sunset + 3 * HOUR_MS;
-    expect(targetDay(now, oct31.sunset)).toBe("tomorrow");
-    expect(daylightDayFor([oct31, day], "tomorrow", now)).toBe(day);
+    expect(targetDay(now, oct31.sunset)).toBe("2026-11-01");
+    expect(daylightDayFor([oct31, day], "2026-11-01")).toBe(day);
   });
 });

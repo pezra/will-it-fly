@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { denverDayKey, denverHour, formatDenverTime } from "../../src/core/time";
+import { addDays, denverDayKey, denverHour, formatDayKey, formatDenverTime, isDayKey } from "../../src/core/time";
 
 const at = (iso: string) => Date.parse(iso);
 
@@ -39,5 +39,30 @@ describe("time (America/Denver)", () => {
     expect(formatDenverTime(at("2026-07-15T18:45:00Z"))).toBe("12:00");
     expect(formatDenverTime(at("2026-07-16T06:10:00Z"))).toBe("00:00");
     expect(formatDenverTime(at("2026-07-15T15:00:00Z"))).toBe("09:00");
+  });
+});
+
+describe("day keys", () => {
+  it("adds calendar days across DST changes, months and years", () => {
+    expect(addDays("2026-10-31", 1)).toBe("2026-11-01");
+    expect(addDays("2026-11-01", 1)).toBe("2026-11-02");
+    expect(addDays("2026-03-08", 1)).toBe("2026-03-09");
+    expect(addDays("2026-12-31", 1)).toBe("2027-01-01");
+    expect(addDays("2028-02-28", 1)).toBe("2028-02-29");
+    expect(addDays("2026-11-08", 14)).toBe("2026-11-22");
+    expect(addDays("2026-11-08", -8)).toBe("2026-10-31");
+  });
+  it("accepts only real YYYY-MM-DD dates", () => {
+    expect(isDayKey("2026-11-08")).toBe(true);
+    expect(isDayKey("2028-02-29")).toBe(true);
+    expect(isDayKey("2026-02-29")).toBe(false);
+    expect(isDayKey("2026-13-01")).toBe(false);
+    expect(isDayKey("2026-1-01")).toBe(false);
+    expect(isDayKey("tomorrow")).toBe(false);
+    expect(() => addDays("nope", 1)).toThrow();
+  });
+  it("formats a day key without shifting it", () => {
+    expect(formatDayKey("2026-11-10")).toBe("Tue, Nov 10");
+    expect(formatDayKey("2027-01-01")).toBe("Fri, Jan 1");
   });
 });

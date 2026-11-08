@@ -1,10 +1,12 @@
 import type { SiteRecommendation } from "../core/recommendation/types";
 import { windowLabel } from "../core/scoring/windowFinder";
+import type { DayKey } from "../core/time";
 import { CallBadge } from "./CallBadge";
 import { siteHref } from "./route";
 import { confidenceLabel, miles } from "./format";
 
-export function SiteRow({ rec }: { rec: SiteRecommendation }) {
+/** `day` is the route's day (undefined for the default), so the detail link keeps it. */
+export function SiteRow({ rec, day }: { rec: SiteRecommendation; day: DayKey | undefined }) {
   const { site, best } = rec;
   const distance = miles(rec.distanceM);
   const status = site.status;
@@ -18,7 +20,7 @@ export function SiteRow({ rec }: { rec: SiteRecommendation }) {
 
   return (
     <li>
-      <a class="row" href={siteHref(site.id)}>
+      <a class="row" href={siteHref(site.id, day)}>
         <div class="row-top">
           <span class="row-name">{site.name}</span>
           <CallBadge call={rec.call} />

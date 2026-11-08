@@ -1,5 +1,6 @@
 import type { DaylightDay } from "../forecast/models";
-import { HOUR_MS, denverDayKey, formatDenverTime } from "../time";
+import { HOUR_MS, addDays, denverDayKey, formatDenverTime } from "../time";
+import type { DayKey } from "../time";
 import { SCORING_DEFAULTS, runLengthWeight } from "./defaults";
 import type { ScoringDefaults } from "./defaults";
 import type { HourResult, Reason } from "./hourEvaluator";
@@ -8,7 +9,7 @@ import type { Confidence } from "./modelAgreement";
 
 export type { Confidence } from "./modelAgreement";
 
-export type TargetDay = "today" | "tomorrow";
+export type { DayKey } from "../time";
 
 export interface FlyingWindow {
   /** Start of the first hour (epoch ms). */
@@ -24,32 +25,15 @@ export interface FlyingWindow {
   warnings: Reason[];
 }
 
-/** Today, unless `now` is after today's sunset. */
-export function targetDay(now: number, sunsetToday: number): TargetDay {
-  return now > sunsetToday ? "tomorrow" : "today";
+/** Today's Denver day key, or tomorrow's when `now` is after today's sunset. */
+export function targetDay(now: number, sunsetToday: number): DayKey {
+  const today = denverDayKey(now);
+  return now > sunsetToday ? addDays(today, 1) : today;
 }
 
-/**
- * The daylight entry for the target day, matched by Denver day key of its sunrise. "Tomorrow" is the
- * earliest day after today's key. Undefined when the response doesn't cover that day.
- */
-export function daylightDayFor(
-  days: readonly DaylightDay[],
-  which: TargetDay,
-  now: number,
-): DaylightDay | undefined {
-  const todayKey = denverDayKey(now);
-  if (which === "today") return days.find((d) => denverDayKey(d.sunrise) === todayKey);
-  let best: DaylightDay | undefined;
-  let bestKey = "";
-  for (const d of days) {
-    const key = denverDayKey(d.sunrise);
-    if (key > todayKey && (best === undefined || key < bestKey)) {
-      best = d;
-      bestKey = key;
-    }
-  }
-  return best;
+/** The daylight entry for a day, matched by the Denver day key of its sunrise. */
+export function daylightDayFor(days: readonly DaylightDay[], key: DayKey): DaylightDay | undefined {
+  return days.find((d) => denverDayKey(d.sunrise) === key);
 }
 
 /**

@@ -43,11 +43,11 @@ Tests read fixture files with Vite's `?raw` import rather than `node:fs`.
 
 ## Running it
 
-`npm run dev` serves the app at http://localhost:5173/. Dev builds honor a few query parameters for checking states by hand. Production builds ignore them.
+`npm run dev` serves the app at http://localhost:5173/. The hash picks the page: `#/` and `#/site/<id>` are the default day, and `#/day/YYYY-MM-DD` and `#/day/YYYY-MM-DD/site/<id>` are that day. Dev builds honor a few query parameters for checking states by hand. Production builds ignore them.
 
 | Parameter | Effect |
 |---|---|
-| `?now=2026-11-08T18:30:00-07:00` | fixes the clock (after sunset shows tomorrow) |
+| `?now=2026-11-08T18:30:00-07:00` | fixes the clock (after sunset shows tomorrow). The picker's range follows it |
 | `?lat=39.74&lon=-104.99` | fakes a location |
 | `?nolocation` | behaves as if location were denied |
 | `?base=https://invalid.example` | points at a dead Open-Meteo host. Combined with a `now` more than an hour after the last fetch, it shows the offline fallback |

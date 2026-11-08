@@ -45,3 +45,47 @@ export const HOUR_MS = 3_600_000;
 export function byTime<T extends { time: number }>(items: readonly T[]): Map<number, T> {
   return new Map(items.map((item) => [item.time, item] as const));
 }
+
+/** A "YYYY-MM-DD" Denver calendar day, as from `denverDayKey`. */
+export type DayKey = string;
+
+const DAY_KEY = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/** The UTC noon of a day key's date, or undefined when it isn't a real "YYYY-MM-DD" date. */
+function utcNoon(key: string): number | undefined {
+  const match = DAY_KEY.exec(key);
+  if (match === null) return undefined;
+  const [y, m, d] = [Number(match[1]), Number(match[2]), Number(match[3])];
+  const ms = Date.UTC(y, m - 1, d, 12);
+  const date = new Date(ms);
+  if (date.getUTCFullYear() !== y || date.getUTCMonth() !== m - 1 || date.getUTCDate() !== d) {
+    return undefined;
+  }
+  return ms;
+}
+
+/** True for a real calendar date written as "YYYY-MM-DD". */
+export function isDayKey(key: string): boolean {
+  return utcNoon(key) !== undefined;
+}
+
+/** The day key `days` calendar days after `key` (calendar arithmetic, so DST never shifts it). */
+export function addDays(key: DayKey, days: number): DayKey {
+  const noon = utcNoon(key);
+  if (noon === undefined) throw new Error(`not a day key: ${key}`);
+  return new Date(noon + days * 24 * HOUR_MS).toISOString().slice(0, 10);
+}
+
+const dayLabelFormat = new Intl.DateTimeFormat("en-US", {
+  timeZone: "UTC",
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+});
+
+/** "Tue, Nov 10" for a day key. */
+export function formatDayKey(key: DayKey): string {
+  const noon = utcNoon(key);
+  if (noon === undefined) throw new Error(`not a day key: ${key}`);
+  return dayLabelFormat.format(noon);
+}

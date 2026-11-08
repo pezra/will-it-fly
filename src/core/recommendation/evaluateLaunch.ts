@@ -4,9 +4,9 @@ import type { ScoringDefaults } from "../scoring/defaults";
 import { applyStormLookahead, evaluateHour } from "../scoring/hourEvaluator";
 import type { HourContext, HourResult, ModelName } from "../scoring/hourEvaluator";
 import { daylightDayFor, daylightHours, findBestWindow } from "../scoring/windowFinder";
-import type { TargetDay } from "../scoring/windowFinder";
 import type { Launch, Site } from "../sites/site";
 import { HOUR_MS, byTime } from "../time";
+import type { DayKey } from "../time";
 import type { DaylightRow, LaunchEvaluation } from "./types";
 
 /** Evaluates the hours in time order, then runs the storm look-ahead (which matches by time). */
@@ -92,24 +92,24 @@ function evaluateForecastIndexed(
   };
 }
 
-/** Evaluates one launch and finds its best window for the target day. */
+/** Evaluates one launch and finds its best window for the day. */
 export function evaluateLaunch(
   site: Site,
   launch: Launch,
   forecast: LaunchForecast,
-  which: TargetDay,
+  day: DayKey,
   now: number,
   defaults: ScoringDefaults = SCORING_DEFAULTS,
 ): LaunchEvaluation {
-  const day = daylightDayFor(forecast.days, which, now);
-  if (day === undefined) return { launch, daylight: [], window: undefined };
+  const daylightDay = daylightDayFor(forecast.days, day);
+  if (daylightDay === undefined) return { launch, daylight: [], window: undefined };
   const { ecmwf, rrfs, ecmwfByTime: ecmwfHours, rrfsByTime: rrfsHours } = evaluateForecastIndexed(
     site,
     launch,
     forecast,
     defaults,
   );
-  const results = daylightHours(ecmwf, day, now);
+  const results = daylightHours(ecmwf, daylightDay, now);
   const rrfsResults = byTime(rrfs);
   const daylight = results.flatMap((result): DaylightRow[] => {
     const ecmwfHour = ecmwfHours.get(result.time);

@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
-import { createForecastCache } from "../core/forecast/forecastCache";
+import { DEFAULT_CACHE_KEY, createForecastCache } from "../core/forecast/forecastCache";
 import { getRecommendations } from "../core/recommendation/recommendationService";
 import { withDistances } from "../core/recommendation/ranker";
 import type { RecommendationResult } from "../core/recommendation/types";
 import { bundledSiteProvider } from "../core/sites/siteProvider";
+import type { DayKey } from "../core/time";
 import type { DebugParams } from "./debugParams";
 import { requestLocation } from "./location";
 import type { LocationResult, LocationStatus } from "./location";
@@ -14,6 +15,8 @@ export type RecommendationsState =
   | { status: "loading" }
   | {
       status: "loaded";
+      /** The day that was asked for (undefined for the default day). */
+      requested: DayKey | undefined;
       result: RecommendationResult;
       /** True while a Refresh is in flight. */
       refreshing: boolean;
@@ -31,6 +34,9 @@ export interface Recommendations {
   retry: () => void;
 }
 
+/** The cache slot for a single day after tomorrow. Only the last one fetched is kept. */
+const DAY_CACHE_KEY = `${DEFAULT_CACHE_KEY}/day`;
+
 /** How often the forecast age re-renders while the page is visible. */
 const TICK_MS = 60_000;
 
@@ -41,9 +47,10 @@ function describe(error: unknown): string {
 /**
  * Loads the forecast and the location in parallel. The forecast never waits for location: the
  * ranking is computed without distances and `withDistances` fills them in (and re-ranks) when the
- * position arrives, with no refetch.
+ * position arrives, with no refetch. `day` is the day to show, undefined for the default; changing it
+ * loads that day (from the cache when it can) and shows loading until it arrives.
  */
-export function useRecommendations(debug: DebugParams): Recommendations {
+export function useRecommendations(debug: DebugParams, day: DayKey | undefined): Recommendations {
   const [base, setBase] = useState<RecommendationsState>({ status: "loading" });
   const [locationResult, setLocationResult] = useState<LocationResult | undefined>(undefined);
 
@@ -54,6 +61,7 @@ export function useRecommendations(debug: DebugParams): Recommendations {
       transport: fetchTransport,
       baseURL: debug.baseURL,
       cache: createForecastCache(localStorageStore()),
+      dayCache: createForecastCache(localStorageStore(), DAY_CACHE_KEY),
       now,
     }),
     [debug.baseURL, now],
@@ -68,16 +76,17 @@ export function useRecommendations(debug: DebugParams): Recommendations {
     (forceRefresh: boolean) => {
       const id = ++requestId.current;
       inFlight.current++;
+      // Another day's result is never shown as this day's while it loads.
       setBase((prev) =>
-        prev.status === "loaded"
-          ? { status: "loaded", result: prev.result, refreshing: true }
+        prev.status === "loaded" && prev.requested === day
+          ? { status: "loaded", requested: day, result: prev.result, refreshing: true }
           : { status: "loading" },
       );
-      getRecommendations({ forceRefresh }, deps).then(
+      getRecommendations({ forceRefresh, day }, deps).then(
         (result) => {
           inFlight.current--;
           if (id !== requestId.current) return;
-          setBase({ status: "loaded", result, refreshing: false });
+          setBase({ status: "loaded", requested: day, result, refreshing: false });
         },
         (error: unknown) => {
           inFlight.current--;
@@ -85,18 +94,13 @@ export function useRecommendations(debug: DebugParams): Recommendations {
           console.error("Could not load recommendations", error);
           setBase((prev) =>
             prev.status === "loaded"
-              ? {
-                  status: "loaded",
-                  result: prev.result,
-                  refreshing: false,
-                  refreshError: describe(error),
-                }
+              ? { ...prev, refreshing: false, refreshError: describe(error) }
               : { status: "failed", message: describe(error) },
           );
         },
       );
     },
-    [deps],
+    [deps, day],
   );
 
   useEffect(() => {
