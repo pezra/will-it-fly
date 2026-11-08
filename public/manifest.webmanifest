@@ -1,6 +1,6 @@
 {
-  "name": "Flyable sites",
-  "short_name": "Flyable",
+  "name": "Will it fly?",
+  "short_name": "Will it fly?",
   "description": "Ranked paragliding site recommendations for the Rocky Mountain region.",
   "start_url": "./",
   "scope": "./",

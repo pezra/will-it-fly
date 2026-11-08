@@ -3,7 +3,7 @@
 const BUILD_ID = "dev";
 const PRECACHE = ["./", "index.html", "manifest.webmanifest"];
 
-const CACHE_PREFIX = "flyable-sites-";
+const CACHE_PREFIX = "will-it-fly-";
 const CACHE_NAME = CACHE_PREFIX + BUILD_ID;
 
 self.addEventListener("install", (event) => {

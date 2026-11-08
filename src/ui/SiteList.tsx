@@ -23,7 +23,7 @@ export function SiteList({ recs }: { recs: Recommendations }) {
   if (state.status !== "loaded") {
     return (
       <>
-        <h1>Flyable sites</h1>
+        <h1>Will it fly?</h1>
         <ForecastStatus state={state} retry={retry} />
       </>
     );
