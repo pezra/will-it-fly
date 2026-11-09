@@ -39,7 +39,7 @@ export function App({ debug }: { debug: DebugParams }) {
     <>
       <main>
         {route.page === "site" ? (
-          <SiteDetail siteId={route.id} day={route.day} recs={view.recs} />
+          <SiteDetail siteId={route.id} day={route.day} recs={view.recs} catalogIds={view.catalogIds} />
         ) : (
           <SiteList travel={view} day={route.day} />
         )}

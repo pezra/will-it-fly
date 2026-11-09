@@ -4,7 +4,7 @@ import { addDays, denverDayKey } from "../core/time";
 import type { DayKey } from "../core/time";
 import { DayPicker } from "./DayPicker";
 import { ForecastStatus } from "./ForecastStatus";
-import { dayLabel, forecastAge, hiddenLine } from "./format";
+import { dayLabel, forecastAge, hiddenLine, loadingMoreLine, stageMessage } from "./format";
 import { listHref } from "./route";
 import { SiteRow } from "./SiteRow";
 import { TravelBar } from "./TravelBar";
@@ -30,22 +30,26 @@ export function SiteList({ travel, day }: { travel: Travel; day: DayKey | undefi
   // With no start, a loaded result can only be a site page's own site, so it is not the list.
   const noStart = travel.stage === "needsStart" || travel.stage === "locating";
   if (state.status !== "loaded" || noStart) {
+    const message = stageMessage(travel.stage);
     return (
       <>
         <h1>Will it fly?</h1>
         <DayPicker today={denverDayKey(now())} shown={day} />
         {/* The travel bar is the only way to set a start when there is none. */}
-        <TravelBar travel={travel} />
-        {travel.stage === "needsStart" ? (
-          <p class="status">Set a starting point.</p>
+        <TravelBar travel={travel} openWhen={travel.stage === "needsStart"} />
+        {state.status !== "loaded" && (state.status === "failed" || message === undefined) ? (
+          <ForecastStatus state={state} retry={retry} />
         ) : (
-          <ForecastStatus state={state.status === "loaded" ? { status: "loading" } : state} retry={retry} />
+          <p class="status" role="status">{message}</p>
         )}
+        {travel.effectiveStart === undefined && <LocationNote location={location} />}
       </>
     );
   }
 
   const { result } = state;
+  const have = new Set(result.sites.map((r) => r.site.id));
+  const missing = travel.inRangeIds.filter((id) => !have.has(id)).length;
   return (
     <>
       <header class="list-header">
@@ -57,9 +61,13 @@ export function SiteList({ travel, day }: { travel: Travel; day: DayKey | undefi
       <p class="age">{forecastAge(result.fetchedAt, now())}</p>
       <DayPicker today={result.today} shown={result.day} />
       <TravelBar travel={travel} />
-      {travel.hiddenCount > 0 && !result.dayOver && (
-        <p class="hidden-line">{hiddenLine(travel.hiddenCount, travel.settings.maxHours)}</p>
+      {/* Until the in-range sites arrive the hidden count is too high, so it waits. */}
+      {missing === 0 && travel.hiddenCount > 0 && !result.dayOver && (
+        <p class="hidden-line">
+          {hiddenLine(travel.hiddenCount, travel.settings.maxHours, travel.catalogSize)}
+        </p>
       )}
+      {state.refreshing && missing > 0 && <p class="note">{loadingMoreLine(missing)}</p>}
       {result.isOffline && (
         <p class="banner" role="status">
           Offline: showing the last saved forecast.
