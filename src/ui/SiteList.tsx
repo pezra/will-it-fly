@@ -6,7 +6,7 @@ import { addDays, denverDayKey } from "../core/time";
 import type { DayKey } from "../core/time";
 import { DayPicker } from "./DayPicker";
 import { ForecastStatus } from "./ForecastStatus";
-import { dayLabel, forecastAge, hiddenLine, loadingMoreLine, stageMessage } from "./format";
+import { dayLabel, fallbackLine, forecastAge, hiddenLine, loadingMoreLine, stageMessage } from "./format";
 import { listHref } from "./route";
 import { SiteRow } from "./SiteRow";
 import { TravelBar } from "./TravelBar";
@@ -27,16 +27,18 @@ function LocationNote({ location }: { location: Recommendations["location"] }) {
 
 /**
  * `day` is the route's day, undefined for the default day; `model` is the route's model, kept by
- * every link. Lists `travel.shown`.
+ * every link, and `setModel` switches it. Lists `travel.shown`.
  */
 export function SiteList({
   travel,
   day,
   model,
+  setModel,
 }: {
   travel: Travel;
   day: DayKey | undefined;
   model: ModelName;
+  setModel: (model: ModelName) => void;
 }) {
   const { state, location, now, refresh, retry } = travel.recs;
 
@@ -48,8 +50,15 @@ export function SiteList({
       <>
         <h1>Will it fly?</h1>
         <DayPicker today={denverDayKey(now())} shown={day} model={model} />
-        {/* The travel bar is the only way to set a start when there is none. */}
-        <TravelBar travel={travel} openWhen={travel.stage === "needsStart"} />
+        {/* The travel bar is the only way to set a start when there is none. The same `key` as the
+            loaded view's, so a switch that passes through loading doesn't close its options. */}
+        <TravelBar
+          key="travel"
+          travel={travel}
+          model={model}
+          setModel={setModel}
+          openWhen={travel.stage === "needsStart"}
+        />
         {state.status === "failed" || (state.status === "loading" && message === undefined) ? (
           <ForecastStatus state={state} retry={retry} />
         ) : (
@@ -62,6 +71,7 @@ export function SiteList({
 
   const { result } = state;
   const missing = missingSiteIds(result, travel.inRangeIds).length;
+  const fallback = fallbackLine(result.model, travel.shown);
   return (
     <>
       <header class="list-header">
@@ -72,7 +82,8 @@ export function SiteList({
       </header>
       <p class="age">{forecastAge(result.fetchedAt, now())}</p>
       <DayPicker today={result.today} shown={result.day} model={model} />
-      <TravelBar travel={travel} />
+      <TravelBar key="travel" travel={travel} model={model} setModel={setModel} />
+      {fallback !== undefined && !result.dayOver && <p class="note">{fallback}</p>}
       {/* Until routing is done and the in-range sites arrive the hidden count is wrong, so it waits. */}
       {travel.stage === "ready" && missing === 0 && travel.hiddenCount > 0 && !result.dayOver && (
         <p class="hidden-line">

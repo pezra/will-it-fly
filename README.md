@@ -1,6 +1,6 @@
 # Will it fly?
 
-Ranks the RMHPA paragliding sites by how flyable they look today, using the ECMWF forecast and NOAA's RRFS model as a cross-check. Each site gets a call (good, flyable or no-go), its best time window, how much the two models agree, and the reasons behind the call. Good and flyable sites are labeled Soar, XC or Sledder, with any cautions listed beside the labels.
+Ranks the RMHPA paragliding sites by how flyable they look today, using the ECMWF forecast and NOAA's RRFS model. One of them makes the call and the other checks it, and you can switch which is which. Each site gets a call (good, flyable or no-go), its best time window, how much the two models agree, and the reasons behind the call. Good and flyable sites are labeled Soar, XC or Sledder, with any cautions listed beside the labels.
 
 It's a static web app meant for a phone. Open it in Safari and use Share → Add to Home Screen to get an app-like icon that also opens offline with the last forecast.
 
@@ -19,15 +19,17 @@ Good and flyable sites show condition labels (Soar, XC or Sledder) rather than t
 
 The start point and drive time are set in the bar under the day picker. It starts at 2 h from your location. Tap it to choose 1, 2, 3 or 4 h. You can also search for a town or address and start from there, and "Use my location" switches back to your location once a place is chosen. Start point and drive time are remembered on this device.
 
+The same bar has a Forecast model choice, ECMWF or RRFS. The one you pick makes the call for every site, and the other checks it. The bar's summary line shows which is in use, for example "Within 2 h of Boulder · RRFS". The choice is in the link (`#/?model=rrfs`), so a link you share, Back and a reload all keep it. The last choice you made with the control is remembered on this device and used for a link with no model. Opening someone else's link doesn't change it. Switching models doesn't fetch a new forecast while the saved one is under an hour old, since both models come in the same download.
+
 Each site shows its drive time, then its straight-line distance. A time with "≈" in front is an estimate: the straight-line distance at 40 mph. Estimates are used when routing is unavailable.
 
 When sites are hidden, the list says how many (for example "3 sites hidden (over 2 h away)"). Widen the drive time to see them. Without a start point the list is empty and asks you to set one, since there is nothing to measure from.
 
 The order of work is: find your location, drop sites too far away in a straight line (more than 80 mph times the hours, so 160 mi for 2 h), get routed drive times for the rest, and only then fetch the forecast, for the sites within the drive time. Widening the drive time fetches only the sites you haven't seen yet. A link to a single site's page fetches just that site, whatever its distance.
 
-Tap a site to see its launches, the hour by hour ECMWF and RRFS conditions, and the reasons for each hour's call. Refresh fetches a new forecast, unless the last one is under 5 minutes old. Each site's forecast is reused for an hour, and the age shown is that of the oldest one on screen.
+Tap a site to see its launches, the hour by hour conditions from both models (the one making the call first), and the reasons for each hour's call. Refresh fetches a new forecast, unless the last one is under 5 minutes old. Each site's forecast is reused for an hour, and the age shown is that of the oldest one on screen.
 
-After local sunset it shows tomorrow instead of today. The Today and Tomorrow buttons, and the date picker, show any day up to 14 days out. A day after tomorrow is fetched on its own when you pick it. RRFS only runs about 3½ days ahead, so windows further out are ECMWF only, and a two-week forecast is a rough guide at best.
+After local sunset it shows tomorrow instead of today. The Today and Tomorrow buttons, and the date picker, show any day up to 14 days out. A day after tomorrow is fetched on its own when you pick it. RRFS only runs about 3½ days ahead, so with RRFS chosen the days beyond that use ECMWF, and the list and the site page say so. Either way, a two-week forecast is a rough guide at best.
 
 If you allow location access, the drive times and distances are measured from where you are. Without it everything still works: you can search for a start point, or, with neither, the list waits for you to set one. (To change it on an iPhone: Settings → Safari → Location.)
 
@@ -38,6 +40,7 @@ If you allow location access, the drive times and distances are measured from wh
 - For drive times, the start point rounded to about 1 km goes to the OSRM server, along with the site coordinates, which are public. The text you type in search goes to Nominatim. The app keeps the drive times for the last five rounded start points on your device.
 - Open-Meteo gets the launch coordinates of the sites in drive range, or of the one site whose page you open. It never gets your start point.
 - Forecasts are cached on your device per site, for the 30 most recently used sites. The old single-entry forecast cache (`forecast-v1`) is removed on first load.
+- Your last forecast model choice is saved on your device (`willItFly.model.v1`).
 - Site information from [RMHPA](https://www.rmhpa.org/flying-sites), curated by hand into `sites.json`. Each site links to its RMHPA page. Verify before flying.
 
 ## How sites are scored

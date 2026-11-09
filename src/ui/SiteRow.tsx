@@ -47,7 +47,7 @@ export function SiteRow({
           {best !== undefined && (
             <>
               <strong class="window">{windowLabel(best.window)}</strong>
-              <span>{confidenceLabel(best.window.confidence)}</span>
+              <span>{confidenceLabel(best.window.confidence, best.model)}</span>
               {site.launches.length > 1 && <span>{best.launch.name}</span>}
             </>
           )}

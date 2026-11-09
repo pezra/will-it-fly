@@ -46,7 +46,7 @@ Tests read fixture files with Vite's `?raw` import rather than `node:fs`.
 
 ## Running it
 
-`npm run dev` serves the app at http://localhost:5173/. The hash picks the page: `#/` and `#/site/<id>` are the default day, and `#/day/YYYY-MM-DD` and `#/day/YYYY-MM-DD/site/<id>` are that day. Dev builds honor a few query parameters for checking states by hand. Production builds ignore them.
+`npm run dev` serves the app at http://localhost:5173/. The hash picks the page: `#/` and `#/site/<id>` are the default day, and `#/day/YYYY-MM-DD` and `#/day/YYYY-MM-DD/site/<id>` are that day. Every hash ends in `?model=ecmwf` or `?model=rrfs`, the primary forecast model. One with no model, or a bad one, is rewritten in place (no history entry) to the saved default, which is ECMWF until someone uses the model control. Only the control saves the default; opening a link with a model never does. Dev builds honor a few query parameters for checking states by hand. Production builds ignore them.
 
 | Parameter | Effect |
 |---|---|
@@ -75,7 +75,7 @@ The rules are in `src/core/scoring/hourEvaluator.ts`, and every threshold and we
 
 1. `evaluateHour` gives each hour, for each model, a call (good, flyable, no-go or no data), a score and reasons.
 2. `applyStormLookahead` marks the hours before a convective no-go.
-3. `findBestWindow` picks the best run of daylight hours, weighted by RRFS agreement.
+3. `findBestWindow` picks the best run of daylight hours, weighted by how well the check model agrees.
 4. The ranker picks each site's best launch and orders the sites.
 
 **Any change to `SCORING_DEFAULTS` or to a rule must update the "How sites are scored" section of the README in the same commit.** That section is how a pilot sanity-checks a call, so it has to match the code exactly. A test pins every default, so a changed value fails until the test is updated too.
@@ -111,4 +111,4 @@ Sites come through the `SiteProvider` interface in `src/core/sites/siteProvider.
 
 ## Why not HRRR or Windy
 
-HRRR on Open-Meteo is discontinued at the end of November 2026, and RRFS is NOAA's replacement. Windy's point forecast API doesn't include ECMWF because of licensing, and ECMWF is the model this app trusts most.
+HRRR on Open-Meteo is discontinued at the end of November 2026, and RRFS is NOAA's replacement. Windy's point forecast API doesn't include ECMWF because of licensing, and ECMWF is the default model.

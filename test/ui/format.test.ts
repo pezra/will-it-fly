@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { testLaunch } from "../support/builders";
-import type { Reason } from "../../src/core/scoring/hourEvaluator";
+import { testLaunch, testSite } from "../support/builders";
+import type { LaunchEvaluation, SiteRecommendation } from "../../src/core/recommendation/types";
+import type { ModelName, Reason } from "../../src/core/scoring/hourEvaluator";
 import {
   CONDITION_LABEL,
   approxFeet,
@@ -14,8 +15,11 @@ import {
   driveLabel,
   feet,
   forecastAge,
+  fallbackLine,
   hiddenLine,
+  hourlyColumns,
   idealLabel,
+  launchFallbackNote,
   loadingMoreLine,
   miles,
   oneDecimal,
@@ -69,8 +73,18 @@ describe("labels", () => {
     expect(callLabel("noGo")).toBe("No-go");
   });
   it("labels confidence", () => {
-    expect(confidenceLabel("primaryOnly")).toBe("ECMWF only");
-    expect(confidenceLabel("high")).toBe("high confidence");
+    expect(confidenceLabel("high", "ecmwf")).toBe("high confidence");
+  });
+  it("names the primary model in the only-one-model label", () => {
+    expect(confidenceLabel("primaryOnly", "ecmwf")).toBe("ECMWF only");
+    expect(confidenceLabel("primaryOnly", "rrfs")).toBe("RRFS only");
+  });
+  it("leaves the other confidence levels alone whatever the model", () => {
+    for (const model of ["ecmwf", "rrfs"] as const) {
+      expect(confidenceLabel("high", model)).toBe("high confidence");
+      expect(confidenceLabel("medium", model)).toBe("medium confidence");
+      expect(confidenceLabel("low", model)).toBe("low confidence");
+    }
   });
   it("labels days relative to today", () => {
     expect(dayLabel("2026-11-08", "2026-11-08")).toBe("Today");
@@ -120,26 +134,144 @@ describe("travelSummary", () => {
   const boulder = { latitude: 40.01, longitude: -105.27 };
   const place = { kind: "place" as const, name: "Boulder", coordinate: boulder };
   const here = { kind: "geolocation" as const };
-  it("names the place or your location", () => {
-    expect(travelSummary({ start: place, maxHours: 2 }, boulder, "found")).toBe(
-      "Within 2 h of Boulder",
+  it("names the place or your location, then the model", () => {
+    expect(travelSummary({ start: place, maxHours: 2 }, boulder, "found", "ecmwf")).toBe(
+      "Within 2 h of Boulder · ECMWF",
     );
-    expect(travelSummary({ start: here, maxHours: 3 }, boulder, "found")).toBe(
-      "Within 3 h of your location",
+    expect(travelSummary({ start: place, maxHours: 2 }, boulder, "found", "rrfs")).toBe(
+      "Within 2 h of Boulder · RRFS",
+    );
+    expect(travelSummary({ start: here, maxHours: 3 }, boulder, "found", "rrfs")).toBe(
+      "Within 3 h of your location · RRFS",
     );
   });
-  it("asks for a start when there is none", () => {
-    expect(travelSummary({ start: here, maxHours: 2 }, undefined, "denied")).toBe(
-      "Set a starting point",
-    );
-    expect(travelSummary({ start: here, maxHours: 4 }, undefined, "unavailable")).toBe(
-      "Set a starting point",
-    );
+  it("asks for a start when there is none, without the model", () => {
+    for (const model of ["ecmwf", "rrfs"] as const) {
+      expect(travelSummary({ start: here, maxHours: 2 }, undefined, "denied", model)).toBe(
+        "Set a starting point",
+      );
+      expect(travelSummary({ start: here, maxHours: 4 }, undefined, "unavailable", model)).toBe(
+        "Set a starting point",
+      );
+    }
   });
   it("says it is finding the location while geolocation is pending", () => {
-    expect(travelSummary({ start: here, maxHours: 2 }, undefined, "pending")).toBe(
-      "Finding your location…",
+    for (const model of ["ecmwf", "rrfs"] as const) {
+      expect(travelSummary({ start: here, maxHours: 2 }, undefined, "pending", model)).toBe(
+        "Finding your location…",
+      );
+    }
+  });
+});
+
+describe("fallbackLine", () => {
+  const evaluation = (fellBack: boolean): LaunchEvaluation => ({
+    launch: testLaunch(),
+    model: fellBack ? "ecmwf" : "rrfs",
+    fellBack,
+    daylight: [],
+    window: undefined,
+  });
+  /** A site with one evaluation per entry: `true` for a launch that fell back. Empty means closed. */
+  const site = (...launches: boolean[]): SiteRecommendation => ({
+    site: testSite(),
+    call: launches.length === 0 ? "closed" : "noGo",
+    launches: launches.map(evaluation),
+  });
+
+  it("is undefined for ECMWF, even if a launch says it fell back", () => {
+    expect(fallbackLine("ecmwf", [site(true), site(true)])).toBeUndefined();
+  });
+  it("is undefined for RRFS when nothing fell back, or nothing is shown", () => {
+    expect(fallbackLine("rrfs", [site(false), site(false, false)])).toBeUndefined();
+    expect(fallbackLine("rrfs", [])).toBeUndefined();
+  });
+  it("says RRFS doesn't reach the day when every evaluated site fell back", () => {
+    expect(fallbackLine("rrfs", [site(true), site(true, true), site(true)])).toBe(
+      "RRFS doesn't reach this day, so it uses ECMWF.",
     );
+  });
+  it("counts the sites that fell back when only some did", () => {
+    expect(fallbackLine("rrfs", [site(true), site(false), site(true)])).toBe(
+      "2 sites use ECMWF (RRFS doesn't reach this day).",
+    );
+  });
+  it("uses the singular for one site out of several", () => {
+    expect(fallbackLine("rrfs", [site(true), site(false), site(false)])).toBe(
+      "1 site uses ECMWF (RRFS doesn't reach this day).",
+    );
+  });
+  it("gives the all-sites line for a single evaluated site that fell back", () => {
+    expect(fallbackLine("rrfs", [site(true)])).toBe("RRFS doesn't reach this day, so it uses ECMWF.");
+  });
+  it("counts a site as fallen back when any of its launches did", () => {
+    expect(fallbackLine("rrfs", [site(true, false), site(false)])).toBe(
+      "1 site uses ECMWF (RRFS doesn't reach this day).",
+    );
+  });
+  it("doesn't count a site with no launch evaluations", () => {
+    expect(fallbackLine("rrfs", [site(), site(true), site(true)])).toBe(
+      "RRFS doesn't reach this day, so it uses ECMWF.",
+    );
+    expect(fallbackLine("rrfs", [site(), site(false), site(true)])).toBe(
+      "1 site uses ECMWF (RRFS doesn't reach this day).",
+    );
+    expect(fallbackLine("rrfs", [site(), site()])).toBeUndefined();
+  });
+});
+
+describe("launchFallbackNote", () => {
+  it("says the launch uses ECMWF", () => {
+    expect(launchFallbackNote).toBe("RRFS doesn't reach this day here, so this launch uses ECMWF.");
+  });
+});
+
+describe("hourlyColumns", () => {
+  const headers = (model: ModelName): string[] => hourlyColumns(model).map((c) => c.header);
+  const reads = (model: ModelName): string[] =>
+    hourlyColumns(model).map((c) => `${c.side ?? "-"}:${c.value}`);
+
+  it("puts the primary model first when it is ECMWF", () => {
+    expect(headers("ecmwf")).toEqual([
+      "Time",
+      "ECMWF",
+      "Wind / gust / dir",
+      "RRFS",
+      "RRFS wind / dir",
+      "CAPE J/kg",
+      "Cloud base",
+      "TI °C",
+    ]);
+  });
+  it("puts the primary model first when it is RRFS", () => {
+    expect(headers("rrfs")).toEqual([
+      "Time",
+      "RRFS",
+      "Wind / gust / dir",
+      "ECMWF",
+      "ECMWF wind / dir",
+      "CAPE J/kg",
+      "Cloud base",
+      "TI °C",
+    ]);
+  });
+  it("reads the primary side for the call, the wind, CAPE, cloud base and TI, and the check side for the check", () => {
+    const expected = [
+      "-:time",
+      "primary:call",
+      "primary:wind",
+      "check:call",
+      "check:wind",
+      "primary:cape",
+      "primary:cloudBase",
+      "primary:thermalIndex",
+    ];
+    expect(reads("ecmwf")).toEqual(expected);
+    expect(reads("rrfs")).toEqual(expected);
+  });
+  it("shows the gust only on the primary wind column", () => {
+    const withGust = hourlyColumns("rrfs").filter((c) => c.value === "wind" && c.withGust);
+    expect(withGust.map((c) => c.side)).toEqual(["primary"]);
   });
 });
 

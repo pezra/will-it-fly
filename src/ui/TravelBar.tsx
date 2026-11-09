@@ -1,4 +1,6 @@
 import { useEffect, useState } from "preact/hooks";
+import { MODEL_LABEL, MODEL_NAMES } from "../core/scoring/hourEvaluator";
+import type { ModelName } from "../core/scoring/hourEvaluator";
 import { travelSummary } from "./format";
 import { DRIVE_HOUR_CHOICES } from "./travelSettings";
 import type { Travel } from "./useTravel";
@@ -6,10 +8,21 @@ import type { Travel } from "./useTravel";
 const OPTIONS_ID = "travel-options";
 
 /**
- * The start point and drive limit: a summary line that expands to the controls. `openWhen` opens
- * them when it turns true (no start yet, so the search is the next step); the user can still close them.
+ * The start point, drive limit and forecast model: a summary line that expands to the controls.
+ * `openWhen` opens them when it turns true (no start yet, so the search is the next step); the user
+ * can still close them. `model` is the route's model and `setModel` switches it.
  */
-export function TravelBar({ travel, openWhen = false }: { travel: Travel; openWhen?: boolean }) {
+export function TravelBar({
+  travel,
+  model,
+  setModel,
+  openWhen = false,
+}: {
+  travel: Travel;
+  model: ModelName;
+  setModel: (model: ModelName) => void;
+  openWhen?: boolean;
+}) {
   const [open, setOpen] = useState(openWhen);
   useEffect(() => {
     if (openWhen) setOpen(true);
@@ -19,7 +32,7 @@ export function TravelBar({ travel, openWhen = false }: { travel: Travel; openWh
   const searching = searchState.status === "searching";
 
   return (
-    <section class="travel" aria-label="Start point and drive time">
+    <section class="travel" aria-label="Start point, drive time and forecast model">
       <button
         type="button"
         class="travel-toggle"
@@ -27,7 +40,7 @@ export function TravelBar({ travel, openWhen = false }: { travel: Travel; openWh
         aria-controls={OPTIONS_ID}
         onClick={() => setOpen(!open)}
       >
-        <span>{travelSummary(settings, travel.effectiveStart, travel.recs.location)}</span>
+        <span>{travelSummary(settings, travel.effectiveStart, travel.recs.location, model)}</span>
         <span aria-hidden="true">{open ? "▴" : "▾"}</span>
       </button>
       {open && (
@@ -41,6 +54,18 @@ export function TravelBar({ travel, openWhen = false }: { travel: Travel; openWh
                 onClick={() => travel.setMaxHours(choice)}
               >
                 {choice} h
+              </button>
+            ))}
+          </div>
+          <div class="travel-model" role="group" aria-label="Forecast model">
+            {MODEL_NAMES.map((choice) => (
+              <button
+                key={choice}
+                type="button"
+                aria-pressed={model === choice}
+                onClick={() => setModel(choice)}
+              >
+                {MODEL_LABEL[choice]}
               </button>
             ))}
           </div>

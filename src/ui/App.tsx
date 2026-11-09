@@ -1,7 +1,8 @@
 import { useEffect, useState } from "preact/hooks";
 import { wantedSiteIds } from "../core/travel/inRange";
+import type { ModelName } from "../core/scoring/hourEvaluator";
 import type { DebugParams } from "./debugParams";
-import { loadDefaultModel } from "./modelSettings";
+import { loadDefaultModel, switchModel } from "./modelSettings";
 import { resolveRoute } from "./route";
 import type { CanonicalRoute } from "./route";
 import { SiteDetail } from "./SiteDetail";
@@ -50,6 +51,10 @@ export function App({ debug }: { debug: DebugParams }) {
   });
   const recs = useRecommendations(debug, route.day, model, wanted);
   const view = useTravelView(travel, recs);
+  // Sets the hash, which pushes a history entry and fires `hashchange`, so Back undoes a switch.
+  const setModel = (next: ModelName): void => {
+    window.location.hash = switchModel(localStorageStore(), route, next);
+  };
 
   return (
     <>
@@ -57,7 +62,7 @@ export function App({ debug }: { debug: DebugParams }) {
         {route.page === "site" ? (
           <SiteDetail siteId={route.id} day={route.day} model={model} recs={view.recs} catalogIds={view.catalogIds} />
         ) : (
-          <SiteList travel={view} day={route.day} model={model} />
+          <SiteList travel={view} day={route.day} model={model} setModel={setModel} />
         )}
       </main>
       <footer>

@@ -1,11 +1,12 @@
 import type { LaunchEvaluation } from "../core/recommendation/types";
+import { MODEL_LABEL } from "../core/scoring/hourEvaluator";
 import type { ModelName } from "../core/scoring/hourEvaluator";
 import { windowLabel } from "../core/scoring/windowFinder";
 import { effectiveLimits } from "../core/sites/site";
 import type { Launch, Site } from "../core/sites/site";
 import { ResultBadge } from "./CallBadge";
 import { ForecastStatus } from "./ForecastStatus";
-import { arcsLabel, cautionLine, confidenceLabel, dayLabel, driveLabel, feet, idealLabel, miles } from "./format";
+import { arcsLabel, cautionLine, confidenceLabel, dayLabel, driveLabel, feet, idealLabel, launchFallbackNote, miles } from "./format";
 import { HourlyTable } from "./HourlyTable";
 import { listHref } from "./route";
 import type { DayKey } from "../core/time";
@@ -37,9 +38,10 @@ function LaunchSection({ site, evaluation }: { site: Site; evaluation: LaunchEva
         <dd>
           {window === undefined
             ? "none"
-            : `${windowLabel(window)}, ${confidenceLabel(window.confidence)}`}
+            : `${windowLabel(window)}, ${confidenceLabel(window.confidence, evaluation.model)}`}
         </dd>
       </dl>
+      {evaluation.fellBack && <p class="note">{launchFallbackNote}</p>}
       <HourlyTable evaluation={evaluation} />
     </section>
   );
@@ -110,6 +112,8 @@ export function SiteDetail({
       <dl class="facts">
         <dt>Rating</dt>
         <dd>{site.rating}</dd>
+        <dt>Forecast model</dt>
+        <dd>{MODEL_LABEL[state.result.model]}</dd>
         {rec.driveTime !== undefined && (
           <>
             <dt>Drive time</dt>
@@ -127,7 +131,7 @@ export function SiteDetail({
             <dt>Best window</dt>
             <dd>
               <strong>{windowLabel(best.window)}</strong> at {best.launch.name},{" "}
-              {confidenceLabel(best.window.confidence)}
+              {confidenceLabel(best.window.confidence, best.model)}
             </dd>
           </>
         )}
