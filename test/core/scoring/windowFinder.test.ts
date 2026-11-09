@@ -23,6 +23,7 @@ function hr(h: number, call: HourCall, score = 80, wind = { speedMph: 10, dirDeg
     reasons: [],
     launchWind: call === "noData" ? undefined : wind,
     unpenalizedScore: score,
+    conditions: [],
   };
 }
 
@@ -376,6 +377,7 @@ describe("DST fall-back (2026-11-01, 25-hour day)", () => {
     reasons: [],
     launchWind: { speedMph: 10, dirDeg: 270 },
     unpenalizedScore: 80,
+    conditions: [],
   }));
 
   it("labels a window from 18Z to 21Z as 11:00-14:00 local", () => {
