@@ -4,7 +4,7 @@ import { distanceM } from "../../../src/core/sites/coordinate";
 import type { Coordinate } from "../../../src/core/sites/site";
 import { applyTravel } from "../../../src/core/travel/applyTravel";
 import type { TravelTimes } from "../../../src/core/travel/applyTravel";
-import { estimateDriveSeconds, startKey } from "../../../src/core/travel/driveTime";
+import { estimateDriveSeconds, startKey, withinReach } from "../../../src/core/travel/driveTime";
 import type { DriveTime } from "../../../src/core/travel/driveTime";
 import { SECONDS_PER_HOUR } from "../../../src/core/units";
 import { testLaunch, testSite } from "../../support/builders";
@@ -90,6 +90,28 @@ describe("applyTravel", () => {
     const out = applyTravel(input, START, stale, SECONDS_PER_HOUR);
     expect(byName(out.result.sites, "far").driveTime).toEqual({ seconds: estimate, source: "estimate" });
     expect(out.shown).toEqual([]);
+  });
+
+  it("aSiteOutsideThePrefilterGetsTheEstimateAndIsHidden", () => {
+    // A site page's own load can put a non-candidate in the result; the routed map never has it.
+    const hours = 2;
+    const sites = [rec("near", NEAR), rec("far", FAR)];
+    const candidates = withinReach(sites.map((r) => r.site), START, hours);
+    expect(candidates.map((s) => s.name)).toEqual(["near"]);
+    const out = applyTravel(resultOf(...sites), START, times(START, { near: 600 }), hours * SECONDS_PER_HOUR);
+    expect(byName(out.result.sites, "far").driveTime).toEqual({
+      seconds: estimateDriveSeconds(START, FAR),
+      source: "estimate",
+    });
+    expect(names(out.shown)).toEqual(["near"]);
+  });
+
+  it("ignoresRoutedTimesForAnotherStartEvenWhenTheyWouldShowTheSite", () => {
+    const input = resultOf(rec("near", NEAR), rec("far", FAR));
+    const other = times(OTHER_START, { near: 1, far: 1 });
+    const out = applyTravel(input, START, other, 2 * SECONDS_PER_HOUR);
+    expect(out.result.sites.every((r) => r.driveTime?.source === "estimate")).toBe(true);
+    expect(names(out.shown)).toEqual(["near"]);
   });
 
   it("estimatesFromTheUnroundedStart", () => {

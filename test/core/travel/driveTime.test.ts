@@ -416,6 +416,29 @@ describe("driveTimesFor", () => {
     ]);
   });
 
+  it("aNarrowerCallAsksNothingAndAWiderOneAsksOnlyForTheNewDestinations", async () => {
+    const map = new Map<string, string>();
+    const cache = mapStore(map);
+    const first = fakeOSRM(ROUTED);
+    await driveTimesFor(BOULDER, [a, c], { transport: first, cache });
+    expect(first).toHaveBeenCalledTimes(1);
+    const narrower = fakeOSRM(ROUTED);
+    const subset = await driveTimesFor(BOULDER, [c], { transport: narrower, cache });
+    expect(narrower).not.toHaveBeenCalled();
+    expect([...subset.keys()]).toEqual(["c"]);
+    const wider = fakeOSRM(ROUTED);
+    await driveTimesFor(BOULDER, [a, b, c, d], { transport: wider, cache });
+    expect(wider).toHaveBeenCalledTimes(1);
+    expect(pathCoordinates(wider.mock.calls[0]![0])).toEqual(["-105.27,40.01", pair(b), pair(d)]);
+    // The start's entry grew; nothing it already had was dropped.
+    expect(Object.keys((stored(map) as { times: object }[])[0]!.times).sort()).toEqual([
+      "a",
+      "b",
+      "c",
+      "d",
+    ]);
+  });
+
   it("aMovedDestinationIsAMiss", async () => {
     const cache = mapStore();
     await driveTimesFor(BOULDER, [a, b], { transport: fakeOSRM(ROUTED), cache });

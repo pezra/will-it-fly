@@ -27,12 +27,20 @@ function LocationNote({ location }: { location: Recommendations["location"] }) {
 export function SiteList({ travel, day }: { travel: Travel; day: DayKey | undefined }) {
   const { state, location, now, refresh, retry } = travel.recs;
 
-  if (state.status !== "loaded") {
+  // With no start, a loaded result can only be a site page's own site, so it is not the list.
+  const noStart = travel.stage === "needsStart" || travel.stage === "locating";
+  if (state.status !== "loaded" || noStart) {
     return (
       <>
         <h1>Will it fly?</h1>
         <DayPicker today={denverDayKey(now())} shown={day} />
-        <ForecastStatus state={state} retry={retry} />
+        {/* The travel bar is the only way to set a start when there is none. */}
+        <TravelBar travel={travel} />
+        {travel.stage === "needsStart" ? (
+          <p class="status">Set a starting point.</p>
+        ) : (
+          <ForecastStatus state={state.status === "loaded" ? { status: "loading" } : state} retry={retry} />
+        )}
       </>
     );
   }
