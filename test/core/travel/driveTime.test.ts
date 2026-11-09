@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { KeyValueStore } from "../../../src/core/forecast/forecastCache";
+import type { KeyValueStore } from "../../../src/core/keyValueStore";
 import type { Transport } from "../../../src/core/forecast/openMeteoClient";
 import { distanceM } from "../../../src/core/sites/coordinate";
 import type { Coordinate } from "../../../src/core/sites/site";

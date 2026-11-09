@@ -1,22 +1,28 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { createForecastCache } from "../../../src/core/forecast/forecastCache";
-import type { ForecastCache } from "../../../src/core/forecast/forecastCache";
 import {
   OpenMeteoError,
   launchRequestURL,
   neighborRequestURL,
   parseForecasts,
+  splitRaw,
 } from "../../../src/core/forecast/openMeteoClient";
-import type { Transport } from "../../../src/core/forecast/openMeteoClient";
+import type { RawSlice, Transport } from "../../../src/core/forecast/openMeteoClient";
+import { createSiteForecastCache, dayKey, mainKey } from "../../../src/core/forecast/siteForecastCache";
+import type { SiteForecastCache } from "../../../src/core/forecast/siteForecastCache";
+import type { RemovableStore } from "../../../src/core/keyValueStore";
 import { withDistances } from "../../../src/core/recommendation/ranker";
 import {
   DayOutOfRangeError,
   getRecommendations,
   resolveTargetDay,
 } from "../../../src/core/recommendation/recommendationService";
-import type { RecommendationDeps } from "../../../src/core/recommendation/recommendationService";
+import type {
+  RecommendationDeps,
+  RecommendationRequest,
+} from "../../../src/core/recommendation/recommendationService";
 import { SCORING_DEFAULTS } from "../../../src/core/scoring/defaults";
 import { denverDayKey } from "../../../src/core/time";
+import type { DayKey } from "../../../src/core/time";
 import { windowLabel } from "../../../src/core/scoring/windowFinder";
 import { bundledSiteProvider } from "../../../src/core/sites/siteProvider";
 import type { Launch, Site } from "../../../src/core/sites/site";
@@ -37,6 +43,8 @@ const NOW = Date.UTC(2026, 10, 7, 18, 0, 0);
 const NOW_EVENING = Date.UTC(2026, 10, 8, 1, 0, 0);
 /** 2026-11-08 18:00 MST: tomorrow (Nov 9) is not in the fixture. */
 const NOW_UNCOVERED = Date.UTC(2026, 10, 9, 1, 0, 0);
+/** Boulder's Nov 7 sunset in the fixture, 16:52 MST. Glenwood's and Crested Butte's are ~9 min later. */
+const BOULDER_SUNSET = 1794095532 * 1000;
 /** 2026-11-05 11:00 MST: the fixture's Nov 7 is the day after tomorrow, so it is fetched on its own. */
 const NOW_EARLIER = Date.UTC(2026, 10, 5, 18, 0, 0);
 
@@ -61,8 +69,29 @@ beforeAll(async () => {
   ];
 });
 
-const openLaunches = (): Launch[] =>
-  sites.filter((s) => s.status.state === "open").flatMap((s) => s.launches);
+const openSites = (): Site[] => sites.filter((s) => s.status.state === "open");
+const openLaunches = (): Launch[] => openSites().flatMap((s) => s.launches);
+const allIds = (): string[] => sites.map((s) => s.id);
+
+const GLENWOOD = "rmhpa/glenwood-lookout-mtn";
+const BUTTE = "rmhpa/crested-butte";
+const BOULDER = "rmhpa/boulder-wonderland";
+const COPPER = "rmhpa/copper-mountain";
+
+function site(id: string): Site {
+  return sites.find((s) => s.id === id) ?? never();
+}
+
+/** Each open site's slice of the recorded responses, by site id. */
+function fixtureSlice(id: string): RawSlice {
+  const index = openSites().findIndex((s) => s.id === id);
+  return splitRaw(launchesJSON, neighborsJSON, [1, 1, 1])[index] ?? never();
+}
+
+/** A request for every site, plus overrides. */
+function request(overrides: Partial<RecommendationRequest> = {}): RecommendationRequest {
+  return { forceRefresh: false, siteIds: allIds(), ...overrides };
+}
 
 interface Stub {
   transport: Transport;
@@ -93,6 +122,26 @@ function dayTransport(day: string): Stub {
   return { transport, urls };
 }
 
+/** Serves the recorded slices of exactly these sites (in this order), and fails any other request. */
+function subsetTransport(ids: readonly string[], day?: DayKey): Stub {
+  const urls: string[] = [];
+  const launches = ids.flatMap((id) => site(id).launches);
+  const join = (part: keyof RawSlice): string =>
+    JSON.stringify(ids.flatMap((id) => JSON.parse(fixtureSlice(id)[part]) as unknown[]));
+  const transport: Transport = async (url) => {
+    urls.push(url);
+    if (url === launchRequestURL(launches, undefined, day)) return { status: 200, body: join("launchRaw") };
+    if (url === neighborRequestURL(launches, undefined, day)) return { status: 200, body: join("neighborRaw") };
+    throw new Error(`unexpected request: ${url}`);
+  };
+  return { transport, urls };
+}
+
+/** The `latitude=` values a request asked for. */
+function latitudes(url: string): string[] {
+  return new URL(url).searchParams.get("latitude")?.split(",") ?? [];
+}
+
 function failingTransport(status = 500): Stub {
   const urls: string[] = [];
   const transport: Transport = async (url) => {
@@ -111,23 +160,34 @@ function throwingTransport(): Stub {
   return { transport, urls };
 }
 
-function deps(
-  stub: Stub,
-  cache: ForecastCache,
-  now = NOW,
-  dayCache: ForecastCache = createForecastCache(mapStore()),
-): RecommendationDeps {
+function newCache(): SiteForecastCache {
+  return createSiteForecastCache(mapStore());
+}
+
+function deps(stub: Stub, cache: SiteForecastCache, now = NOW): RecommendationDeps {
   return {
     siteProvider: { sites: async () => sites },
     transport: stub.transport,
     cache,
-    dayCache,
     now: () => now,
   };
 }
 
-function seed(cache: ForecastCache, fetchedAt: number): void {
-  cache.save({ launchRaw: launchesJSON, neighborRaw: neighborsJSON, fetchedAt, launches: openLaunches() });
+/** Saves the recorded slices of these sites (every open one by default) under `key`. */
+function seed(
+  cache: SiteForecastCache,
+  fetchedAt: number,
+  ids: readonly string[] = openSites().map((s) => s.id),
+  key: (id: string) => string = mainKey,
+  slice: (id: string) => RawSlice = fixtureSlice,
+): void {
+  const saves = ids.map((id) => ({ key: key(id), launches: site(id).launches, fetchedAt, ...slice(id) }));
+  cache.open().commit({ saves, used: [], now: fetchedAt });
+}
+
+/** The cached entry's fetch time, if any. */
+function cachedAt(cache: SiteForecastCache, id: string, key: (id: string) => string = mainKey): number | undefined {
+  return cache.open().get(key(id), site(id).launches)?.fetchedAt;
 }
 
 afterEach(() => vi.restoreAllMocks());
@@ -135,8 +195,8 @@ afterEach(() => vi.restoreAllMocks());
 describe("getRecommendations", () => {
   it("ranksTheFixtureSitesAndExcludesClosedOnesFromTheRequest", async () => {
     const stub = fixtureTransport();
-    const cache = createForecastCache(mapStore());
-    const result = await getRecommendations({ forceRefresh: false }, deps(stub, cache));
+    const cache = newCache();
+    const result = await getRecommendations(request(), deps(stub, cache));
 
     expect(stub.urls.sort()).toEqual([launchesURL.trim(), neighborsURL.trim()].sort());
     expect(result.day).toBe("2026-11-07");
@@ -177,9 +237,9 @@ describe("getRecommendations", () => {
       limits: { minMph: 0, maxMph: 40, gustFactorMph: 40 },
       launches: x.launches.map((l) => ({ ...l, directions: { ok: anyDirection, ideal: anyDirection } })),
     }));
-    const cache = createForecastCache(mapStore());
+    const cache = newCache();
     const result = await getRecommendations(
-      { forceRefresh: false },
+      request(),
       { ...deps(fixtureTransport(), cache), siteProvider: { sites: async () => loose } },
     );
     expect(result.sites.map((r) => r.site.id)).toEqual([
@@ -203,20 +263,20 @@ describe("getRecommendations", () => {
   });
 
   it("savesTheFetchedResponsesToTheCache", async () => {
-    const cache = createForecastCache(mapStore());
-    await getRecommendations({ forceRefresh: false }, deps(fixtureTransport(), cache));
-    expect(cache.load(openLaunches())).toEqual({
-      launchRaw: launchesJSON,
-      neighborRaw: neighborsJSON,
-      fetchedAt: NOW,
-    });
+    const cache = newCache();
+    await getRecommendations(request(), deps(fixtureTransport(), cache));
+    for (const { id, launches } of openSites()) {
+      expect(cache.open().get(mainKey(id), launches)).toEqual({ ...fixtureSlice(id), fetchedAt: NOW });
+    }
+    // The closed site is never cached.
+    expect(cache.open().get(mainKey(COPPER), site(COPPER).launches)).toBeUndefined();
   });
 
   it("aFreshCacheMeansNoFetch", async () => {
-    const cache = createForecastCache(mapStore());
+    const cache = newCache();
     seed(cache, NOW - 59 * MIN_MS);
     const stub = fixtureTransport();
-    const result = await getRecommendations({ forceRefresh: false }, deps(stub, cache));
+    const result = await getRecommendations(request(), deps(stub, cache));
     expect(stub.urls).toEqual([]);
     expect(result.fetchedAt).toBe(NOW - 59 * MIN_MS);
     expect(result.isOffline).toBe(false);
@@ -224,48 +284,48 @@ describe("getRecommendations", () => {
   });
 
   it("aCacheExactlyAtTheMaximumAgeIsStale", async () => {
-    const cache = createForecastCache(mapStore());
+    const cache = newCache();
     seed(cache, NOW - SCORING_DEFAULTS.cacheMaxAgeMs);
     const stub = fixtureTransport();
-    await getRecommendations({ forceRefresh: false }, deps(stub, cache));
+    await getRecommendations(request(), deps(stub, cache));
     expect(stub.urls).toHaveLength(2);
   });
 
   it("aStaleCacheTriggersAFetchAndIsReplaced", async () => {
-    const cache = createForecastCache(mapStore());
+    const cache = newCache();
     seed(cache, NOW - 61 * MIN_MS);
     const stub = fixtureTransport();
-    const result = await getRecommendations({ forceRefresh: false }, deps(stub, cache));
+    const result = await getRecommendations(request(), deps(stub, cache));
     expect(stub.urls).toHaveLength(2);
     expect(result.fetchedAt).toBe(NOW);
-    expect(cache.load(openLaunches())?.fetchedAt).toBe(NOW);
+    expect(openSites().map((s) => cachedAt(cache, s.id))).toEqual([NOW, NOW, NOW]);
   });
 
   it("aFetchThatThrowsWithACachePresentIsOffline", async () => {
     vi.spyOn(console, "warn").mockImplementation(() => undefined);
-    const cache = createForecastCache(mapStore());
+    const cache = newCache();
     seed(cache, NOW - 3 * 60 * MIN_MS);
     const stub = throwingTransport();
-    const result = await getRecommendations({ forceRefresh: false }, deps(stub, cache));
+    const result = await getRecommendations(request(), deps(stub, cache));
     expect(stub.urls.length).toBeGreaterThan(0);
     expect(result.isOffline).toBe(true);
     expect(result.fetchedAt).toBe(NOW - 3 * 60 * MIN_MS);
     expect(result.sites).toHaveLength(4);
     // The failed fetch must not clobber the cache.
-    expect(cache.load(openLaunches())?.fetchedAt).toBe(NOW - 3 * 60 * MIN_MS);
+    expect(cachedAt(cache, BOULDER)).toBe(NOW - 3 * 60 * MIN_MS);
   });
 
   it("aFetchThatThrowsWithNoCacheThrows", async () => {
-    const cache = createForecastCache(mapStore());
+    const cache = newCache();
     await expect(
-      getRecommendations({ forceRefresh: false }, deps(throwingTransport(), cache)),
+      getRecommendations(request(), deps(throwingTransport(), cache)),
     ).rejects.toThrow("offline");
   });
 
   it("http429CountsAsAFetchFailureAndKeepsItsStatus", async () => {
     vi.spyOn(console, "warn").mockImplementation(() => undefined);
-    const empty = createForecastCache(mapStore());
-    const error = await getRecommendations({ forceRefresh: false }, deps(failingTransport(429), empty)).then(
+    const empty = newCache();
+    const error = await getRecommendations(request(), deps(failingTransport(429), empty)).then(
       () => undefined,
       (e: unknown) => e,
     );
@@ -273,89 +333,91 @@ describe("getRecommendations", () => {
     expect((error as OpenMeteoError).status).toBe(429);
     expect((error as OpenMeteoError).message).toContain("rate limit");
 
-    const cache = createForecastCache(mapStore());
+    const cache = newCache();
     seed(cache, NOW - 2 * 60 * MIN_MS);
-    const result = await getRecommendations({ forceRefresh: false }, deps(failingTransport(429), cache));
+    const result = await getRecommendations(request(), deps(failingTransport(429), cache));
     expect(result.isOffline).toBe(true);
   });
 
   it("forceRefreshFetchesEvenWhenTheCacheIsFresh", async () => {
-    const cache = createForecastCache(mapStore());
+    const cache = newCache();
     seed(cache, NOW - 30 * MIN_MS);
     const stub = fixtureTransport();
-    const result = await getRecommendations({ forceRefresh: true }, deps(stub, cache));
+    const result = await getRecommendations(request({ forceRefresh: true }), deps(stub, cache));
     expect(stub.urls).toHaveLength(2);
     expect(result.fetchedAt).toBe(NOW);
   });
 
   it("forceRefreshWithinFiveMinutesOfTheLastFetchUsesTheCache", async () => {
-    const cache = createForecastCache(mapStore());
+    const cache = newCache();
     seed(cache, NOW - 4 * MIN_MS);
     const stub = fixtureTransport();
-    const result = await getRecommendations({ forceRefresh: true }, deps(stub, cache));
+    const result = await getRecommendations(request({ forceRefresh: true }), deps(stub, cache));
     expect(stub.urls).toEqual([]);
     expect(result.fetchedAt).toBe(NOW - 4 * MIN_MS);
     expect(result.isOffline).toBe(false);
   });
 
   it("forceRefreshAtExactlyFiveMinutesFetches", async () => {
-    const cache = createForecastCache(mapStore());
+    const cache = newCache();
     seed(cache, NOW - SCORING_DEFAULTS.forcedRefreshMinIntervalMs);
     const stub = fixtureTransport();
-    await getRecommendations({ forceRefresh: true }, deps(stub, cache));
+    await getRecommendations(request({ forceRefresh: true }), deps(stub, cache));
     expect(stub.urls).toHaveLength(2);
   });
 
   it("aCacheForADifferentLaunchListIsNotUsed", async () => {
-    const cache = createForecastCache(mapStore());
-    cache.save({
-      launchRaw: launchesJSON,
-      neighborRaw: neighborsJSON,
+    const cache = newCache();
+    // Each entry was saved for a launch at another elevation.
+    const saves = openSites().map(({ id, launches }) => ({
+      key: mainKey(id),
+      launches: launches.map((l) => ({ ...l, elevationFt: l.elevationFt + 1 })),
       fetchedAt: NOW - MIN_MS,
-      launches: openLaunches().slice(0, 2),
-    });
+      ...fixtureSlice(id),
+    }));
+    cache.open().commit({ saves, used: [], now: NOW - MIN_MS });
     const stub = fixtureTransport();
-    await getRecommendations({ forceRefresh: false }, deps(stub, cache));
+    await getRecommendations(request(), deps(stub, cache));
     expect(stub.urls).toHaveLength(2);
   });
 
   it("aCorruptCachedBodyIsTreatedAsNoCache", async () => {
     vi.spyOn(console, "warn").mockImplementation(() => undefined);
-    const cache = createForecastCache(mapStore());
-    cache.save({ launchRaw: "not json", neighborRaw: "[]", fetchedAt: NOW - MIN_MS, launches: openLaunches() });
+    const cache = newCache();
+    seed(cache, NOW - MIN_MS, undefined, mainKey, () => ({ launchRaw: "not json", neighborRaw: "[]" }));
     const stub = fixtureTransport();
-    const result = await getRecommendations({ forceRefresh: false }, deps(stub, cache));
+    const result = await getRecommendations(request(), deps(stub, cache));
     expect(stub.urls).toHaveLength(2);
     expect(result.fetchedAt).toBe(NOW);
   });
 
   it("aCacheMissingTheTargetDayIsNotUsed", async () => {
     // Fresh by age, but at this time the target day (Nov 9) isn't in it. Offline, that means no data.
-    const cache = createForecastCache(mapStore());
+    const cache = newCache();
     seed(cache, NOW_UNCOVERED - MIN_MS);
     const stub = throwingTransport();
     await expect(
-      getRecommendations({ forceRefresh: false }, deps(stub, cache, NOW_UNCOVERED)),
+      getRecommendations(request(), deps(stub, cache, NOW_UNCOVERED)),
     ).rejects.toThrow("offline");
     expect(stub.urls.length).toBeGreaterThan(0);
   });
 
   it("aFetchThatDoesntCoverTheTargetDayIsAFailureAndIsNotCached", async () => {
-    const cache = createForecastCache(mapStore());
+    const cache = newCache();
     const error = await getRecommendations(
-      { forceRefresh: false },
+      request(),
       deps(fixtureTransport(), cache, NOW_UNCOVERED),
     ).then(
       () => undefined,
       (e: unknown) => e,
     );
     expect(error).toBeInstanceOf(OpenMeteoError);
-    expect(cache.load(openLaunches())).toBeUndefined();
+    expect(openSites().map((s) => cachedAt(cache, s.id))).toEqual([undefined, undefined, undefined]);
   });
 
   it("targetsTomorrowAfterTodaysSunset", async () => {
-    const cache = createForecastCache(mapStore());
-    const result = await getRecommendations({ forceRefresh: false }, deps(fixtureTransport(), cache, NOW_EVENING));
+    const cache = newCache();
+    const result = await getRecommendations(request(), deps(fixtureTransport(), cache, NOW_EVENING));
     expect(result.day).toBe("2026-11-08");
     expect(result.today).toBe("2026-11-07");
     const open = result.sites.filter((r) => r.site.status.state === "open");
@@ -369,8 +431,8 @@ describe("getRecommendations", () => {
 
   it("aRequestedTomorrowComesFromTheMainForecast", async () => {
     const stub = fixtureTransport();
-    const cache = createForecastCache(mapStore());
-    const result = await getRecommendations({ forceRefresh: false, day: "2026-11-08" }, deps(stub, cache));
+    const cache = newCache();
+    const result = await getRecommendations(request({ day: "2026-11-08" }), deps(stub, cache));
     expect(stub.urls.sort()).toEqual([launchesURL.trim(), neighborsURL.trim()].sort());
     expect(result.day).toBe("2026-11-08");
     expect(result.dayOver).toBe(false);
@@ -378,15 +440,15 @@ describe("getRecommendations", () => {
     expect(daylight.length).toBeGreaterThan(0);
     expect(daylight.every((h) => denverDayKey(h.time) === "2026-11-08")).toBe(true);
     // Switching back to today reuses the cached main forecast.
-    const today = await getRecommendations({ forceRefresh: false, day: "2026-11-07" }, deps(stub, cache));
+    const today = await getRecommendations(request({ day: "2026-11-07" }), deps(stub, cache));
     expect(stub.urls).toHaveLength(2);
     expect(today.day).toBe("2026-11-07");
   });
 
   it("aRequestedTodayAfterSunsetIsOver", async () => {
-    const cache = createForecastCache(mapStore());
+    const cache = newCache();
     const result = await getRecommendations(
-      { forceRefresh: false, day: "2026-11-07" },
+      request({ day: "2026-11-07" }),
       deps(fixtureTransport(), cache, NOW_EVENING),
     );
     expect(result.day).toBe("2026-11-07");
@@ -394,60 +456,59 @@ describe("getRecommendations", () => {
     expect(result.sites.every((r) => r.best === undefined)).toBe(true);
   });
 
-  it("aLaterDayIsFetchedOnItsOwnIntoTheDayCache", async () => {
+  it("aLaterDayIsFetchedOnItsOwnIntoDayEntries", async () => {
     const stub = dayTransport("2026-11-07");
-    const cache = createForecastCache(mapStore());
-    const dayCache = createForecastCache(mapStore());
-    const request = { forceRefresh: false, day: "2026-11-07" };
-    const result = await getRecommendations(request, deps(stub, cache, NOW_EARLIER, dayCache));
+    const cache = newCache();
+    const later = request({ day: "2026-11-07" });
+    const result = await getRecommendations(later, deps(stub, cache, NOW_EARLIER));
     expect(stub.urls).toHaveLength(2);
     expect(stub.urls.every((u) => u.includes("start_date=2026-11-07&end_date=2026-11-07"))).toBe(true);
     expect(result.day).toBe("2026-11-07");
     expect(result.today).toBe("2026-11-05");
     expect(result.dayOver).toBe(false);
-    expect(cache.load(openLaunches())).toBeUndefined();
-    expect(dayCache.load(openLaunches())?.fetchedAt).toBe(NOW_EARLIER);
+    const onDay = (id: string): string => dayKey("2026-11-07", id);
+    for (const { id } of openSites()) {
+      expect(cachedAt(cache, id)).toBeUndefined();
+      expect(cachedAt(cache, id, onDay)).toBe(NOW_EARLIER);
+    }
     // Not today, so the morning counts too (at 11:00 on the day itself, the window started at 11:00).
     const boulder = result.sites.find((r) => r.site.id === "rmhpa/boulder-wonderland");
     expect(windowLabel(boulder?.best?.window ?? never())).toBe("09:00\u201317:00");
 
-    // The same day again is served from the day cache.
-    await getRecommendations(request, deps(stub, cache, NOW_EARLIER + MIN_MS, dayCache));
+    // The same day again is served from the day entries.
+    await getRecommendations(later, deps(stub, cache, NOW_EARLIER + MIN_MS));
     expect(stub.urls).toHaveLength(2);
   });
 
-  it("aDayCacheForAnotherDayIsNotUsed", async () => {
-    const dayCache = createForecastCache(mapStore());
-    seed(dayCache, NOW_EARLIER - MIN_MS);
-    // The cached responses cover Nov 7 and 8, not Nov 9.
+  it("aDayEntryThatDoesntCoverItsDayIsNotUsed", async () => {
+    const cache = newCache();
+    // Fresh entries under the Nov 9 keys, but the cached responses cover Nov 7 and 8, not Nov 9.
+    seed(cache, NOW_EARLIER - MIN_MS, undefined, (id) => dayKey("2026-11-09", id));
     const stub = throwingTransport();
     await expect(
-      getRecommendations(
-        { forceRefresh: false, day: "2026-11-09" },
-        deps(stub, createForecastCache(mapStore()), NOW_EARLIER, dayCache),
-      ),
+      getRecommendations(request({ day: "2026-11-09" }), deps(stub, cache, NOW_EARLIER)),
     ).rejects.toThrow("offline");
     expect(stub.urls).toHaveLength(2);
   });
 
   it("aDayOutsideTheRangeIsRejectedWithoutFetching", async () => {
     const stub = fixtureTransport();
-    const cache = createForecastCache(mapStore());
+    const cache = newCache();
     for (const day of ["2026-11-06", "2026-11-22"]) {
       await expect(
-        getRecommendations({ forceRefresh: false, day }, deps(stub, cache)),
+        getRecommendations(request({ day }), deps(stub, cache)),
       ).rejects.toBeInstanceOf(DayOutOfRangeError);
     }
     expect(stub.urls).toEqual([]);
     // 14 days out is still allowed.
     await expect(
-      getRecommendations({ forceRefresh: false, day: "2026-11-21" }, deps(stub, cache)),
+      getRecommendations(request({ day: "2026-11-21" }), deps(stub, cache)),
     ).rejects.toThrow("unexpected request");
   });
 
   it("withALocationAddsDistancesToTheFirstLaunch", async () => {
-    const cache = createForecastCache(mapStore());
-    const fetched = await getRecommendations({ forceRefresh: false }, deps(fixtureTransport(), cache));
+    const cache = newCache();
+    const fetched = await getRecommendations(request(), deps(fixtureTransport(), cache));
     expect(fetched.sites.every((r) => r.distanceM === undefined)).toBe(true);
     const result = withDistances(fetched, { latitude: 39.5428, longitude: -107.3003 });
     const glenwood = result.sites.find((r) => r.site.id === "rmhpa/glenwood-lookout-mtn");
@@ -457,10 +518,10 @@ describe("getRecommendations", () => {
 
   it("anOpenSiteCatalogWithoutOpenSitesNeverFetches", async () => {
     const stub = fixtureTransport();
-    const cache = createForecastCache(mapStore());
+    const cache = newCache();
     const onlyClosed = sites.filter((s) => s.status.state === "closed");
     const result = await getRecommendations(
-      { forceRefresh: false },
+      request(),
       { ...deps(stub, cache), siteProvider: { sites: async () => onlyClosed } },
     );
     expect(stub.urls).toEqual([]);
@@ -468,13 +529,219 @@ describe("getRecommendations", () => {
   });
 
   it("aSiteProviderFailurePropagates", async () => {
-    const cache = createForecastCache(mapStore());
+    const cache = newCache();
     await expect(
       getRecommendations(
-        { forceRefresh: false },
+        request(),
         { ...deps(fixtureTransport(), cache), siteProvider: { sites: async () => Promise.reject(new Error("bad catalog")) } },
       ),
     ).rejects.toThrow("bad catalog");
+  });
+});
+
+/** A map store that counts reads and writes. */
+function countingStore(): RemovableStore & { gets: number; sets: number } {
+  const inner = mapStore();
+  const store = {
+    gets: 0,
+    sets: 0,
+    get(k: string) {
+      store.gets++;
+      return inner.get(k);
+    },
+    set(k: string, v: string) {
+      store.sets++;
+      inner.set(k, v);
+    },
+    remove: inner.remove,
+  };
+  return store;
+}
+
+/** The site's recorded slice with its sunrise and sunset removed: it parses but covers no day. */
+function noDaysSlice(id: string): RawSlice {
+  const { launchRaw, neighborRaw } = fixtureSlice(id);
+  const locs = JSON.parse(launchRaw) as Record<string, unknown>[];
+  return { launchRaw: JSON.stringify(locs.map(({ daily: _, ...rest }) => rest)), neighborRaw };
+}
+
+describe("getRecommendations per site", () => {
+  it("fetchesOnlyTheSitesWithoutAFreshEntry", async () => {
+    const cache = newCache();
+    seed(cache, NOW - 20 * MIN_MS, [GLENWOOD, BOULDER]);
+    const stub = subsetTransport([BUTTE]);
+    const result = await getRecommendations(request(), deps(stub, cache));
+    expect(stub.urls).toHaveLength(2);
+    // Crested Butte's launch only (the neighbor request also has its four offset points).
+    expect(stub.urls.map(latitudes)[0]).toEqual(["38.8897"]);
+    for (const url of stub.urls) {
+      expect(url).not.toContain("39.5428");
+      expect(url).not.toContain("40.0562");
+    }
+    expect(result.fetchedAt).toBe(NOW - 20 * MIN_MS);
+    expect(result.isOffline).toBe(false);
+    const open = result.sites.filter((r) => r.site.status.state === "open");
+    expect(open.every((r) => (r.launches[0]?.daylight.length ?? 0) > 0)).toBe(true);
+    // The fetched site is saved; the others are left as they were.
+    expect([GLENWOOD, BUTTE, BOULDER].map((id) => cachedAt(cache, id))).toEqual([
+      NOW - 20 * MIN_MS,
+      NOW,
+      NOW - 20 * MIN_MS,
+    ]);
+  });
+
+  it("allFreshEntriesMakeNoRequestAndReportTheOldest", async () => {
+    const cache = newCache();
+    seed(cache, NOW - 50 * MIN_MS, [GLENWOOD]);
+    seed(cache, NOW - 10 * MIN_MS, [BUTTE, BOULDER]);
+    const stub = fixtureTransport();
+    const result = await getRecommendations(request(), deps(stub, cache));
+    expect(stub.urls).toEqual([]);
+    expect(result.fetchedAt).toBe(NOW - 50 * MIN_MS);
+  });
+
+  it("refreshRefetchesOnlyEntriesFiveMinutesOldOrMore", async () => {
+    const cache = newCache();
+    seed(cache, NOW - 2 * MIN_MS, [GLENWOOD]);
+    seed(cache, NOW - 4 * MIN_MS, [BUTTE]);
+    seed(cache, NOW - 30 * MIN_MS, [BOULDER]);
+    const stub = subsetTransport([BOULDER]);
+    const result = await getRecommendations(request({ forceRefresh: true }), deps(stub, cache));
+    expect(stub.urls).toHaveLength(2);
+    expect(result.fetchedAt).toBe(NOW - 4 * MIN_MS);
+
+    // With every entry under five minutes old, Refresh makes no request.
+    const again = fixtureTransport();
+    await getRecommendations(request({ forceRefresh: true }), deps(again, cache, NOW + MIN_MS / 2));
+    expect(again.urls).toEqual([]);
+  });
+
+  it("aFailedFetchUsesEachSitesStaleEntryAndIsOffline", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const cache = newCache();
+    seed(cache, NOW - 10 * MIN_MS, [GLENWOOD, BOULDER]);
+    seed(cache, NOW - 3 * 60 * MIN_MS, [BUTTE]);
+    const stub = throwingTransport();
+    const result = await getRecommendations(request(), deps(stub, cache));
+    expect(stub.urls.every((u) => latitudes(u).includes("38.8897"))).toBe(true);
+    expect(result.isOffline).toBe(true);
+    expect(result.fetchedAt).toBe(NOW - 3 * 60 * MIN_MS);
+    const butte = result.sites.find((r) => r.site.id === BUTTE);
+    expect(butte?.launches[0]?.daylight.length ?? 0).toBeGreaterThan(0);
+    expect(cachedAt(cache, BUTTE)).toBe(NOW - 3 * 60 * MIN_MS);
+  });
+
+  it("aFailedFetchWithASiteMissingFromTheCacheThrows", async () => {
+    const cache = newCache();
+    seed(cache, NOW - 10 * MIN_MS, [GLENWOOD]);
+    seed(cache, NOW - 3 * 60 * MIN_MS, [BOULDER]);
+    await expect(getRecommendations(request(), deps(throwingTransport(), cache))).rejects.toThrow(
+      "offline",
+    );
+  });
+
+  it("aFreshEntryThatDoesntCoverTheDayIsRefetched", async () => {
+    const cache = newCache();
+    seed(cache, NOW - 10 * MIN_MS, [GLENWOOD, BOULDER]);
+    seed(cache, NOW - MIN_MS, [BUTTE], mainKey, noDaysSlice);
+    const stub = subsetTransport([BUTTE]);
+    const result = await getRecommendations(request(), deps(stub, cache));
+    expect(stub.urls).toHaveLength(2);
+    const butte = result.sites.find((r) => r.site.id === BUTTE);
+    expect(butte?.launches[0]?.daylight.length ?? 0).toBeGreaterThan(0);
+    expect(cachedAt(cache, BUTTE)).toBe(NOW);
+  });
+
+  it("aFreshEntryWhoseSliceDoesntParseIsRefetched", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const cache = newCache();
+    seed(cache, NOW - 10 * MIN_MS, [GLENWOOD, BOULDER]);
+    seed(cache, NOW - MIN_MS, [BUTTE], mainKey, () => ({ launchRaw: "[]", neighborRaw: "[]" }));
+    const stub = subsetTransport([BUTTE]);
+    const result = await getRecommendations(request(), deps(stub, cache));
+    expect(stub.urls).toHaveLength(2);
+    expect(result.fetchedAt).toBe(NOW - 10 * MIN_MS);
+    expect(cachedAt(cache, BUTTE)).toBe(NOW);
+  });
+
+  it("mixedAgesGiveTheSameDayAndAgeWhicheverSitesAreCachedAndInAnyRequestOrder", async () => {
+    // A minute after Boulder's sunset, before Glenwood's and Crested Butte's: Boulder's own default
+    // day is Nov 8, the others' is Nov 7. Glenwood is first in the catalog, so the result is Nov 7.
+    const now = BOULDER_SUNSET + MIN_MS;
+    const outcomes = [];
+    for (const [cached, fetched] of [
+      [GLENWOOD, [BUTTE, BOULDER]],
+      [BOULDER, [GLENWOOD, BUTTE]],
+    ] as const) {
+      for (const siteIds of [allIds(), [...allIds()].reverse()]) {
+        const cache = newCache();
+        seed(cache, now - 50 * MIN_MS, [cached]);
+        const result = await getRecommendations(
+          request({ siteIds }),
+          deps(subsetTransport(fetched), cache, now),
+        );
+        const { day, dayOver, fetchedAt } = result;
+        outcomes.push({ day, dayOver, fetchedAt });
+      }
+    }
+    const expected = { day: "2026-11-07", dayOver: false, fetchedAt: now - 50 * MIN_MS };
+    expect(outcomes).toEqual([expected, expected, expected, expected]);
+  });
+
+  it("aFarOutDayUsesDayEntriesAndLeavesMainEntriesAlone", async () => {
+    const cache = newCache();
+    // Fresh main entries that even cover Nov 7, but a far-out day never reads them.
+    seed(cache, NOW_EARLIER - MIN_MS);
+    const onDay = (id: string): string => dayKey("2026-11-07", id);
+    seed(cache, NOW_EARLIER - 2 * MIN_MS, [GLENWOOD, BOULDER], onDay);
+    const stub = subsetTransport([BUTTE], "2026-11-07");
+    const result = await getRecommendations(request({ day: "2026-11-07" }), deps(stub, cache, NOW_EARLIER));
+    expect(stub.urls).toHaveLength(2);
+    expect(stub.urls.every((u) => u.includes("start_date=2026-11-07&end_date=2026-11-07"))).toBe(true);
+    expect(result.fetchedAt).toBe(NOW_EARLIER - 2 * MIN_MS);
+    expect(cachedAt(cache, BUTTE, onDay)).toBe(NOW_EARLIER);
+    for (const { id } of openSites()) expect(cachedAt(cache, id)).toBe(NOW_EARLIER - MIN_MS);
+  });
+
+  it("aClosedSiteIsReturnedButNeverFetched", async () => {
+    const cache = newCache();
+    const stub = subsetTransport([BOULDER]);
+    const result = await getRecommendations(request({ siteIds: [COPPER, BOULDER] }), deps(stub, cache));
+    expect(stub.urls).toHaveLength(2);
+    expect(result.sites.map((r) => r.site.id)).toEqual([BOULDER, COPPER]);
+    expect(result.sites[1]?.launches).toEqual([]);
+    expect(cachedAt(cache, COPPER)).toBeUndefined();
+  });
+
+  it("onlyTheRequestedSitesAreReturnedAndUnknownIdsAreIgnored", async () => {
+    const stub = subsetTransport([BOULDER]);
+    const result = await getRecommendations(
+      request({ siteIds: ["nowhere/at-all", BOULDER, BOULDER] }),
+      deps(stub, newCache()),
+    );
+    expect(stub.urls).toHaveLength(2);
+    expect(result.sites.map((r) => r.site.id)).toEqual([BOULDER]);
+    expect(result.fetchedAt).toBe(NOW);
+  });
+
+  it("noSiteIdsMeansNoRequestAndNoStorage", async () => {
+    const store = countingStore();
+    const cache = createSiteForecastCache(store);
+    const stub = fixtureTransport();
+    for (const day of [undefined, "2026-11-08"]) {
+      const result = await getRecommendations(request({ siteIds: [], day }), deps(stub, cache));
+      expect(result).toEqual({
+        day: day ?? "2026-11-07",
+        today: "2026-11-07",
+        dayOver: false,
+        fetchedAt: NOW,
+        isOffline: false,
+        sites: [],
+      });
+    }
+    expect(stub.urls).toEqual([]);
+    expect(store.gets).toBe(0);
+    expect(store.sets).toBe(0);
   });
 });
 

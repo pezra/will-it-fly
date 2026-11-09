@@ -1,4 +1,4 @@
-import type { KeyValueStore } from "../core/forecast/forecastCache";
+import type { KeyValueStore } from "../core/keyValueStore";
 import { isRecord } from "../core/isRecord";
 import type { Coordinate } from "../core/sites/site";
 import { SECONDS_PER_HOUR } from "../core/units";

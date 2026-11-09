@@ -1,4 +1,4 @@
-import type { KeyValueStore } from "../forecast/forecastCache";
+import type { KeyValueStore } from "../keyValueStore";
 import type { Transport } from "../forecast/openMeteoClient";
 import { isRecord } from "../isRecord";
 import { tryParseJSON } from "../json";
