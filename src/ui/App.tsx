@@ -5,6 +5,7 @@ import type { Route } from "./route";
 import { SiteDetail } from "./SiteDetail";
 import { SiteList } from "./SiteList";
 import { useRecommendations } from "./useRecommendations";
+import { useTravel } from "./useTravel";
 
 function useHashRoute(): Route {
   const [hash, setHash] = useState(window.location.hash);
@@ -21,21 +22,25 @@ function useHashRoute(): Route {
 
 export function App({ debug }: { debug: DebugParams }) {
   const route = useHashRoute();
-  const recs = useRecommendations(debug, route.day);
+  const travel = useTravel(useRecommendations(debug, route.day), debug);
 
   return (
     <>
       <main>
         {route.page === "site" ? (
-          <SiteDetail siteId={route.id} day={route.day} recs={recs} />
+          <SiteDetail siteId={route.id} day={route.day} recs={travel.recs} />
         ) : (
-          <SiteList recs={recs} day={route.day} />
+          <SiteList travel={travel} day={route.day} />
         )}
       </main>
       <footer>
         Weather data by{" "}
         <a href="https://open-meteo.com/">Open-Meteo.com</a> (CC BY 4.0) · Site info from{" "}
-        <a href="https://www.rmhpa.org/">RMHPA</a>, verify before flying
+        <a href="https://www.rmhpa.org/">RMHPA</a>, verify before flying · Routing by{" "}
+        <a href="https://project-osrm.org/">OSRM</a> and place search by{" "}
+        <a href="https://nominatim.org/">Nominatim</a>, ©{" "}
+        <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors · Drive times send your start point, rounded to about 1 km,
+        to OSRM.
       </footer>
     </>
   );

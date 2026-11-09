@@ -1,4 +1,5 @@
 import { isRecord } from "../isRecord";
+import { tryParseJSON } from "../json";
 import { offset } from "../sites/coordinate";
 import { elevationM } from "../sites/site";
 import type { Coordinate, Launch } from "../sites/site";
@@ -211,14 +212,6 @@ interface Location {
 
 function shape(detail: string, cause?: unknown): OpenMeteoError {
   return new OpenMeteoError("unexpectedShape", detail, cause === undefined ? undefined : { cause });
-}
-
-function tryParseJSON(text: string): { ok: true; value: unknown } | { ok: false; error: unknown } {
-  try {
-    return { ok: true, value: JSON.parse(text) };
-  } catch (error) {
-    return { ok: false, error };
-  }
 }
 
 /** The reason from an Open-Meteo error body (`{ "error": true, "reason": ... }`), already parsed. */

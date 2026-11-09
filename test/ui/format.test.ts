@@ -7,11 +7,14 @@ import {
   callLabel,
   confidenceLabel,
   dayLabel,
+  driveLabel,
   feet,
   forecastAge,
+  hiddenLine,
   idealLabel,
   miles,
   oneDecimal,
+  travelSummary,
   whole,
 } from "../../src/ui/format";
 
@@ -86,5 +89,68 @@ describe("idealLabel", () => {
   });
   it("shows a normal arc as is", () => {
     expect(withIdeal([{ from: 250, to: 290 }])).toMatch(/^250–290°/);
+  });
+});
+
+describe("driveLabel", () => {
+  const route = (seconds: number) => ({ seconds, source: "route" as const });
+  it("shows minutes under an hour and hours with leftover minutes", () => {
+    expect(driveLabel(route(2700))).toBe("45m");
+    expect(driveLabel(route(4800))).toBe("1h 20m");
+    expect(driveLabel(route(3600))).toBe("1h");
+  });
+  it("rounds up to whole minutes, so a site labelled 2h is never over a 2 h limit", () => {
+    expect(driveLabel(route(7200))).toBe("2h");
+    expect(driveLabel(route(7201))).toBe("2h 1m");
+    expect(driveLabel(route(4741))).toBe("1h 20m");
+    expect(driveLabel(route(1))).toBe("1m");
+  });
+  it("prefixes estimates with ≈", () => {
+    expect(driveLabel({ seconds: 4800, source: "estimate" })).toBe("≈ 1h 20m");
+  });
+});
+
+describe("travelSummary", () => {
+  const boulder = { latitude: 40.01, longitude: -105.27 };
+  const place = { kind: "place" as const, name: "Boulder", coordinate: boulder };
+  const here = { kind: "geolocation" as const };
+  it("names the place or your location", () => {
+    expect(travelSummary({ start: place, maxHours: 2 }, boulder, "found")).toBe(
+      "Within 2 h of Boulder",
+    );
+    expect(travelSummary({ start: here, maxHours: 3 }, boulder, "found")).toBe(
+      "Within 3 h of your location",
+    );
+  });
+  it("says any distance for no limit", () => {
+    expect(travelSummary({ start: place, maxHours: "any" }, boulder, "found")).toBe(
+      "Any distance from Boulder",
+    );
+    expect(travelSummary({ start: here, maxHours: "any" }, boulder, "found")).toBe(
+      "Any distance from your location",
+    );
+  });
+  it("asks for a start when there is none", () => {
+    expect(travelSummary({ start: here, maxHours: 2 }, undefined, "denied")).toBe(
+      "Set a starting point",
+    );
+    expect(travelSummary({ start: here, maxHours: "any" }, undefined, "unavailable")).toBe(
+      "Set a starting point",
+    );
+  });
+  it("says it is finding the location while geolocation is pending", () => {
+    expect(travelSummary({ start: here, maxHours: 2 }, undefined, "pending")).toBe(
+      "Finding your location…",
+    );
+  });
+});
+
+describe("hiddenLine", () => {
+  it("counts the hidden sites and follows the limit", () => {
+    expect(hiddenLine(3, 2)).toBe("3 sites hidden (over 2 h away)");
+    expect(hiddenLine(5, 4)).toBe("5 sites hidden (over 4 h away)");
+  });
+  it("uses the singular for one", () => {
+    expect(hiddenLine(1, 4)).toBe("1 site hidden (over 4 h away)");
   });
 });

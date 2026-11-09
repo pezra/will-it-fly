@@ -20,7 +20,7 @@ function launch(id: string, latitude: number, longitude: number, elevationFt: nu
   return testLaunch({ id, name: id, coordinate: { latitude, longitude }, elevationFt });
 }
 
-/** Elevations match rmhpa-sites.json. Ids never reach the URLs. */
+/** Elevations match sites.json. Ids never reach the URLs. */
 const launches: Launch[] = [
   launch("rmhpa/glenwood-lookout-mtn/north", 39.5428, -107.3003, 7830),
   launch("rmhpa/crested-butte/browns", 38.8897, -106.9455, 11300),
