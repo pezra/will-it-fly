@@ -193,14 +193,14 @@ describe("evaluateLaunch with RRFS primary", () => {
   }
 
   for (const uncovered of ["absent", "noData"] as const) {
-    it(`staysOnRRFSAtHalfTheWindowHours (${uncovered})`, () => {
-      const e = evaluateLaunch(site, launch, coveredBy(6, uncovered), key, t(0), "rrfs");
+    it(`staysOnRRFSAtThreeQuartersOfTheWindowHours (${uncovered})`, () => {
+      const e = evaluateLaunch(site, launch, coveredBy(9, uncovered), key, t(0), "rrfs");
       expect(e.model).toBe("rrfs");
       expect(e.fellBack).toBe(false);
     });
 
-    it(`fallsBackToECMWFUnderHalfTheWindowHours (${uncovered})`, () => {
-      const f = coveredBy(5, uncovered);
+    it(`fallsBackToECMWFUnderThreeQuartersOfTheWindowHours (${uncovered})`, () => {
+      const f = coveredBy(8, uncovered);
       const e = evaluateLaunch(site, launch, f, key, t(0), "rrfs");
       expect(e.model).toBe("ecmwf");
       expect(e.fellBack).toBe(true);
@@ -219,15 +219,14 @@ describe("evaluateLaunch with RRFS primary", () => {
 
   it("fallsBackWhenRRFSEndsInTheMorning", () => {
     // A November day: sunrise 06:45, sunset 16:52, so the window hours are 07:00 to 16:00 (10).
-    // RRFS runs out at 11:00, so its last hour is 10:00: 4 of 10. (Had it kept 11:00 it would be
-    // 5 of 10, which is not under half.) t(0) is noon.
+    // RRFS runs out after 11:00: 5 of 10, under three quarters. t(0) is noon.
     const november = { sunrise: t(-5) - 15 * 60_000, sunset: t(4) + 52 * 60_000 };
-    const f = forecast({ ecmwf: range(-6, 5).map(hour), rrfs: range(-6, -2).map(hour), days: [november] });
+    const f = forecast({ ecmwf: range(-6, 5).map(hour), rrfs: range(-6, -1).map(hour), days: [november] });
     const e = evaluateLaunch(site, launch, f, key, t(-6), "rrfs");
     expect(e.daylight.map((row) => row.time)).toEqual(range(-5, 4).map(t));
-    expect([formatDenverTime(t(-5)), formatDenverTime(t(-2)), formatDenverTime(t(4))]).toEqual([
+    expect([formatDenverTime(t(-5)), formatDenverTime(t(-1)), formatDenverTime(t(4))]).toEqual([
       "07:00",
-      "10:00",
+      "11:00",
       "16:00",
     ]);
     expect(e.model).toBe("ecmwf");

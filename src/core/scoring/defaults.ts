@@ -199,7 +199,7 @@ export const SCORING_DEFAULTS: Readonly<ScoringDefaults> = Object.freeze({
   mediumConfidenceMinShare: 0.4,
   checkMinCoverageShare: 0.5,
   // Primary model
-  rrfsPrimaryMinDaylightShare: 0.5,
+  rrfsPrimaryMinDaylightShare: 0.75,
   // Window score weights
   oneHourRunWeight: 0.6,
   twoHourRunWeight: 0.8,

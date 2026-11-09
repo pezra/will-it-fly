@@ -53,7 +53,7 @@ Each open launch gets two forecasts from Open-Meteo:
 
 Either model can be the **primary model**, with ECMWF as the default. The primary model's hours decide the calls, scores, reasons and windows. The other is the **check model**, used for model agreement and storm detection. Both are evaluated with the same rules and thresholds; only the roles swap.
 
-RRFS runs only about 3½ days ahead. With RRFS primary, a launch falls back to ECMWF for the day when RRFS covers less than half (0.5) of the day's window hours: daylight, from the current hour if it's today. An hour counts as covered when RRFS has it with wind and precipitation. With no window hours left, RRFS stays primary. A launch never mixes models within a day.
+RRFS runs only about 3½ days ahead. With RRFS primary, a launch falls back to ECMWF for the day when RRFS covers less than three quarters (0.75) of the day's window hours: daylight, from the current hour if it's today. An hour counts as covered when RRFS has it with wind and precipitation. With no window hours left, RRFS stays primary. A launch never mixes models within a day.
 
 Precipitation is reported for the hour *before* each timestamp, so flying hour h uses the larger of hour h and h+1. Everything else uses hour h.
 
