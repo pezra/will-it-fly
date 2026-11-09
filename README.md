@@ -8,22 +8,30 @@ It's a static web app meant for a phone. Open it in Safari and use Share → Add
 
 ## Usage
 
-The list shows every RMHPA site:
+The list shows the RMHPA sites within a drive time of your start point, in this order:
 
 1. Good sites, best window score first.
 2. Flyable sites, best window score first.
 3. Open sites without a window, nearest first, with the main reason.
 4. Closed sites.
 
+The start point and drive time are set in the bar under the day picker. It starts at 2 h from your location. Tap it to choose 1, 2, 3 or 4 h, or Any. You can also search for a town or address and start from there, and "Use my location" switches back to your location once a place is chosen. Start point and drive time are remembered on this device.
+
+Each site shows its drive time, then its straight-line distance. A time with "≈" in front is an estimate: the straight-line distance at 40 mph. Estimates are used when routing is unavailable and until routed times arrive.
+
+When sites are hidden, the list says how many (for example "3 sites hidden (over 2 h away)") and "Show all" removes the limit. "Show all" sets the drive time to Any and keeps it that way, so the limit doesn't come back on reload. Without a start point, nothing is filtered: the bar says "Set a starting point" and every site shows.
+
 Tap a site to see its launches, the hour by hour ECMWF and RRFS conditions, and the reasons for each hour's call. Refresh fetches a new forecast, unless the last one is under 5 minutes old. Forecasts are otherwise reused for an hour.
 
 After local sunset it shows tomorrow instead of today. The Today and Tomorrow buttons, and the date picker, show any day up to 14 days out. A day after tomorrow is fetched on its own when you pick it. RRFS only runs about 3½ days ahead, so windows further out are ECMWF only, and a two-week forecast is a rough guide at best.
 
-If you allow location access you'll see distances. Without it everything still works, and the distances are left out. (To change it on an iPhone: Settings → Safari → Location.)
+If you allow location access, the drive times and distances are measured from where you are. Without it everything still works: you can search for a start point, or, with neither, every site is shown with no distances. (To change it on an iPhone: Settings → Safari → Location.)
 
 ## Data
 
 - Weather data by [Open-Meteo.com](https://open-meteo.com/) (CC BY 4.0), using the free non-commercial tier.
+- Drive times are routed by [OSRM](https://project-osrm.org/) and place search uses [Nominatim](https://nominatim.openstreetmap.org/). Both use [OpenStreetMap](https://www.openstreetmap.org/) data (© OpenStreetMap contributors, [ODbL](https://opendatacommons.org/licenses/odbl/)). Nominatim's [usage policy](https://operations.osmfoundation.org/policies/nominatim/) applies.
+- For drive times, the start point rounded to about 1 km goes to the OSRM server, along with the site coordinates, which are public. The text you type in search goes to Nominatim. The app keeps the drive times for the last five rounded start points on your device.
 - Site information from [RMHPA](https://www.rmhpa.org/flying-sites), curated by hand into `sites.json`. Each site links to its RMHPA page. Verify before flying.
 
 ## How sites are scored
@@ -145,6 +153,8 @@ Each launch gets its best window, and a site takes its best launch. Ties go to t
 - Wind limits and directions come from RMHPA's prose, and some pages are vague or contradictory. Notes on the judgment calls are in the JSON.
 - The grid models don't see local effects like rotor, valley flow or which way the LZ wind is blowing.
 - The thermal index and cloud base are rough. They nudge the score, but only the low cloud rule can change a call.
+- Drive times don't include traffic, road closures or seasonal road closures.
+- Routing uses the free public OSRM demo server, which has no uptime guarantee. When it's unavailable, drive times fall back to the straight-line estimate.
 
 ## Running it locally
 

@@ -1,4 +1,5 @@
 import type { Coordinate } from "../core/sites/site";
+import type { DebugParams } from "./debugParams";
 
 export type LocationStatus = "pending" | "found" | "denied" | "unavailable";
 
@@ -36,4 +37,13 @@ export function requestLocation(): Promise<LocationResult> {
       resolve({ status: "unavailable" });
     }
   });
+}
+
+/** The location for this page: the debug fake or denial when set, else `requestLocation()`. */
+export function locate(debug: Pick<DebugParams, "location" | "noLocation">): Promise<LocationResult> {
+  if (debug.noLocation === true) return Promise.resolve({ status: "denied" });
+  if (debug.location !== undefined) {
+    return Promise.resolve({ status: "found", coordinate: debug.location });
+  }
+  return requestLocation();
 }

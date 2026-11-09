@@ -1,0 +1,107 @@
+import { useState } from "preact/hooks";
+import { travelSummary } from "./format";
+import { DRIVE_HOUR_CHOICES } from "./travelSettings";
+import type { MaxHours } from "./travelSettings";
+import type { Travel } from "./useTravel";
+
+const RADIUS_CHOICES: readonly MaxHours[] = [...DRIVE_HOUR_CHOICES, "any"];
+const OPTIONS_ID = "travel-options";
+
+function radiusLabel(choice: MaxHours): string {
+  return choice === "any" ? "Any" : `${choice} h`;
+}
+
+/** The start point and drive limit: a summary line that expands to the controls. */
+export function TravelBar({ travel }: { travel: Travel }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const { settings, searchState } = travel;
+  const searching = searchState.status === "searching";
+
+  return (
+    <section class="travel" aria-label="Start point and drive time">
+      <button
+        type="button"
+        class="travel-toggle"
+        aria-expanded={open}
+        aria-controls={OPTIONS_ID}
+        onClick={() => setOpen(!open)}
+      >
+        <span>{travelSummary(settings, travel.effectiveStart, travel.recs.location)}</span>
+        <span aria-hidden="true">{open ? "▴" : "▾"}</span>
+      </button>
+      {open && (
+        <div id={OPTIONS_ID} class="travel-options">
+          <div class="travel-radius" role="group" aria-label="Drive time">
+            {RADIUS_CHOICES.map((choice) => (
+              <button
+                key={choice}
+                type="button"
+                aria-pressed={settings.maxHours === choice}
+                onClick={() => travel.setMaxHours(choice)}
+              >
+                {radiusLabel(choice)}
+              </button>
+            ))}
+          </div>
+          <form
+            class="travel-search"
+            onSubmit={(event) => {
+              event.preventDefault();
+              travel.search(query);
+            }}
+          >
+            <input
+              type="search"
+              aria-label="Search for a starting place"
+              placeholder="Search for a place"
+              autocomplete="off"
+              value={query}
+              onInput={(event) => setQuery(event.currentTarget.value)}
+            />
+            <button type="submit" disabled={searching}>
+              {searching ? "Searching…" : "Search"}
+            </button>
+          </form>
+          {searchState.status === "results" && (
+            <ul class="travel-results">
+              {searchState.places.map((place) => (
+                <li key={`${place.name}|${place.coordinate.latitude}|${place.coordinate.longitude}`}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      travel.setPlace(place);
+                      setQuery("");
+                    }}
+                  >
+                    {place.name}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {searchState.status === "none" && (
+            <p class="note" role="status">No places found.</p>
+          )}
+          {searchState.status === "error" && (
+            <p class="note" role="status">Search failed: {searchState.message}</p>
+          )}
+          {settings.start.kind === "place" && (
+            <div>
+              <button type="button" disabled={travel.locating} onClick={() => travel.useMyLocation()}>
+                {travel.locating ? "Locating…" : "Use my location"}
+              </button>
+              {travel.locationError !== undefined && (
+                <p class="note" role="status">{travel.locationError}</p>
+              )}
+            </div>
+          )}
+          <p class="note">
+            Your start point, rounded to about 1 km, goes to OpenStreetMap's routing service; what
+            you type in search goes to Nominatim.
+          </p>
+        </div>
+      )}
+    </section>
+  );
+}

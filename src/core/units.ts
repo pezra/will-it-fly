@@ -2,6 +2,7 @@ import { normalizedDegrees } from "./sites/degreeArc";
 
 export const METERS_PER_FOOT = 0.3048;
 export const METERS_PER_MILE = 1609.344;
+export const SECONDS_PER_HOUR = 3600;
 
 const COMPASS_16 = [
   "N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",

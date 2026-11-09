@@ -1,11 +1,14 @@
 import { METERS_PER_FOOT, METERS_PER_MILE, compass } from "../core/units";
+import type { DriveTime } from "../core/travel/driveTime";
 import type { Confidence } from "../core/scoring/modelAgreement";
 import type { HourCall } from "../core/scoring/hourEvaluator";
 import { SCORING_DEFAULTS } from "../core/scoring/defaults";
 import { effectiveIdealArcs } from "../core/scoring/hourEvaluator";
-import type { DegreeArc, Launch } from "../core/sites/site";
+import type { Coordinate, DegreeArc, Launch } from "../core/sites/site";
 import { addDays, formatDayKey } from "../core/time";
 import type { DayKey } from "../core/time";
+import type { LocationStatus } from "./location";
+import type { MaxHours, TravelSettings } from "./travelSettings";
 
 /** Feet from meters, rounded to the nearest 100 ft, as "≈ 9,200 ft". "n/a" when missing. */
 export function approxFeet(meters: number | undefined): string {
@@ -115,4 +118,54 @@ export function whole(value: number | undefined): string {
 /** "-2.1" with a real minus sign, or "n/a". */
 export function oneDecimal(value: number | undefined): string {
   return value === undefined ? "n/a" : value.toFixed(1).replace("-", "−");
+}
+
+const SECONDS_PER_MINUTE = 60;
+const MINUTES_PER_HOUR = 60;
+
+/**
+ * "1h 20m", "45m" or "2h": whole minutes, rounded up, so a site labelled "2h" is never hidden by a
+ * 2 h limit. Estimates get a leading "≈ ".
+ */
+export function driveLabel(driveTime: DriveTime): string {
+  const minutes = Math.ceil(driveTime.seconds / SECONDS_PER_MINUTE);
+  const hours = Math.floor(minutes / MINUTES_PER_HOUR);
+  const rest = minutes % MINUTES_PER_HOUR;
+  const text =
+    hours === 0 ? `${rest}m` : rest === 0 ? `${hours}h` : `${hours}h ${rest}m`;
+  return driveTime.source === "estimate" ? `≈ ${text}` : text;
+}
+
+/**
+ * The travel bar's collapsed line: "Within 2 h of Boulder", or a prompt when there is no start.
+ * While the location is still pending and nothing else is chosen, it says so instead.
+ */
+export function travelSummary(
+  settings: TravelSettings,
+  effectiveStart: Coordinate | undefined,
+  location: LocationStatus,
+): string {
+  if (effectiveStart === undefined) {
+    return settings.start.kind === "geolocation" && location === "pending"
+      ? "Finding your location…"
+      : "Set a starting point";
+  }
+  const where = settings.start.kind === "place" ? settings.start.name : "your location";
+  return settings.maxHours === "any"
+    ? `Any distance from ${where}`
+    : `Within ${settings.maxHours} h of ${where}`;
+}
+
+/** "3 sites hidden (over 2 h away)". Only shown when a limit hides something. */
+export function hiddenLine(
+  hiddenCount: number,
+  maxHours: Exclude<MaxHours, "any">,
+): string {
+  const noun = hiddenCount === 1 ? "site" : "sites";
+  return `${hiddenCount} ${noun} hidden (over ${maxHours} h away)`;
+}
+
+/** The message of an Error, else String(error). */
+export function describeError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }

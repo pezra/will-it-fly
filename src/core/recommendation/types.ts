@@ -3,6 +3,7 @@ import type { HourResult, ReasonKind, Severity } from "../scoring/hourEvaluator"
 import type { FlyingWindow } from "../scoring/windowFinder";
 import type { Launch, Site } from "../sites/site";
 import type { DayKey } from "../time";
+import type { DriveTime } from "../travel/driveTime";
 
 /**
  * Why a site has no window. Mostly an hour-level reason, but "no flyable hour" has no `ReasonKind`
@@ -46,6 +47,8 @@ export interface SiteRecommendation {
   call: SiteCall;
   /** Great-circle distance from the user to the site's first launch. */
   distanceM?: number | undefined;
+  /** Drive time from the start to the site's first launch, set by `applyTravel`. */
+  driveTime?: DriveTime | undefined;
   /** The best launch's best window. Undefined when no launch has one, and for closed sites. */
   best?: BestWindow | undefined;
   /** Set for open sites without a window. */
