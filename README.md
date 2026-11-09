@@ -2,6 +2,8 @@
 
 Ranks the nearby paragliding sites (just RMHPA so far) by how flyable they look today. Each site is evaluated for safey (no-go call), XC/Soaring potential, its best time window, how much the models agree. Flyable sites are labeled Soar, XC or Sledder, with any cautions listed beside the labels.
 
+[Try it!](https://pezra.github.io/will-it-fly)
+
 It's a static web app meant for a phone. Open it in Safari and use Share → Add to Home Screen to get an app-like icon that also opens offline with the last forecast.
 
 **This is a decision aid, not a go/no-go authority.** Forecasts are wrong regularly and site data goes stale. Check the conditions at launch, read the site guide and make your own call.
