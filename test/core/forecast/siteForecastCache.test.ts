@@ -174,6 +174,16 @@ describe("SiteForecastCache", () => {
     expect(entry?.usedAt).toBe(HOUR_MS + 1);
   });
 
+  it("twoSnapshotsOpenedTogetherDontDropEachOthersSaves", () => {
+    const map = new Map<string, string>();
+    const cache = createSiteForecastCache(mapStore(map));
+    const first = cache.open();
+    const second = cache.open();
+    first.commit({ saves: [save("main:a")], used: [], now: 1_000 });
+    second.commit({ saves: [save("main:b")], used: [], now: 2_000 });
+    expect(storedKeys(map)).toEqual(["main:a", "main:b"]);
+  });
+
   it("aSaveLeavesOtherSitesEntriesUntouched", () => {
     const map = new Map<string, string>();
     const cache = createSiteForecastCache(mapStore(map));

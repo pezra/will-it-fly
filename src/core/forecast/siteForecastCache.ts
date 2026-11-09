@@ -124,23 +124,28 @@ export function createSiteForecastCache(store: RemovableStore): SiteForecastCach
 
   return {
     open() {
-      const entries = readEntries(store);
+      const snapshotEntries = readEntries(store);
       return {
         get(key, launches) {
-          const entry = entries.get(key);
+          const entry = snapshotEntries.get(key);
           if (entry === undefined || entry.launchesKey !== launchesKey(launches)) return undefined;
           const { fetchedAt, launchRaw, neighborRaw } = entry;
           return { fetchedAt, launchRaw, neighborRaw };
         },
         commit({ saves, used, now }) {
-          const usedEntries = used.flatMap((key) => {
-            const entry = entries.get(key);
-            return entry === undefined ? [] : [entry];
+          const stale = used.some((key) => {
+            const entry = snapshotEntries.get(key);
+            return entry !== undefined && now - entry.usedAt > USED_AT_RESOLUTION_MS;
           });
-          const stale = usedEntries.some((entry) => now - entry.usedAt > USED_AT_RESOLUTION_MS);
           if (saves.length === 0 && !stale) return;
 
-          for (const entry of usedEntries) entry.usedAt = now;
+          // Another load (or tab) may have written since `open()`, so apply this commit to what is
+          // stored now, not to the snapshot: otherwise the last writer drops the other's saves.
+          const entries = readEntries(store);
+          for (const key of used) {
+            const entry = entries.get(key);
+            if (entry !== undefined) entry.usedAt = now;
+          }
           for (const { key, launches, fetchedAt, launchRaw, neighborRaw } of saves) {
             entries.set(key, {
               fetchedAt,

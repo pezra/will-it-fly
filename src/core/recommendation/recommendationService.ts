@@ -175,7 +175,13 @@ async function loadForecasts(
       }
       const counts = toFetch.map(({ site }) => site.launches.length);
       // One slice per site. `forecasts` is in launch order, so each site takes its next `count`.
-      const slices = splitRaw(launchRaw, neighborRaw, counts);
+      // Splitting only feeds the cache: if it fails the fetched weather is still good, just unsaved.
+      let slices: ReturnType<typeof splitRaw> = [];
+      try {
+        slices = splitRaw(launchRaw, neighborRaw, counts);
+      } catch (splitError) {
+        console.warn("Could not split the forecast for the cache", splitError);
+      }
       let start = 0;
       toFetch.forEach(({ site, key }, i) => {
         const end = start + site.launches.length;
