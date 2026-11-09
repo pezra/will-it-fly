@@ -1,6 +1,6 @@
 # Will it fly?
 
-Ranks the nearby paragliding sites (RMHPA only for now) by how flyable they look today. Each site is evaluated for safey (no-go call), XC/Soaring potential, its best time window, how much the models agree. Flyable sites are labeled Soar, XC or Sledder, with any cautions listed beside the labels.
+Ranks the nearby paragliding sites (just RMHPA so far) by how flyable they look today. Each site is evaluated for safey (no-go call), XC/Soaring potential, its best time window, how much the models agree. Flyable sites are labeled Soar, XC or Sledder, with any cautions listed beside the labels.
 
 It's a static web app meant for a phone. Open it in Safari and use Share → Add to Home Screen to get an app-like icon that also opens offline with the last forecast.
 
@@ -8,7 +8,7 @@ It's a static web app meant for a phone. Open it in Safari and use Share → Add
 
 ## Usage
 
-The list shows the RMHPA sites within a drive time of your start point, in this order:
+The list shows the sites within a drive time of your start point, in this order:
 
 1. Sites with a flyable window show in their best window, best window score first.
 2. Open sites without a window, nearest first, with the main reason.
@@ -92,7 +92,7 @@ Sites with `xc` or `soaring` get a bonus if those look likely to work.
 | Ridge lift | the site is marked soarable (some sites list only certain launches), the launch wind is in an ideal direction and ≥ 8 mph (a site can override the 8) | +10, and the sledder penalty is waived |
 | XC potential | the site is marked XC and thermal index ≤ −3 °C, boundary layer ≥ 2000 m and wind aloft under 25 mph | +5 |
 
-Ridge lift doesn't raise the site's wind max. RMHPA's limits are safety limits, and its pages advise against high-wind soaring at the mountain sites. Boulder and Golden are not marked soarable, because RMHPA doesn't describe them as ridge sites (Boulder depends on a bubble of east wind, and west wind there is a hazard). Both are marked XC.
+Ridge lift doesn't raise the site's wind max, that's a safety limit.
 
 If a launch has no ideal range, anywhere in its OK range counts as ideal. A single ideal heading (e.g. "Ideal 200") counts as ±15°.
 
