@@ -4,7 +4,7 @@ import { effectiveLimits } from "../core/sites/site";
 import type { Launch, Site } from "../core/sites/site";
 import { ResultBadge } from "./CallBadge";
 import { ForecastStatus } from "./ForecastStatus";
-import { arcsLabel, confidenceLabel, dayLabel, driveLabel, feet, idealLabel, miles } from "./format";
+import { arcsLabel, cautionLine, confidenceLabel, dayLabel, driveLabel, feet, idealLabel, miles } from "./format";
 import { HourlyTable } from "./HourlyTable";
 import { listHref } from "./route";
 import type { DayKey } from "../core/time";
@@ -93,6 +93,7 @@ export function SiteDetail({
 
   const { site, best } = rec;
   const distance = miles(rec.distanceM);
+  const cautions = cautionLine(best?.window.cautions ?? []);
   const closedReason = site.status.state === "closed" ? site.status.reason : undefined;
   return (
     <>
@@ -101,6 +102,7 @@ export function SiteDetail({
       <p class="detail-head">
         <ResultBadge call={rec.call} conditions={best?.window.conditions} /> <span>{dayLabel(state.result.day, state.result.today)}</span>
       </p>
+      {cautions !== undefined && <p class="row-caution">{cautions}</p>}
       <dl class="facts">
         <dt>Rating</dt>
         <dd>{site.rating}</dd>
