@@ -3,12 +3,18 @@ import { windowLabel } from "../core/scoring/windowFinder";
 import type { DayKey } from "../core/time";
 import { CallBadge } from "./CallBadge";
 import { siteHref } from "./route";
-import { confidenceLabel, miles } from "./format";
+import { confidenceLabel, driveLabel, miles } from "./format";
 
 /** `day` is the route's day (undefined for the default), so the detail link keeps it. */
 export function SiteRow({ rec, day }: { rec: SiteRecommendation; day: DayKey | undefined }) {
   const { site, best } = rec;
-  const distance = miles(rec.distanceM);
+  const miLabel = miles(rec.distanceM);
+  const distance =
+    rec.driveTime === undefined
+      ? miLabel
+      : miLabel === undefined
+        ? driveLabel(rec.driveTime)
+        : `${driveLabel(rec.driveTime)} · ${miLabel}`;
   const status = site.status;
   const note =
     status.state === "closed"

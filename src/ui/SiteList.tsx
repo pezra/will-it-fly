@@ -1,11 +1,13 @@
 import type { Recommendations } from "./useRecommendations";
+import type { Travel } from "./useTravel";
 import { addDays, denverDayKey } from "../core/time";
 import type { DayKey } from "../core/time";
 import { DayPicker } from "./DayPicker";
 import { ForecastStatus } from "./ForecastStatus";
-import { dayLabel, forecastAge } from "./format";
+import { dayLabel, forecastAge, hiddenLine } from "./format";
 import { listHref } from "./route";
 import { SiteRow } from "./SiteRow";
+import { TravelBar } from "./TravelBar";
 
 function LocationNote({ location }: { location: Recommendations["location"] }) {
   if (location === "denied") {
@@ -21,9 +23,9 @@ function LocationNote({ location }: { location: Recommendations["location"] }) {
   return null;
 }
 
-/** `day` is the route's day, undefined for the default day. */
-export function SiteList({ recs, day }: { recs: Recommendations; day: DayKey | undefined }) {
-  const { state, location, now, refresh, retry } = recs;
+/** `day` is the route's day, undefined for the default day. Lists `travel.shown`. */
+export function SiteList({ travel, day }: { travel: Travel; day: DayKey | undefined }) {
+  const { state, location, now, refresh, retry } = travel.recs;
 
   if (state.status !== "loaded") {
     return (
@@ -46,6 +48,13 @@ export function SiteList({ recs, day }: { recs: Recommendations; day: DayKey | u
       </header>
       <p class="age">{forecastAge(result.fetchedAt, now())}</p>
       <DayPicker today={result.today} shown={result.day} />
+      <TravelBar travel={travel} />
+      {travel.hiddenCount > 0 && !result.dayOver && travel.settings.maxHours !== "any" && (
+        <p class="hidden-line">
+          {hiddenLine(travel.hiddenCount, travel.settings.maxHours)}{" "}
+          <button type="button" onClick={() => travel.setMaxHours("any")}>Show all</button>
+        </p>
+      )}
       {result.isOffline && (
         <p class="banner" role="status">
           Offline: showing the last saved forecast.
@@ -54,14 +63,14 @@ export function SiteList({ recs, day }: { recs: Recommendations; day: DayKey | u
       {state.refreshError !== undefined && (
         <p class="banner" role="alert">Refresh failed: {state.refreshError}</p>
       )}
-      <LocationNote location={location} />
+      {travel.effectiveStart === undefined && <LocationNote location={location} />}
       {result.dayOver ? (
         <p class="banner">
           Today's sunset has passed. <a href={listHref(addDays(result.today, 1))}>See tomorrow</a>
         </p>
       ) : (
         <ul class="rows">
-          {result.sites.map((rec) => (
+          {travel.shown.map((rec) => (
             <SiteRow key={rec.site.id} rec={rec} day={day} />
           ))}
         </ul>

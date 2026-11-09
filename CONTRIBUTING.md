@@ -18,6 +18,7 @@ src/core/            all logic, with no DOM or browser globals
   scoring/           SCORING_DEFAULTS, derived values, hour evaluator,
                      model agreement, window finder
   recommendation/    per-launch evaluation, ranking, getRecommendations
+  travel/            drive times (OSRM, with estimates), place search, the drive-time filter
   time.ts            America/Denver calendar helpers
 src/ui/              Preact components, location, storage, debug params
 sites.json           the curated RMHPA site catalog
@@ -49,6 +50,7 @@ Tests read fixture files with Vite's `?raw` import rather than `node:fs`.
 | Parameter | Effect |
 |---|---|
 | `?now=2026-11-08T18:30:00-07:00` | fixes the clock (after sunset shows tomorrow). The picker's range follows it |
+| `?routeBase=https://invalid.example` | points at a dead OSRM host. Drive times fall back to the "≈" estimates |
 | `?lat=39.74&lon=-104.99` | fakes a location |
 | `?nolocation` | behaves as if location were denied |
 | `?base=https://invalid.example` | points at a dead Open-Meteo host. Combined with a `now` more than an hour after the last fetch, it shows the offline fallback |
