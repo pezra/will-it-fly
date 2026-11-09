@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { testLaunch } from "../support/builders";
+import type { Reason } from "../../src/core/scoring/hourEvaluator";
 import {
+  CONDITION_LABEL,
   approxFeet,
   arcLabel,
+  callDisplay,
   callGlyph,
   callLabel,
+  cautionLine,
   confidenceLabel,
   dayLabel,
   driveLabel,
@@ -173,5 +177,63 @@ describe("loadingMoreLine", () => {
   });
   it("uses the singular for one", () => {
     expect(loadingMoreLine(1)).toBe("Loading 1 more site…");
+  });
+});
+
+describe("CONDITION_LABEL", () => {
+  it("names the three conditions", () => {
+    expect(CONDITION_LABEL).toEqual({ soar: "Soar", xc: "XC", sledder: "Sledder" });
+  });
+});
+
+describe("callDisplay", () => {
+  it("gives pills for a good or flyable hour with conditions", () => {
+    expect(callDisplay("good", ["soar", "xc"])).toEqual({
+      kind: "pills",
+      conditions: ["soar", "xc"],
+    });
+    expect(callDisplay("flyable", ["sledder"])).toEqual({
+      kind: "pills",
+      conditions: ["sledder"],
+    });
+  });
+  it("falls back to a Sledder pill when conditions are missing or empty", () => {
+    expect(callDisplay("good", undefined)).toEqual({ kind: "pills", conditions: ["sledder"] });
+    expect(callDisplay("flyable", [])).toEqual({ kind: "pills", conditions: ["sledder"] });
+  });
+  it("gives a badge for no-go, no-data and closed, ignoring conditions", () => {
+    expect(callDisplay("noGo", ["soar"])).toEqual({ kind: "badge", call: "noGo" });
+    expect(callDisplay("noData", undefined)).toEqual({ kind: "badge", call: "noData" });
+    expect(callDisplay("closed", [])).toEqual({ kind: "badge", call: "closed" });
+  });
+});
+
+describe("cautionLine", () => {
+  const caution = (text: string): Reason => ({ kind: "lowCloud", severity: "caution", text });
+
+  it("has no line without cautions", () => {
+    expect(cautionLine([])).toBeUndefined();
+  });
+  it("lists one or two cautions without a count", () => {
+    expect(cautionLine([caution("low cloud")])).toBe("⚠ low cloud");
+    expect(cautionLine([caution("low cloud"), caution("wind aloft 28 mph")])).toBe(
+      "⚠ low cloud, wind aloft 28 mph",
+    );
+  });
+  it("shows at most two and counts the rest", () => {
+    expect(
+      cautionLine([caution("a"), caution("b"), caution("c")]),
+    ).toBe("⚠ a, b +1 more");
+    expect(
+      cautionLine([caution("a"), caution("b"), caution("c"), caution("d"), caution("e")]),
+    ).toBe("⚠ a, b +3 more");
+  });
+  it("honours a custom cap", () => {
+    expect(cautionLine([caution("a"), caution("b"), caution("c")], 1)).toBe("⚠ a +2 more");
+  });
+  it("keeps commas inside a caution's text", () => {
+    expect(cautionLine([caution("wind 28 mph, gusty"), caution("low cloud")])).toBe(
+      "⚠ wind 28 mph, gusty, low cloud",
+    );
   });
 });
