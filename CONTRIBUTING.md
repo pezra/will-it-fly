@@ -13,13 +13,15 @@ npm ci
 
 ```
 src/core/            all logic, with no DOM or browser globals
-  sites/             site types, arcs, coordinates, rmhpa-sites.json
+  sites/             site types, arcs, coordinates
   forecast/          Open-Meteo client and parser, forecast cache
   scoring/           SCORING_DEFAULTS, derived values, hour evaluator,
                      model agreement, window finder
   recommendation/    per-launch evaluation, ranking, getRecommendations
+  travel/            drive times (OSRM, with estimates), place search, the drive-time filter
   time.ts            America/Denver calendar helpers
 src/ui/              Preact components, location, storage, debug params
+sites.json           the curated RMHPA site catalog
 public/              manifest, icons, service worker template
 test/                Vitest tests, mirroring src/core
 scripts/             make-icons.mjs
@@ -48,6 +50,7 @@ Tests read fixture files with Vite's `?raw` import rather than `node:fs`.
 | Parameter | Effect |
 |---|---|
 | `?now=2026-11-08T18:30:00-07:00` | fixes the clock (after sunset shows tomorrow). The picker's range follows it |
+| `?routeBase=https://invalid.example` | points at a dead OSRM host. Drive times fall back to the "≈" estimates |
 | `?lat=39.74&lon=-104.99` | fakes a location |
 | `?nolocation` | behaves as if location were denied |
 | `?base=https://invalid.example` | points at a dead Open-Meteo host. Combined with a `now` more than an hour after the last fetch, it shows the offline fallback |
@@ -67,7 +70,7 @@ The rules are in `src/core/scoring/hourEvaluator.ts`, and every threshold and we
 
 ## Site data
 
-Sites live in `src/core/sites/rmhpa-sites.json`, curated by hand from the [RMHPA site pages](https://www.rmhpa.org/flying-sites). `parseSites` validates the file when it loads, and `test/core/sites/rmhpaSitesData.test.ts` checks it for plausible values.
+Sites live in `sites.json`, curated by hand from the [RMHPA site pages](https://www.rmhpa.org/flying-sites). `parseSites` validates the file when it loads, and `test/core/sites/rmhpaSitesData.test.ts` checks it for plausible values.
 
 Each site has an `id` (`rmhpa/<slug>`), `name`, `sourceURL`, `rating`, `status` (`{"state": "open"}` or `{"state": "closed", "reason": "..."}`), site-level PG `limits` in mph (`minMph`, `idealMph`, `maxMph`, `gustFactorMph`), optional `notes`, and `launches`. Each launch has an `id` (`<site id>/<slug>`), `name`, `coordinate`, `elevationFt`, `directions` and optional `limits` that replace the site's.
 

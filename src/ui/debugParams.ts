@@ -6,12 +6,14 @@ import type { Coordinate } from "../core/sites/site";
  *
  *   ?now=<ISO 8601>       pretend it is this time (a fixed clock)
  *   ?base=<URL>           Open-Meteo base URL (e.g. an unreachable host, to force a fetch failure)
+ *   ?routeBase=<URL>      OSRM base URL (e.g. an unreachable host, to force estimated drive times)
  *   ?lat=..&lon=..        fake location
  *   ?nolocation           behave as if location were denied
  */
 export interface DebugParams {
   now?: number;
   baseURL?: string;
+  routeBaseURL?: string;
   location?: Coordinate;
   noLocation?: boolean;
 }
@@ -29,6 +31,9 @@ export function parseDebugParams(search: string): DebugParams {
 
   const base = params.get("base");
   if (base !== null && base !== "") debug.baseURL = base;
+
+  const routeBase = params.get("routeBase");
+  if (routeBase !== null && routeBase !== "") debug.routeBaseURL = routeBase;
 
   const lat = params.get("lat");
   const lon = params.get("lon");

@@ -4,7 +4,7 @@ import { effectiveLimits } from "../core/sites/site";
 import type { Launch, Site } from "../core/sites/site";
 import { CallBadge } from "./CallBadge";
 import { ForecastStatus } from "./ForecastStatus";
-import { arcsLabel, confidenceLabel, dayLabel, feet, idealLabel, miles } from "./format";
+import { arcsLabel, confidenceLabel, dayLabel, driveLabel, feet, idealLabel, miles } from "./format";
 import { HourlyTable } from "./HourlyTable";
 import { listHref } from "./route";
 import type { DayKey } from "../core/time";
@@ -54,7 +54,7 @@ export function SiteDetail({
   day: DayKey | undefined;
   recs: Recommendations;
 }) {
-  const { state, location } = recs;
+  const { state } = recs;
   const back = <a class="back" href={listHref(day)}>← All sites</a>;
 
   if (state.status !== "loaded") {
@@ -77,7 +77,7 @@ export function SiteDetail({
   }
 
   const { site, best } = rec;
-  const distance = location === "found" ? miles(rec.distanceM) : undefined;
+  const distance = miles(rec.distanceM);
   const closedReason = site.status.state === "closed" ? site.status.reason : undefined;
   return (
     <>
@@ -89,9 +89,15 @@ export function SiteDetail({
       <dl class="facts">
         <dt>Rating</dt>
         <dd>{site.rating}</dd>
+        {rec.driveTime !== undefined && (
+          <>
+            <dt>Drive time</dt>
+            <dd>{driveLabel(rec.driveTime)}</dd>
+          </>
+        )}
         {distance !== undefined && (
           <>
-            <dt>Distance</dt>
+            <dt>Distance (straight-line)</dt>
             <dd>{distance}</dd>
           </>
         )}

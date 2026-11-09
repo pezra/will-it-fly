@@ -65,12 +65,15 @@ export function mainReason(launches: readonly LaunchEvaluation[]): MainReason {
   );
 }
 
+/** Where a site's distance and drive time are measured to: its first launch, if it has one. */
+export function firstLaunchCoordinate(site: Site): Coordinate | undefined {
+  return site.launches[0]?.coordinate;
+}
+
 /** Distance from the user to the site's first launch. */
 function siteDistanceM(site: Site, location: Coordinate | undefined): number | undefined {
-  const first = site.launches[0];
-  return location === undefined || first === undefined
-    ? undefined
-    : distanceM(location, first.coordinate);
+  const first = firstLaunchCoordinate(site);
+  return location === undefined || first === undefined ? undefined : distanceM(location, first);
 }
 
 /** An open site's call. No window: no-go; a good hour in the best window: good; else flyable. */
@@ -81,7 +84,7 @@ function openSiteCall(best: BestWindow | undefined): SiteCall {
 
 /**
  * Builds a site's recommendation from its evaluated launches. A closed site keeps none of them.
- * Distances are filled in later by `withDistances`.
+ * Distances and drive times are filled in later by `withDistances` and `applyTravel`.
  */
 export function recommendSite(site: Site, launches: LaunchEvaluation[]): SiteRecommendation {
   if (site.status.state === "closed") return { site, call: "closed", launches: [] };
