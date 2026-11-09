@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { MODEL_NAMES } from "../../src/core/scoring/hourEvaluator";
-import { canonicalHash, listHref, parseRoute, routeHref, siteHref } from "../../src/ui/route";
+import { canonicalHash, listHref, parseRoute, resolveRoute, routeHref, siteHref } from "../../src/ui/route";
 
 const IDS = ["rmhpa/crested-butte", "a?b", "50%/off", "a?b/c%d", "plain", "a b&c=d#e"];
 
@@ -135,6 +135,43 @@ describe("canonicalHash", () => {
     for (const h of inputs) {
       for (const d of MODEL_NAMES) {
         expect(canonicalHash(canonicalHash(h, d) ?? h, d), `${h} with ${d}`).toBeUndefined();
+      }
+    }
+  });
+});
+
+describe("resolveRoute", () => {
+  it("gives a missing or bad model the default, with a rewrite", () => {
+    expect(resolveRoute("#/", "rrfs")).toEqual({ route: { page: "list", model: "rrfs" }, rewrite: "#/?model=rrfs" });
+    expect(resolveRoute("", "ecmwf")).toEqual({ route: { page: "list", model: "ecmwf" }, rewrite: "#/?model=ecmwf" });
+    expect(resolveRoute("#/day/2026-11-11/site/a%2Fb?model=RRFS", "rrfs")).toEqual({
+      route: { page: "site", id: "a/b", day: "2026-11-11", model: "rrfs" },
+      rewrite: "#/day/2026-11-11/site/a%2Fb?model=rrfs",
+    });
+  });
+  it("keeps the link's model over the default", () => {
+    expect(resolveRoute("#/elsewhere?model=rrfs", "ecmwf")).toEqual({
+      route: { page: "list", model: "rrfs" },
+      rewrite: "#/?model=rrfs",
+    });
+    expect(resolveRoute("#/site/x?model=ecmwf&x=1", "rrfs")).toEqual({
+      route: { page: "site", id: "x", model: "ecmwf" },
+      rewrite: "#/site/x?model=ecmwf",
+    });
+  });
+  it("gives no rewrite for a canonical hash", () => {
+    const resolved = resolveRoute("#/day/2026-11-11?model=rrfs", "ecmwf");
+    expect(resolved).toEqual({ route: { page: "list", day: "2026-11-11", model: "rrfs" } });
+    expect("rewrite" in resolved).toBe(false);
+  });
+  it("always gives a route with a model, the one its rewrite names", () => {
+    const hashes = ["", "#/", "#/?model=", "#/site/x", "#/day/2026-02-30", "#/site/%E0%A4%A", "#/?model=rrfs"];
+    for (const hash of hashes) {
+      for (const d of MODEL_NAMES) {
+        const { route, rewrite } = resolveRoute(hash, d);
+        expect(route.model, `${hash} with ${d}`).toBeDefined();
+        expect(route).toEqual({ ...parseRoute(rewrite ?? hash), model: route.model });
+        expect(parseRoute(rewrite ?? hash).model).toBe(route.model);
       }
     }
   });

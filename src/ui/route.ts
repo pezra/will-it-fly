@@ -73,3 +73,20 @@ export function canonicalHash(hash: string, defaultModel: ModelName): string | u
   const canonical = routeHref(route, route.model ?? defaultModel);
   return canonical === hash ? undefined : canonical;
 }
+
+/** A route that names its model, as the app uses it once the hash is canonical. */
+export type CanonicalRoute = Route & { model: ModelName };
+
+/**
+ * The route for `hash`, with `defaultModel` when the hash names no valid model, and the hash to
+ * rewrite the URL to when `hash` isn't canonical (see `canonicalHash`).
+ */
+export function resolveRoute(
+  hash: string,
+  defaultModel: ModelName,
+): { route: CanonicalRoute; rewrite?: string } {
+  const rewrite = canonicalHash(hash, defaultModel);
+  const parsed = parseRoute(hash);
+  const route: CanonicalRoute = { ...parsed, model: parsed.model ?? defaultModel };
+  return rewrite === undefined ? { route } : { route, rewrite };
+}

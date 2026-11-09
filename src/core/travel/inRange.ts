@@ -1,5 +1,6 @@
 import { firstLaunchCoordinate } from "../recommendation/ranker";
 import type { RecommendationResult } from "../recommendation/types";
+import type { ModelName } from "../scoring/hourEvaluator";
 import type { Coordinate, Site } from "../sites/site";
 import type { DayKey } from "../time";
 import type { TravelTimes } from "./applyTravel";
@@ -108,9 +109,9 @@ export function wantedSiteIds({
   return stage === "ready" ? inRangeIds : undefined;
 }
 
-/** Keys a weather load: the day and the ids, in any order. */
-export function weatherLoadKey(day: DayKey | undefined, ids: readonly string[]): string {
-  return JSON.stringify([day ?? null, [...ids].sort()]);
+/** Keys a weather load: the day, the primary model and the ids, in any order. */
+export function weatherLoadKey(day: DayKey | undefined, model: ModelName, ids: readonly string[]): string {
+  return JSON.stringify([day ?? null, model, [...ids].sort()]);
 }
 
 /** The `ids` that `result` has no site for. */
