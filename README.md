@@ -1,6 +1,6 @@
 # Will it fly?
 
-Ranks the RMHPA paragliding sites by how flyable they look today, using the ECMWF forecast and NOAA's RRFS model as a cross-check. Each site gets a call (good, flyable or no-go), its best time window, how much the two models agree, and the reasons behind the call.
+Ranks the RMHPA paragliding sites by how flyable they look today, using the ECMWF forecast and NOAA's RRFS model as a cross-check. Each site gets a call (good, flyable or no-go), its best time window, how much the two models agree, and the reasons behind the call. Good and flyable sites are labeled Soar, XC or Sledder, with any cautions listed beside the labels.
 
 It's a static web app meant for a phone. Open it in Safari and use Share → Add to Home Screen to get an app-like icon that also opens offline with the last forecast.
 
@@ -10,10 +10,12 @@ It's a static web app meant for a phone. Open it in Safari and use Share → Add
 
 The list shows the RMHPA sites within a drive time of your start point, in this order:
 
-1. Good sites, best window score first.
-2. Flyable sites, best window score first.
+1. Sites with a good hour in their best window, best window score first.
+2. Sites whose best window has only flyable hours, best window score first.
 3. Open sites without a window, nearest first, with the main reason.
 4. Closed sites.
+
+Good and flyable sites show condition labels (Soar, XC or Sledder) rather than the words good and flyable. A caution line in amber lists any cautions in the best window. See [Condition labels](#condition-labels).
 
 The start point and drive time are set in the bar under the day picker. It starts at 2 h from your location. Tap it to choose 1, 2, 3 or 4 h. You can also search for a town or address and start from there, and "Use my location" switches back to your location once a place is chosen. Start point and drive time are remembered on this device.
 
@@ -93,12 +95,12 @@ One rule only costs points and never changes the call:
 
 It used to cap the hour at flyable. On weak November days at Boulder and Golden it fired all day, even though both were soarable, so now it just lowers the score.
 
-Two bonuses only add points and never change the call. Both depend on notes curated from the RMHPA pages (`soaring` and `xc` in the site JSON), so a site RMHPA doesn't describe that way never gets them:
+Two bonuses only add points and never change the call. Both depend on notes curated from the RMHPA pages (`soaring` and `xc` in the site JSON), so a site RMHPA doesn't describe that way never gets them. The XC label doesn't need the `xc` note, and the bonus does; see [Condition labels](#condition-labels).
 
 | Bonus | When | Points |
 |---|---|---|
 | Ridge lift | the site is marked soarable (some sites list only certain launches), the launch wind is in an ideal direction and ≥ 8 mph (a site can override the 8) | +10, and the sledder penalty is waived |
-| XC potential | the site is marked XC, thermal index ≤ −3 °C, boundary layer ≥ 2000 m and wind aloft under 25 mph | +5 |
+| XC potential | the site is marked XC and thermal index ≤ −3 °C, boundary layer ≥ 2000 m and wind aloft under 25 mph | +5 |
 
 Ridge lift doesn't raise the site's wind max. RMHPA's limits are safety limits, and its pages advise against high-wind soaring at the mountain sites. Boulder and Golden are not marked soarable, because RMHPA doesn't describe them as ridge sites (Boulder depends on a bubble of east wind, and west wind there is a hazard). Both are marked XC.
 
@@ -151,6 +153,20 @@ RRFS **agrees** with ECMWF for an hour when RRFS isn't no-go, the launch wind di
 | ECMWF only | RRFS covers less than half the window | 0.85 |
 
 Each launch gets its best window, and a site takes its best launch. Ties go to the earlier window and to the launch listed first. A site's call is good if its best window has at least one good hour, flyable if the window has only flyable hours, and no-go if it has no window. Good sites always rank above flyable ones, whatever their scores. A site with no window shows its most common no-go reason.
+
+### Condition labels
+
+Good and flyable hours get one or more labels, shown as pills. They say what the hour offers. A label doesn't change the call, the score or the order.
+
+- **Soar**: the ridge lift rule applies. The site is marked soarable, the launch wind is in an ideal direction and it is at least 8 mph (a site can override the 8). It needs the `soaring` note.
+- **XC**: thermal index ≤ −3 °C, boundary layer ≥ 2000 m and wind aloft under 25 mph. This applies at any site, whether or not it is marked XC.
+- **Sledder**: neither Soar nor XC applies.
+
+An hour can have both Soar and XC. Sledder is only the fallback. It is not the sledder penalty above, which uses different thresholds.
+
+A site's pills come from its best window: Soar and XC if any hour in the window has them, otherwise Sledder. So a window with XC hours and Sledder hours shows only XC.
+
+Cautions show on their own amber line, not as pills. Each kind of caution appears once, up to two are shown, and any others are counted as "+N more".
 
 ### Known limitations
 
