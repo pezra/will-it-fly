@@ -1,11 +1,8 @@
 import { isRecord } from "../isRecord";
+import type { KeyValueStore } from "../keyValueStore";
 import type { Launch } from "../sites/site";
 
-/** The slice of `localStorage` the cache needs. `get` returns undefined for a missing key. */
-export interface KeyValueStore {
-  get(key: string): string | undefined;
-  set(key: string, value: string): void;
-}
+export type { KeyValueStore };
 
 export interface CachedForecast {
   launchRaw: string;

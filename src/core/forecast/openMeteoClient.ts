@@ -243,14 +243,58 @@ function toLocation(v: unknown, where: string): Location {
   };
 }
 
-function locations(body: string): Location[] {
+/** The body's location objects, unchecked. A single-location request answers with a bare object. */
+function rawLocations(body: string): unknown[] {
   const parsed = tryParseJSON(body);
   if (!parsed.ok) throw shape("body is not valid JSON", parsed.error);
   const value = parsed.value;
   const reason = apiErrorReason(value);
   if (reason !== undefined) throw new OpenMeteoError("api", reason);
-  if (Array.isArray(value)) return value.map((el, i) => toLocation(el, `location ${i}`));
-  return [toLocation(value, "location")];
+  return Array.isArray(value) ? value : [value];
+}
+
+function locations(body: string): Location[] {
+  return rawLocations(body).map((el, i) => toLocation(el, `location ${i}`));
+}
+
+export interface RawSlice {
+  /** A JSON array of the site's launch locations, one per launch. */
+  launchRaw: string;
+  /** A JSON array of the site's neighbor locations, `NEIGHBOR_POINTS_PER_LAUNCH` per launch. */
+  neighborRaw: string;
+}
+
+/**
+ * Cuts a launch and neighbor response pair into one slice per site, in order, where site `i` owns
+ * the next `launchCounts[i]` launches. Each slice is a valid response for that site's launches alone,
+ * so `parseForecasts` reads it as it reads the whole pair.
+ */
+export function splitRaw(
+  launchBody: string,
+  neighborBody: string,
+  launchCounts: readonly number[],
+): RawSlice[] {
+  const launchLocs = rawLocations(launchBody);
+  const neighborLocs = rawLocations(neighborBody);
+  const total = launchCounts.reduce((sum, n) => sum + n, 0);
+  const neighborCount = total * NEIGHBOR_POINTS_PER_LAUNCH;
+  if (launchLocs.length !== total || neighborLocs.length !== neighborCount) {
+    throw shape(
+      `expected ${total} launch and ${neighborCount} neighbor locations, got ${launchLocs.length} and ${neighborLocs.length}`,
+    );
+  }
+  let start = 0;
+  return launchCounts.map((n) => {
+    const end = start + n;
+    const slice = {
+      launchRaw: JSON.stringify(launchLocs.slice(start, end)),
+      neighborRaw: JSON.stringify(
+        neighborLocs.slice(start * NEIGHBOR_POINTS_PER_LAUNCH, end * NEIGHBOR_POINTS_PER_LAUNCH),
+      ),
+    };
+    start = end;
+    return slice;
+  });
 }
 
 export function parseForecasts(
