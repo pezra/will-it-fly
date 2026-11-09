@@ -71,12 +71,8 @@ export function dayLabel(day: DayKey, today: DayKey): string {
   return formatDayKey(day);
 }
 
-export function callLabel(call: HourCall): string {
+export function callLabel(call: "noGo" | "noData"): string {
   switch (call) {
-    case "good":
-      return "Good";
-    case "flyable":
-      return "Flyable";
     case "noGo":
       return "No-go";
     case "noData":
@@ -85,12 +81,8 @@ export function callLabel(call: HourCall): string {
 }
 
 /** A glyph that backs up the color, so a call never relies on color alone. */
-export function callGlyph(call: HourCall): string {
+export function callGlyph(call: "noGo" | "noData"): string {
   switch (call) {
-    case "good":
-      return "✓";
-    case "flyable":
-      return "~";
     case "noGo":
       return "✕";
     case "noData":

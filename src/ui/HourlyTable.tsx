@@ -3,7 +3,7 @@ import type { LaunchEvaluation } from "../core/recommendation/types";
 import type { HourResult } from "../core/scoring/hourEvaluator";
 import { formatDenverTime } from "../core/time";
 import { compass } from "../core/units";
-import { CallBadge } from "./CallBadge";
+import { ResultBadge } from "./CallBadge";
 import { approxFeet, oneDecimal, whole } from "./format";
 
 /** Launch-height wind this far from the model's 10 m wind (mph) gets a marker. */
@@ -47,7 +47,7 @@ function WindCell({
 function ReasonList({ result, label }: { result: HourResult; label: string }) {
   return (
     <li>
-      <strong>{label}</strong> <CallBadge call={result.call} />
+      <strong>{label}</strong> <ResultBadge call={result.call} conditions={result.conditions} />
       {result.reasons.length > 0 && (
         <ul>
           {result.reasons.map((r) => (
@@ -89,9 +89,9 @@ export function HourlyTable({ evaluation }: { evaluation: LaunchEvaluation }) {
             {daylight.map(({ time, ecmwf, ecmwfHour, rrfs, rrfsHour }) => (
               <tr key={time} class={ecmwf.call === "noData" ? "no-data" : undefined}>
                 <th scope="row">{formatDenverTime(time)}</th>
-                <td><CallBadge call={ecmwf.call} /></td>
+                <td><ResultBadge call={ecmwf.call} conditions={ecmwf.conditions} /></td>
                 <td>{ecmwf.call === "noData" ? "no data" : <WindCell result={ecmwf} hour={ecmwfHour} withGust={true} />}</td>
-                <td>{rrfs === undefined ? "n/a" : <CallBadge call={rrfs.call} />}</td>
+                <td>{rrfs === undefined ? "n/a" : <ResultBadge call={rrfs.call} conditions={rrfs.conditions} />}</td>
                 <td><WindCell result={rrfs} hour={rrfsHour} withGust={false} /></td>
                 <td>{whole(ecmwfHour.capeJkg)}</td>
                 <td>{approxFeet(ecmwf.cloudBaseM)}</td>

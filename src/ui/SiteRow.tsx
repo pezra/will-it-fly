@@ -1,9 +1,9 @@
 import type { SiteRecommendation } from "../core/recommendation/types";
 import { windowLabel } from "../core/scoring/windowFinder";
 import type { DayKey } from "../core/time";
-import { CallBadge } from "./CallBadge";
+import { ResultBadge } from "./CallBadge";
 import { siteHref } from "./route";
-import { confidenceLabel, driveLabel, miles } from "./format";
+import { cautionLine, confidenceLabel, driveLabel, miles } from "./format";
 
 /** `day` is the route's day (undefined for the default), so the detail link keeps it. */
 export function SiteRow({ rec, day }: { rec: SiteRecommendation; day: DayKey | undefined }) {
@@ -22,11 +22,7 @@ export function SiteRow({ rec, day }: { rec: SiteRecommendation; day: DayKey | u
       : best === undefined
         ? rec.mainReason?.text
         : undefined;
-  const hasReason = (kind: string) =>
-    best?.window.hours.some((h) => h.reasons.some((r) => r.kind === kind)) ?? false;
-  const tags = [hasReason("ridgeLift") && "ridge lift", hasReason("xcPotential") && "XC potential"]
-    .filter((t) => t !== false)
-    .join(", ");
+  const cautions = cautionLine(best?.window.cautions ?? []);
   const highGusts = best?.window.warnings.some((r) => r.kind === "highGusts") ?? false;
 
   return (
@@ -34,7 +30,7 @@ export function SiteRow({ rec, day }: { rec: SiteRecommendation; day: DayKey | u
       <a class="row" href={siteHref(site.id, day)}>
         <div class="row-top">
           <span class="row-name">{site.name}</span>
-          <CallBadge call={rec.call} />
+          <ResultBadge call={rec.call} conditions={best?.window.conditions} />
         </div>
         <div class="row-meta">
           <span>{site.rating}</span>
@@ -48,7 +44,7 @@ export function SiteRow({ rec, day }: { rec: SiteRecommendation; day: DayKey | u
           )}
         </div>
         {note !== undefined && <div class="row-note">{note}</div>}
-        {tags !== "" && <div class="row-note row-bonus">{tags}</div>}
+        {cautions !== undefined && <div class="row-note row-caution">{cautions}</div>}
         {highGusts && <div class="row-note row-warning">⚠ high gusts possible</div>}
       </a>
     </li>
