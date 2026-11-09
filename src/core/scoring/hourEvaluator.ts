@@ -188,7 +188,7 @@ function reason(kind: ReasonKind, text: string): Reason {
   return { kind, severity: REASON_SEVERITY[kind], text };
 }
 
-function sortedReasons(reasons: Reason[]): Reason[] {
+export function sortedReasons(reasons: Reason[]): Reason[] {
   return [...reasons].sort((a, b) => reasonRank(a.kind) - reasonRank(b.kind));
 }
 

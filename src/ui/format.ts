@@ -104,11 +104,11 @@ export function callDisplay(
   call: HourCall | "closed",
   conditions: readonly HourCondition[] | undefined,
 ):
-  | { kind: "pills"; conditions: HourCondition[] }
+  | { kind: "pills"; conditions: readonly HourCondition[] }
   | { kind: "badge"; call: "noGo" | "noData" | "closed" } {
   if (call === "good" || call === "flyable") {
     const hasConditions = conditions !== undefined && conditions.length > 0;
-    return { kind: "pills", conditions: hasConditions ? [...conditions] : ["sledder"] };
+    return { kind: "pills", conditions: hasConditions ? conditions : ["sledder"] };
   }
   return { kind: "badge", call };
 }

@@ -3,7 +3,7 @@ import { HOUR_MS, addDays, denverDayKey, formatDenverTime } from "../time";
 import type { DayKey } from "../time";
 import { SCORING_DEFAULTS, runLengthWeight } from "./defaults";
 import type { ScoringDefaults } from "./defaults";
-import { reasonRank } from "./hourEvaluator";
+import { sortedReasons } from "./hourEvaluator";
 import type { HourCondition, HourResult, Reason } from "./hourEvaluator";
 import { confidenceWeight, runConfidence } from "./modelAgreement";
 import type { Confidence } from "./modelAgreement";
@@ -78,7 +78,7 @@ function buildWindow(
     confidence,
     warnings: firstPerKind(run, "warning"),
     conditions: windowConditions(run),
-    cautions: firstPerKind(run, "caution").sort((a, b) => reasonRank(a.kind) - reasonRank(b.kind)),
+    cautions: sortedReasons(firstPerKind(run, "caution")),
   };
 }
 
