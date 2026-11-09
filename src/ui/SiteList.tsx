@@ -61,8 +61,8 @@ export function SiteList({ travel, day }: { travel: Travel; day: DayKey | undefi
       <p class="age">{forecastAge(result.fetchedAt, now())}</p>
       <DayPicker today={result.today} shown={result.day} />
       <TravelBar travel={travel} />
-      {/* Until the in-range sites arrive the hidden count is too high, so it waits. */}
-      {missing === 0 && travel.hiddenCount > 0 && !result.dayOver && (
+      {/* Until routing is done and the in-range sites arrive the hidden count is wrong, so it waits. */}
+      {travel.stage === "ready" && missing === 0 && travel.hiddenCount > 0 && !result.dayOver && (
         <p class="hidden-line">
           {hiddenLine(travel.hiddenCount, travel.settings.maxHours, travel.catalogSize)}
         </p>

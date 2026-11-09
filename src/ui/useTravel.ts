@@ -36,7 +36,7 @@ type SearchState =
 /** What `useTravel` returns: the start, the drive limit and which sites are in range. */
 export interface TravelPipeline {
   settings: TravelSettings;
-  /** The start in use: the chosen place, else the found location, else none (nothing filtered). */
+  /** The start in use: the chosen place, else the found location, else none (nothing loads until one is set). */
   effectiveStart: Coordinate | undefined;
   /** The drive times fetched so far for the current start (routed or estimated). */
   times: TravelTimes | undefined;

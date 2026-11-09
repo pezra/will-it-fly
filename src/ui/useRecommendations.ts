@@ -153,9 +153,12 @@ export function useRecommendations(
     ++requestId.current;
     pending.current = undefined;
     setBase((p) => {
+      // A failure from the load that was just dropped must not sit over the next stage.
+      if (p.status === "failed") return { status: "loading" };
       if (p.status !== "loaded") return p;
       if (p.requested !== day) return { status: "loading" };
-      return p.refreshing ? { ...p, refreshing: false } : p;
+      const { refreshError: _dropped, ...rest } = p;
+      return { ...rest, refreshing: false };
     });
   }, [load]);
 
