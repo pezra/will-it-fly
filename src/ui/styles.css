@@ -171,8 +171,8 @@ button:disabled { opacity: 0.6; }
   white-space: nowrap;
   border: 1px solid currentColor;
 }
-.badge-good { color: var(--good); background: var(--good-bg); }
-.badge-flyable { color: var(--flyable); background: var(--flyable-bg); }
+.badge-soar, .badge-xc { color: var(--good); background: var(--good-bg); }
+.badge-sledder { color: var(--neutral); background: var(--neutral-bg); }
 .badge-noGo { color: var(--nogo); background: var(--nogo-bg); }
 .badge-noData, .badge-closed { color: var(--neutral); background: var(--neutral-bg); }
 
@@ -210,8 +210,8 @@ button:disabled { opacity: 0.6; }
 .reason-penalty { color: var(--muted); }
 .reason-warning { color: var(--flyable); font-weight: 600; }
 .reason-warning::before { content: "⚠ "; }
-.row-bonus { color: var(--good); font-weight: 600; }
 .row-warning { color: var(--flyable); font-weight: 600; }
+.row-caution { color: var(--flyable); }
 .reason-noGo::before { content: "✕ "; }
 .reason-caution::before { content: "~ "; }
 .reason-info::before { content: "· "; }

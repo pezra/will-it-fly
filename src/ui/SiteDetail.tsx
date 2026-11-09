@@ -2,7 +2,7 @@ import type { LaunchEvaluation } from "../core/recommendation/types";
 import { windowLabel } from "../core/scoring/windowFinder";
 import { effectiveLimits } from "../core/sites/site";
 import type { Launch, Site } from "../core/sites/site";
-import { CallBadge } from "./CallBadge";
+import { ResultBadge } from "./CallBadge";
 import { ForecastStatus } from "./ForecastStatus";
 import { arcsLabel, confidenceLabel, dayLabel, driveLabel, feet, idealLabel, miles } from "./format";
 import { HourlyTable } from "./HourlyTable";
@@ -99,7 +99,7 @@ export function SiteDetail({
       {back}
       <h1>{site.name}</h1>
       <p class="detail-head">
-        <CallBadge call={rec.call} /> <span>{dayLabel(state.result.day, state.result.today)}</span>
+        <ResultBadge call={rec.call} conditions={best?.window.conditions} /> <span>{dayLabel(state.result.day, state.result.today)}</span>
       </p>
       <dl class="facts">
         <dt>Rating</dt>
