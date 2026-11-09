@@ -211,7 +211,7 @@ export function useTravel(recs: Recommendations, debug: DebugParams): Travel {
   return {
     recs: { ...recs, state },
     shown: applied?.shown ?? [],
-    hiddenCount: applied?.hiddenCount ?? 0,
+    hiddenCount: applied === undefined ? 0 : applied.result.sites.length - applied.shown.length,
     settings,
     effectiveStart,
     setMaxHours,
