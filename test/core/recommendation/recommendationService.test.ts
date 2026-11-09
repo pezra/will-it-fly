@@ -238,6 +238,12 @@ describe("getRecommendations", () => {
     expect(butte?.call).toBe("good");
     expect(butte?.best?.window.hours.every((h) => h.reasons.some((r) => r.kind === "sledder"))).toBe(true);
     expect(windowLabel(butte?.best?.window ?? never())).toBe("11:00\u201318:00");
+    // The fixture has no ridge lift or strong thermals, so each window is a sledder; only Glenwood
+    // has a caution.
+    expect(boulder?.best?.window.conditions).toEqual(["sledder"]);
+    expect(butte?.best?.window.conditions).toEqual(["sledder"]);
+    expect(boulder?.best?.window.cautions).toEqual([]);
+    expect(glenwood?.best?.window.cautions.map((c) => c.kind)).toEqual(["neighborWind"]);
     expect(butte?.mainReason).toBeUndefined();
   });
 

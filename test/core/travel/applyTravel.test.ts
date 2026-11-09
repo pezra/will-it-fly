@@ -36,7 +36,7 @@ function rec(
       ? undefined
       : {
           launch: launches[0],
-          window: { start: 0, end: 1, hours: [], score: o.score, confidence: "high" as const, warnings: [] },
+          window: { start: 0, end: 1, hours: [], score: o.score, confidence: "high" as const, warnings: [], conditions: [], cautions: [] },
         };
   return { site, call: best === undefined ? "noGo" : "flyable", best, launches: [] };
 }

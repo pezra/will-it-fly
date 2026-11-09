@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { SCORING_DEFAULTS } from "../../../src/core/scoring/defaults";
-import type { HourCall, HourResult, Reason } from "../../../src/core/scoring/hourEvaluator";
+import type { HourCall, HourCondition, HourResult, Reason } from "../../../src/core/scoring/hourEvaluator";
 import {
   daylightDayFor,
   daylightHours,
@@ -15,7 +15,13 @@ import { HOUR_MS, byTime, formatDenverTime } from "../../../src/core/time";
 const at = (h: number): number => Date.UTC(2026, 5, 15, h + 6);
 const DAY = { sunrise: at(6) + 40 * 60_000, sunset: at(20) + 10 * 60_000 };
 
-function hr(h: number, call: HourCall, score = 80, wind = { speedMph: 10, dirDeg: 270 }): HourResult {
+function hr(
+  h: number,
+  call: HourCall,
+  score = 80,
+  wind = { speedMph: 10, dirDeg: 270 },
+  conditions: HourCondition[] = [],
+): HourResult {
   return {
     time: at(h),
     call,
@@ -23,7 +29,7 @@ function hr(h: number, call: HourCall, score = 80, wind = { speedMph: 10, dirDeg
     reasons: [],
     launchWind: call === "noData" ? undefined : wind,
     unpenalizedScore: score,
-    conditions: [],
+    conditions,
   };
 }
 
@@ -354,6 +360,63 @@ describe("findBestWindow", () => {
       ]);
       expect(w?.start).toBe(at(10));
       expect(w?.warnings).toEqual([]);
+    });
+  });
+
+  describe("conditions", () => {
+    const withConditions = (h: number, conditions: HourCondition[]): HourResult =>
+      hr(h, "good", 80, undefined, conditions);
+
+    it("are the union of soar and xc over the run's hours, soar first", () => {
+      const w = find([
+        withConditions(10, ["xc"]),
+        withConditions(11, ["sledder"]),
+        withConditions(12, ["soar"]),
+      ]);
+      expect(w?.conditions).toEqual(["soar", "xc"]);
+    });
+
+    it("are sledder when no hour has soar or xc", () => {
+      const w = find([withConditions(10, ["sledder"]), withConditions(11, ["sledder"])]);
+      expect(w?.conditions).toEqual(["sledder"]);
+    });
+
+    it("show only xc for a window mixing xc and sledder hours", () => {
+      const w = find([withConditions(10, ["xc"]), withConditions(11, ["sledder"])]);
+      expect(w?.conditions).toEqual(["xc"]);
+    });
+  });
+
+  describe("cautions", () => {
+    const reason = (kind: Reason["kind"], severity: Reason["severity"], text: string): Reason => ({
+      kind,
+      severity,
+      text,
+    });
+    const withReasons = (h: number, reasons: Reason[]): HourResult => ({ ...hr(h, "flyable"), reasons });
+
+    it("are one per caution kind, first occurrence's text kept", () => {
+      const w = find([
+        withReasons(10, [reason("nearMaxWind", "caution", "first")]),
+        withReasons(11, [reason("nearMaxWind", "caution", "second")]),
+      ]);
+      expect(w?.cautions).toEqual([reason("nearMaxWind", "caution", "first")]);
+    });
+
+    it("are ordered by kind, not by when they first occur", () => {
+      const low = reason("lowCloud", "caution", "low cloud");
+      const aloft = reason("aloftWind", "caution", "aloft");
+      const w = find([withReasons(10, [low]), withReasons(11, [aloft])]);
+      expect(w?.cautions).toEqual([aloft, low]);
+    });
+
+    it("exclude warning and other severities, and are empty without cautions", () => {
+      const w = find([
+        withReasons(10, [reason("highGusts", "warning", "gusts"), reason("sledder", "penalty", "sled")]),
+        hr(11, "good"),
+      ]);
+      expect(w?.cautions).toEqual([]);
+      expect(w?.warnings).toEqual([reason("highGusts", "warning", "gusts")]);
     });
   });
 
