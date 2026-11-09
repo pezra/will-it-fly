@@ -118,6 +118,9 @@ export interface Reason {
   text: string;
 }
 
+/** What kind of flying an hour offers. */
+export type HourCondition = "soar" | "xc" | "sledder";
+
 export interface HourResult {
   /** Start of the flying hour (epoch ms), from the evaluated `ModelHour`. */
   time: number;
@@ -137,12 +140,14 @@ export interface HourResult {
   cloudBaseM?: number | undefined;
   /** Thermal index (°C), as evaluated. Undefined when it can't be computed. */
   thermalIndexC?: number | undefined;
+  /** Soar and/or XC, in that order, or just sledder when neither applies. Empty for no-go and no-data hours. */
+  conditions: HourCondition[];
 }
 
 /** The fields of a result that don't depend on its reasons. */
 type HourFields = Pick<
   HourResult,
-  "time" | "launchWind" | "unpenalizedScore" | "cloudBaseM" | "thermalIndexC"
+  "time" | "launchWind" | "unpenalizedScore" | "cloudBaseM" | "thermalIndexC" | "conditions"
 >;
 
 /** One point's 10 m wind at the evaluated hour, for each model. */
@@ -183,7 +188,7 @@ function reason(kind: ReasonKind, text: string): Reason {
   return { kind, severity: REASON_SEVERITY[kind], text };
 }
 
-function sortedReasons(reasons: Reason[]): Reason[] {
+export function sortedReasons(reasons: Reason[]): Reason[] {
   return [...reasons].sort((a, b) => reasonRank(a.kind) - reasonRank(b.kind));
 }
 
@@ -215,6 +220,7 @@ function finish(fields: HourFields, reasons: Reason[], defaults: ScoringDefaults
     unpenalizedScore,
     cloudBaseM: fields.cloudBaseM,
     thermalIndexC: fields.thermalIndexC,
+    conditions: call === "noGo" || call === "noData" ? [] : fields.conditions,
   };
 }
 
@@ -315,12 +321,13 @@ export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORI
   // Shown for every hour, no-data ones included.
   const cloudBase = cloudBaseAboveLaunchM(hour, defaults);
   const ti = thermalIndex(hour, elev, defaults);
-  const fields = (unpenalizedScore: number): HourFields => ({
+  const fields = (unpenalizedScore: number, conditions: HourCondition[] = []): HourFields => ({
     time: hour.time,
     launchWind: wind,
     unpenalizedScore,
     cloudBaseM: cloudBase,
     thermalIndexC: ti,
+    conditions,
   });
 
   // Core fields: the launch wind (10 m speed and direction) and precipitation at h.
@@ -432,16 +439,17 @@ export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORI
     if (lowBLH && stableTI && !ridgeLift) reasons.push(reason("sledder", "sledder"));
   }
 
-  // XC: strong thermals that top out high, with the wind aloft not already a caution.
-  const xcPotential =
-    ctx.site.xc !== undefined &&
+  // XC: strong thermals that top out high, with the wind aloft not already a caution. The bonus
+  // and reason need a curated xc site; the condition label doesn't.
+  const thermalXC =
     ti !== undefined &&
     ti <= defaults.thermalIndexStrongMaxC &&
     blh !== undefined &&
     blh >= defaults.xcBlhMinM &&
     aloft !== undefined &&
     aloft.speedMph < defaults.aloftCautionMph;
-  if (xcPotential) {
+  const xcPotential = thermalXC && ctx.site.xc !== undefined;
+  if (xcPotential && ti !== undefined && blh !== undefined) {
     reasons.push(reason("xcPotential", `XC potential (thermal index ${ti.toFixed(1)} °C, BLH ${Math.round(blh)} m)`));
   }
 
@@ -466,7 +474,12 @@ export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORI
     unpenalized += defaults.cloudBaseBonus;
   }
 
-  return finish(fields(unpenalized), reasons, defaults);
+  const conditions: HourCondition[] = [];
+  if (ridgeLift) conditions.push("soar");
+  if (thermalXC) conditions.push("xc");
+  if (conditions.length === 0) conditions.push("sledder");
+
+  return finish(fields(unpenalized, conditions), reasons, defaults);
 }
 
 /**

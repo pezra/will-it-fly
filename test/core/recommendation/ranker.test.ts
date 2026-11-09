@@ -36,7 +36,7 @@ function site(name: string, o: { closed?: boolean; launches?: Launch[] } = {}): 
 }
 
 function window(score: number, hours: HourResult[] = []): FlyingWindow {
-  return { start: T0, end: T0 + HOUR_MS, hours, score, confidence: "high", warnings: [] };
+  return { start: T0, end: T0 + HOUR_MS, hours, score, confidence: "high", warnings: [], conditions: [], cautions: [] };
 }
 
 function rec(
@@ -157,6 +157,7 @@ function hourResult(time: number, kinds: ReasonKind[], call: HourResult["call"] 
     call,
     score: 0,
     unpenalizedScore: 0,
+    conditions: [],
     reasons: kinds.map((kind) => ({ kind, severity: REASON_SEVERITY[kind], text: `text ${kind}` })),
   };
 }

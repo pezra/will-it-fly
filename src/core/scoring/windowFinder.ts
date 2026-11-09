@@ -3,7 +3,8 @@ import { HOUR_MS, addDays, denverDayKey, formatDenverTime } from "../time";
 import type { DayKey } from "../time";
 import { SCORING_DEFAULTS, runLengthWeight } from "./defaults";
 import type { ScoringDefaults } from "./defaults";
-import type { HourResult, Reason } from "./hourEvaluator";
+import { sortedReasons } from "./hourEvaluator";
+import type { HourCondition, HourResult, Reason } from "./hourEvaluator";
 import { confidenceWeight, runConfidence } from "./modelAgreement";
 import type { Confidence } from "./modelAgreement";
 
@@ -23,6 +24,10 @@ export interface FlyingWindow {
   confidence: Confidence;
   /** The run's warning reasons, one per kind (the first occurrence), for the summary. */
   warnings: Reason[];
+  /** Soar and XC if any hour has them, else sledder. */
+  conditions: HourCondition[];
+  /** The run's caution reasons, one per kind (the first occurrence), most severe kind first. */
+  cautions: Reason[];
 }
 
 /** Today's Denver day key, or tomorrow's when `now` is after today's sunset. */
@@ -71,15 +76,23 @@ function buildWindow(
     hours: run,
     score: mean * runLengthWeight(run.length, defaults) * confidenceWeight(confidence, defaults),
     confidence,
-    warnings: windowWarnings(run),
+    warnings: firstPerKind(run, "warning"),
+    conditions: windowConditions(run),
+    cautions: sortedReasons(firstPerKind(run, "caution")),
   };
 }
 
-function windowWarnings(run: readonly HourResult[]): Reason[] {
+function windowConditions(run: readonly HourResult[]): HourCondition[] {
+  const found = (["soar", "xc"] as const).filter((c) => run.some((h) => h.conditions.includes(c)));
+  return found.length > 0 ? found : ["sledder"];
+}
+
+/** The first reason of each kind with the given severity across the run, in first-seen order. */
+function firstPerKind(run: readonly HourResult[], severity: Reason["severity"]): Reason[] {
   const byKind = new Map<Reason["kind"], Reason>();
   for (const h of run) {
     for (const r of h.reasons) {
-      if (r.severity === "warning" && !byKind.has(r.kind)) byKind.set(r.kind, r);
+      if (r.severity === severity && !byKind.has(r.kind)) byKind.set(r.kind, r);
     }
   }
   return [...byKind.values()];

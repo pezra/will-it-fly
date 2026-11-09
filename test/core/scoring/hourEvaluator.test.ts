@@ -297,6 +297,82 @@ describe("ridge lift and XC bonuses", () => {
   });
 });
 
+describe("conditions", () => {
+  const soaring = { notes: "test" };
+  const xc = { notes: "test" };
+  const withSite = (extra: Partial<Site>, o: CtxOptions = {}): HourResult => {
+    const c = ctx(o);
+    return evaluateHour({ ...c, site: { ...c.site, ...extra } });
+  };
+  const weakThermals = perfectHour().level(600, (l) => (l.tempC = -2));
+
+  it("soar only: ridge lift with weak thermals", () => {
+    expect(withSite({ soaring }, { hour: weakThermals }).conditions).toEqual(["soar"]);
+  });
+
+  it("xc only: strong thermals at a curated xc site", () => {
+    expect(withSite({ xc }).conditions).toEqual(["xc"]);
+  });
+
+  it("soar and xc together, in that order", () => {
+    expect(withSite({ soaring, xc }).conditions).toEqual(["soar", "xc"]);
+  });
+
+  it("sledder when neither applies", () => {
+    expect(evalWith({ hour: weakThermals }).conditions).toEqual(["sledder"]);
+  });
+
+  it("xc shows at any site, but the bonus and the reason need a curated xc site", () => {
+    // PERFECT is a strong-thermal hour at a site with no xc; 100 is its value before this change.
+    const curated = withSite({ xc });
+    expect(PERFECT.conditions).toContain("xc");
+    expect(curated.conditions).toContain("xc");
+    expect(kinds(PERFECT)).not.toContain("xcPotential");
+    expect(kinds(curated)).toContain("xcPotential");
+    expect(PERFECT.unpenalizedScore).toBe(100);
+    expect(PERFECT.score).toBe(100);
+    expect(curated.unpenalizedScore - PERFECT.unpenalizedScore).toBe(d.xcBonus);
+  });
+
+  it("xc needs the thermal index, boundary layer and aloft checks even without a curated xc site", () => {
+    expect(evalWith({ hour: hourWith((h) => (h.blhM = d.xcBlhMinM - 1)) }).conditions).not.toContain("xc");
+    expect(evalWith({ hour: hourWith((h) => (h.blhM = undefined)) }).conditions).not.toContain("xc");
+    const windy = perfectHour().level(700, (l) => (l.windMph = d.aloftCautionMph));
+    expect(evalWith({ hour: windy }).conditions).not.toContain("xc");
+  });
+
+  it("is empty for no-go and no-data hours", () => {
+    expect(evalWith({ hour: hourWith((h) => (h.precipMm = 1)) }).conditions).toEqual([]);
+    expect(evalWith({ hour: hourWith((h) => (h.windMph = undefined)) }).conditions).toEqual([]);
+  });
+
+  it("is kept on flyable hours", () => {
+    const r = evalWith({ hour: hourWith((h) => (h.lowCloudPct = d.lowCloudCoverCautionPct)) });
+    expect(r.call).toBe("flyable");
+    expect(r.conditions).toEqual(["xc"]);
+  });
+
+  it("survives the storm look-ahead recomputing the call", () => {
+    const c = ctx();
+    const hours = [0, 1, 2, 3, 4].map((i) =>
+      i === 4
+        ? perfectHour(REFERENCE_TIME + i * HOUR_MS).with((h) => ((h.precipMm = 1), (h.capeJkg = 300))).build()
+        : perfectHour(REFERENCE_TIME + i * HOUR_MS).build(),
+    );
+    const site = { ...c.site, soaring, xc };
+    const results = hours.map((hour, i) =>
+      evaluateHour({ ...c, site, hour, next: hours[i + 1] }),
+    );
+    const out = applyStormLookahead(results, hours);
+    expect(results[1]?.call).toBe("good");
+    expect(out[1]?.call).toBe("flyable");
+    expect(out[1]?.conditions).toEqual(["soar", "xc"]);
+    expect(out[1]?.conditions).toEqual(results[1]?.conditions);
+    expect(out[3]?.call).toBe("noGo");
+    expect(out[3]?.conditions).toEqual([]);
+  });
+});
+
 describe("boundaries", () => {
   it("precipitation 0.24 / 0.25 mm in hour h", () => {
     expect(kinds(evalWith({ hour: hourWith((h) => (h.precipMm = 0.24)) }))).not.toContain("precipitation");

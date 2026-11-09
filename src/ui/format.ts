@@ -2,7 +2,7 @@ import { METERS_PER_FOOT, METERS_PER_MILE, compass } from "../core/units";
 import type { DriveTime } from "../core/travel/driveTime";
 import type { TravelStage } from "../core/travel/inRange";
 import type { Confidence } from "../core/scoring/modelAgreement";
-import type { HourCall } from "../core/scoring/hourEvaluator";
+import type { HourCall, HourCondition, Reason } from "../core/scoring/hourEvaluator";
 import { SCORING_DEFAULTS } from "../core/scoring/defaults";
 import { effectiveIdealArcs } from "../core/scoring/hourEvaluator";
 import type { Coordinate, DegreeArc, Launch } from "../core/sites/site";
@@ -71,12 +71,8 @@ export function dayLabel(day: DayKey, today: DayKey): string {
   return formatDayKey(day);
 }
 
-export function callLabel(call: HourCall): string {
+export function callLabel(call: "noGo" | "noData"): string {
   switch (call) {
-    case "good":
-      return "Good";
-    case "flyable":
-      return "Flyable";
     case "noGo":
       return "No-go";
     case "noData":
@@ -85,17 +81,44 @@ export function callLabel(call: HourCall): string {
 }
 
 /** A glyph that backs up the color, so a call never relies on color alone. */
-export function callGlyph(call: HourCall): string {
+export function callGlyph(call: "noGo" | "noData"): string {
   switch (call) {
-    case "good":
-      return "✓";
-    case "flyable":
-      return "~";
     case "noGo":
       return "✕";
     case "noData":
       return "–";
   }
+}
+
+export const CONDITION_LABEL: Readonly<Record<HourCondition, string>> = {
+  soar: "Soar",
+  xc: "XC",
+  sledder: "Sledder",
+};
+
+/**
+ * How a good or flyable hour shows its call: condition pills, with Sledder when there are none so
+ * a pill is never blank. No-go, no-data and closed show a badge instead.
+ */
+export function callDisplay(
+  call: HourCall | "closed",
+  conditions: readonly HourCondition[] | undefined,
+):
+  | { kind: "pills"; conditions: readonly HourCondition[] }
+  | { kind: "badge"; call: "noGo" | "noData" | "closed" } {
+  if (call === "good" || call === "flyable") {
+    const hasConditions = conditions !== undefined && conditions.length > 0;
+    return { kind: "pills", conditions: hasConditions ? conditions : ["sledder"] };
+  }
+  return { kind: "badge", call };
+}
+
+/** "⚠ wind 28 mph, low cloud +1 more": the first `max` cautions, then a count of the rest. */
+export function cautionLine(cautions: readonly Reason[], max = 2): string | undefined {
+  if (cautions.length === 0) return undefined;
+  const shown = cautions.slice(0, max).map((c) => c.text).join(", ");
+  const more = cautions.length - max;
+  return more > 0 ? `⚠ ${shown} +${more} more` : `⚠ ${shown}`;
 }
 
 export function confidenceLabel(confidence: Confidence): string {
