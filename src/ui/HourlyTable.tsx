@@ -86,31 +86,31 @@ export function HourlyTable({ evaluation }: { evaluation: LaunchEvaluation }) {
             </tr>
           </thead>
           <tbody>
-            {daylight.map(({ time, ecmwf, ecmwfHour, rrfs, rrfsHour }) => (
-              <tr key={time} class={ecmwf.call === "noData" ? "no-data" : undefined}>
+            {daylight.map(({ time, primary, check }) => (
+              <tr key={time} class={primary.result.call === "noData" ? "no-data" : undefined}>
                 <th scope="row">{formatDenverTime(time)}</th>
-                <td><ResultBadge call={ecmwf.call} conditions={ecmwf.conditions} /></td>
-                <td>{ecmwf.call === "noData" ? "no data" : <WindCell result={ecmwf} hour={ecmwfHour} withGust={true} />}</td>
-                <td>{rrfs === undefined ? "n/a" : <ResultBadge call={rrfs.call} conditions={rrfs.conditions} />}</td>
-                <td><WindCell result={rrfs} hour={rrfsHour} withGust={false} /></td>
-                <td>{whole(ecmwfHour.capeJkg)}</td>
-                <td>{approxFeet(ecmwf.cloudBaseM)}</td>
-                <td>{oneDecimal(ecmwf.thermalIndexC)}</td>
+                <td><ResultBadge call={primary.result.call} conditions={primary.result.conditions} /></td>
+                <td>{primary.result.call === "noData" ? "no data" : <WindCell result={primary.result} hour={primary.hour} withGust={true} />}</td>
+                <td>{check === undefined ? "n/a" : <ResultBadge call={check.result.call} conditions={check.result.conditions} />}</td>
+                <td><WindCell result={check?.result} hour={check?.hour} withGust={false} /></td>
+                <td>{whole(primary.hour.capeJkg)}</td>
+                <td>{approxFeet(primary.result.cloudBaseM)}</td>
+                <td>{oneDecimal(primary.result.thermalIndexC)}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
       {daylight.some((row) =>
-          (row.ecmwf.call !== "noData" && isMarked(row.ecmwf, row.ecmwfHour)) ||
-          isMarked(row.rrfs, row.rrfsHour)) && (
+          (row.primary.result.call !== "noData" && isMarked(row.primary.result, row.primary.hour)) ||
+          isMarked(row.check?.result, row.check?.hour)) && (
         <p class="note">† launch-height wind (interpolated from pressure levels)</p>
       )}
       <p class="note">Cloud base is above launch, from temperature minus dewpoint. It runs high at launches well above model terrain.</p>
       <h4>Why, hour by hour</h4>
       <ul class="reasons">
-        {daylight.map(({ time, ecmwf }) => (
-          <ReasonList key={time} result={ecmwf} label={formatDenverTime(time)} />
+        {daylight.map(({ time, primary }) => (
+          <ReasonList key={time} result={primary.result} label={formatDenverTime(time)} />
         ))}
       </ul>
     </>

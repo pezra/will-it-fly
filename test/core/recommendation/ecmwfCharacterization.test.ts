@@ -84,7 +84,7 @@ async function recommend(launchBody: string, day: string): Promise<Recommendatio
   };
   // A fresh cache each time, so runs never share a forecast.
   return getRecommendations(
-    { forceRefresh: false, siteIds: sites.map((s) => s.id), day },
+    { forceRefresh: false, siteIds: sites.map((s) => s.id), day, model: "ecmwf" },
     {
       siteProvider: { sites: async () => sites },
       transport,
@@ -96,7 +96,7 @@ async function recommend(launchBody: string, day: string): Promise<Recommendatio
 
 /** The row's ECMWF and RRFS sides. The only place the snapshot reads the row's field names. */
 function sides(row: DaylightRow): { ecmwf: HourResult; rrfs: HourResult | undefined } {
-  return { ecmwf: row.ecmwf, rrfs: row.rrfs };
+  return { ecmwf: row.primary.result, rrfs: row.check?.result };
 }
 
 function pinHour(r: HourResult | undefined): { call: string; score: number; kinds: string[] } | null {

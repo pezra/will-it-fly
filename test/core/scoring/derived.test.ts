@@ -531,6 +531,8 @@ describe("SCORING_DEFAULTS", () => {
       highConfidenceMinShare: 0.75,
       mediumConfidenceMinShare: 0.4,
       checkMinCoverageShare: 0.5,
+      // Web-only: RRFS can be the primary model (approved 2026-11-09). Not in Swift.
+      rrfsPrimaryMinDaylightShare: 0.5,
       oneHourRunWeight: 0.6,
       twoHourRunWeight: 0.8,
       longRunWeight: 1,

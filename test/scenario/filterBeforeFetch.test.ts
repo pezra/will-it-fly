@@ -193,7 +193,7 @@ class Pipeline {
     }
     this.loads++;
     const result = await getRecommendations(
-      { forceRefresh, day, siteIds: ids },
+      { forceRefresh, day, siteIds: ids, model: "ecmwf" },
       {
         siteProvider: { sites: async () => catalog },
         transport: this.weather.transport,

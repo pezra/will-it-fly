@@ -231,6 +231,7 @@ describe("missingDestinations and mergeTimes", () => {
 
 describe("containsSites", () => {
   const result = (...sites: Site[]): RecommendationResult => ({
+    model: "ecmwf",
     day: "2026-11-07",
     today: "2026-11-07",
     dayOver: false,

@@ -9,6 +9,7 @@ import type {
 } from "../forecast/siteForecastCache";
 import { SCORING_DEFAULTS } from "../scoring/defaults";
 import type { ScoringDefaults } from "../scoring/defaults";
+import type { ModelName } from "../scoring/hourEvaluator";
 import { daylightDayFor, targetDay } from "../scoring/windowFinder";
 import type { SiteProvider } from "../sites/siteProvider";
 import type { Launch, Site } from "../sites/site";
@@ -27,6 +28,8 @@ export interface RecommendationRequest {
    * Today and tomorrow come from the main forecast; a later day is fetched on its own.
    */
   day?: DayKey | undefined;
+  /** The primary model. With RRFS, a launch falls back to ECMWF where RRFS doesn't cover the day. */
+  model: ModelName;
 }
 
 export interface RecommendationDeps {
@@ -237,6 +240,7 @@ export async function getRecommendations(
   const now = deps.now();
   const today = denverDayKey(now);
   const defaults = deps.defaults ?? SCORING_DEFAULTS;
+  const { model } = request;
   const source = sourceFor(request, now);
   const wanted = new Set(request.siteIds);
   // Catalog order, not request order: the request URL and the day don't depend on how ids were listed.
@@ -247,7 +251,7 @@ export async function getRecommendations(
   if (open.length === 0) {
     const recs = sites.map((site) => recommendSite(site, []));
     const day = request.day ?? today;
-    return { day, today, dayOver: false, fetchedAt: now, isOffline: false, sites: rankSites(recs) };
+    return { model, day, today, dayOver: false, fetchedAt: now, isOffline: false, sites: rankSites(recs) };
   }
 
   const { forecasts, day, fetchedAt, isOffline } = await loadForecasts(
@@ -264,10 +268,10 @@ export async function getRecommendations(
     // Closed sites' launches weren't fetched, so they have no forecast here.
     const evaluations = site.launches.flatMap((launch) => {
       const forecast = byLaunch.get(launch.id);
-      return forecast === undefined ? [] : [evaluateLaunch(site, launch, forecast, day, now, defaults)];
+      return forecast === undefined ? [] : [evaluateLaunch(site, launch, forecast, day, now, model, defaults)];
     });
     return recommendSite(site, evaluations);
   });
   const dayOver = day === today && defaultDay(forecasts, now) !== today;
-  return { day, today, dayOver, fetchedAt, isOffline, sites: rankSites(recs) };
+  return { model, day, today, dayOver, fetchedAt, isOffline, sites: rankSites(recs) };
 }

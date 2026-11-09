@@ -117,6 +117,12 @@ export interface ScoringDefaults {
   mediumConfidenceMinShare: number;
   /** If the check model covers less than this share of a run's hours, confidence is "primary only". */
   checkMinCoverageShare: number;
+  // Primary model
+  /**
+   * With RRFS primary, a launch falls back to ECMWF when RRFS covers less than this share of the
+   * day's window hours.
+   */
+  rrfsPrimaryMinDaylightShare: number;
   // Window score weights
   oneHourRunWeight: number;
   twoHourRunWeight: number;
@@ -192,6 +198,8 @@ export const SCORING_DEFAULTS: Readonly<ScoringDefaults> = Object.freeze({
   highConfidenceMinShare: 0.75,
   mediumConfidenceMinShare: 0.4,
   checkMinCoverageShare: 0.5,
+  // Primary model
+  rrfsPrimaryMinDaylightShare: 0.5,
   // Window score weights
   oneHourRunWeight: 0.6,
   twoHourRunWeight: 0.8,

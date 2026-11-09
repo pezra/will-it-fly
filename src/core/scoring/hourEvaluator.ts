@@ -44,6 +44,7 @@ export const REASON_KIND_ORDER = [
   // Caution
   "stormsComing",
   "rrfsSeesStorms",
+  "ecmwfSeesStorms",
   "overdevelopment",
   "aloftWind",
   "nearMaxWind",
@@ -91,6 +92,7 @@ export const REASON_SEVERITY: Readonly<Record<ReasonKind, Severity>> = Object.fr
   neighborWindStrong: "noGo",
   stormsComing: "caution",
   rrfsSeesStorms: "caution",
+  ecmwfSeesStorms: "caution",
   overdevelopment: "caution",
   aloftWind: "caution",
   nearMaxWind: "caution",
@@ -169,7 +171,7 @@ export interface HourContext {
   hour: ModelHour;
   /** The following hour of the same model. Undefined at the last hour: hour h is used alone. */
   next?: ModelHour | undefined;
-  /** For ECMWF evaluation, the RRFS hour and its next hour. Undefined for RRFS evaluation. */
+  /** The other model's hour and its next hour, for the primary model's evaluation only. */
   other?: { hour: ModelHour | undefined; next: ModelHour | undefined } | undefined;
   /** The neighbor request's center 10 m wind at h, per model (not the launch request's wind). */
   neighborCenter: NeighborSample;
@@ -453,10 +455,14 @@ export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORI
     reasons.push(reason("xcPotential", `XC potential (thermal index ${ti.toFixed(1)} °C, BLH ${Math.round(blh)} m)`));
   }
 
-  // RRFS sees storms (ECMWF evaluation only).
-  if (ctx.model === "ecmwf" && ctx.other?.hour !== undefined) {
+  // The other model sees storms (primary model evaluation only).
+  if (ctx.other?.hour !== undefined) {
     if (precipNoGoMm(ctx.other.hour, ctx.other.next, defaults) !== undefined) {
-      reasons.push(reason("rrfsSeesStorms", "RRFS sees storms"));
+      reasons.push(
+        ctx.model === "ecmwf"
+          ? reason("rrfsSeesStorms", "RRFS sees storms")
+          : reason("ecmwfSeesStorms", "ECMWF sees storms"),
+      );
     }
   }
 

@@ -110,7 +110,7 @@ export function useRecommendations(
           ? { status: "loaded", requested: day, result: prev.result, refreshing: true }
           : { status: "loading" },
       );
-      getRecommendations({ forceRefresh, day, siteIds: ids }, deps).then(
+      getRecommendations({ forceRefresh, day, siteIds: ids, model: "ecmwf" }, deps).then(
         (result) => {
           inFlight.current--;
           if (id !== requestId.current) return;

@@ -48,8 +48,12 @@ Every number below lives in `SCORING_DEFAULTS` (`src/core/scoring/defaults.ts`).
 
 Each open launch gets two forecasts from Open-Meteo:
 
-- **ECMWF** (`ecmwf_ifs` for surface fields and boundary layer height, `ecmwf_ifs025` for the 700, 600 and 500 hPa levels). This drives the call.
-- **RRFS** (`ncep_rrfs_conus`, the 3 km successor to HRRR). It's used for model agreement, the nearby-wind check and storm detection.
+- **ECMWF** (`ecmwf_ifs` for surface fields and boundary layer height, `ecmwf_ifs025` for the 700, 600 and 500 hPa levels). It's the default primary model.
+- **RRFS** (`ncep_rrfs_conus`, the 3 km successor to HRRR).
+
+Either model can be the **primary model**, with ECMWF as the default. The primary model's hours decide the calls, scores, reasons and windows. The other is the **check model**, used for model agreement and storm detection. Both are evaluated with the same rules and thresholds; only the roles swap.
+
+RRFS runs only about 3½ days ahead. With RRFS primary, a launch falls back to ECMWF for the day when RRFS covers less than half (0.5) of the day's window hours: daylight, from the current hour if it's today. An hour counts as covered when RRFS has it with wind and precipitation. With no window hours left, RRFS stays primary. A launch never mixes models within a day.
 
 Precipitation is reported for the hour *before* each timestamp, so flying hour h uses the larger of hour h and h+1. Everything else uses hour h.
 
@@ -76,7 +80,7 @@ Otherwise it's **flyable** (not good) if any of these hold:
 | Rule | Threshold |
 |---|---|
 | Storms coming | within 2 h before an hour with a precipitation no-go and CAPE ≥ 200 J/kg |
-| RRFS sees storms | RRFS has a precipitation no-go for this hour |
+| Other model sees storms (RRFS sees storms / ECMWF sees storms) | the check model has a precipitation no-go for this hour |
 | Overdevelopment risk | CAPE ≥ 500 J/kg |
 | Wind aloft | ≥ 25 mph |
 | Near max | launch wind within 2 mph of the site max |
@@ -85,7 +89,7 @@ Otherwise it's **flyable** (not good) if any of these hold:
 | Direction OK but not ideal | inside the OK range, outside the ideal range |
 | Direction not curated | the launch has no OK range |
 
-Otherwise it's **good**. An hour with no ECMWF wind or precipitation is **no data**, never good.
+Otherwise it's **good**. An hour with no wind or precipitation from the model being evaluated is **no data**, never good.
 
 One rule only costs points and never changes the call:
 
@@ -106,7 +110,7 @@ Ridge lift doesn't raise the site's wind max. RMHPA's limits are safety limits, 
 
 If a launch has no ideal range, anywhere in its OK range counts as ideal. A single ideal heading (e.g. "Ideal 200") counts as ±15°.
 
-The nearby-wind check compares 10 m winds at the launch's grid point and at points 5 mi N, E, S and W, within one model. It uses RRFS when it can, because ECMWF's ~9 km grid barely resolves 5 mi, and falls back to ECMWF.
+The nearby-wind check compares 10 m winds at the launch's grid point and at points 5 mi N, E, S and W, within one model. It uses RRFS when it can, whichever model is primary, because ECMWF's ~9 km grid barely resolves 5 mi, and falls back to ECMWF.
 
 **Gusts are not scored.** Model gusts on light thermal days often run 10–14 mph over the mean wind, which says little about what you'll find at launch. Instead, an hour shows "⚠ high gusts possible" when the gust factor (each hour's gust minus that hour's 10 m wind, the larger of h and h+1) is at least 3× the site's gust-factor limit. That's 15 mph at the default limit of 5.
 
@@ -143,14 +147,14 @@ A window is a run of consecutive daylight hours (from sunrise, or from the curre
 | 2 h | 0.8 |
 | 3 h or more | 1.0 |
 
-RRFS **agrees** with ECMWF for an hour when RRFS isn't no-go, the launch wind directions are within 30° (or both are under 4 mph), and the speeds are within 5 mph.
+The check model **agrees** with the primary model for an hour when the check model isn't no-go, the launch wind directions are within 30° (or both are under 4 mph), and the speeds are within 5 mph.
 
 | Confidence | When | Weight |
 |---|---|---|
-| High | RRFS agrees on ≥ 75% of the hours it covers | 1.0 |
+| High | the check model agrees on ≥ 75% of the hours it covers | 1.0 |
 | Medium | ≥ 40% | 0.85 |
 | Low | < 40% | 0.7 |
-| ECMWF only | RRFS covers less than half the window | 0.85 |
+| Primary model only ("ECMWF only" or "RRFS only") | the check model covers less than half the window | 0.85 |
 
 Each launch gets its best window, and a site takes its best launch. Ties go to the earlier window and to the launch listed first. A site's call is good if its best window has at least one good hour, flyable if the window has only flyable hours, and no-go if it has no window. Good sites always rank above flyable ones, whatever their scores. A site with no window shows its most common no-go reason.
 

@@ -1,5 +1,5 @@
 import type { ModelHour } from "../forecast/models";
-import type { HourResult, ReasonKind, Severity } from "../scoring/hourEvaluator";
+import type { HourResult, ModelName, ReasonKind, Severity } from "../scoring/hourEvaluator";
 import type { FlyingWindow } from "../scoring/windowFinder";
 import type { Launch, Site } from "../sites/site";
 import type { DayKey } from "../time";
@@ -15,20 +15,31 @@ export interface MainReason {
   text: string;
 }
 
-/** One daylight hour: both models' results (after the storm look-ahead) and forecast hours. */
+/** One model's result for an hour (after the storm look-ahead) and the forecast hour it came from. */
+export interface ModelRow {
+  result: HourResult;
+  hour: ModelHour;
+}
+
+/**
+ * One daylight hour, by role: the primary model and the check model. Which model each is comes
+ * from `LaunchEvaluation.model`.
+ */
 export interface DaylightRow {
   time: number;
-  ecmwf: HourResult;
-  ecmwfHour: ModelHour;
-  /** Undefined when RRFS has no hour at this time. */
-  rrfs?: HourResult | undefined;
-  rrfsHour?: ModelHour | undefined;
+  primary: ModelRow;
+  /** Undefined when the check model has no hour at this time. */
+  check?: ModelRow | undefined;
 }
 
 /** One launch's forecast, evaluated for the detail view. */
 export interface LaunchEvaluation {
   launch: Launch;
-  /** The ECMWF hours inside the day's daylight (and not yet over), in time order. */
+  /** The primary model this launch was evaluated with. */
+  model: ModelName;
+  /** True when RRFS was asked for but doesn't cover the day, so the launch uses ECMWF. */
+  fellBack: boolean;
+  /** The primary model's hours inside the day's daylight (and not yet over), in time order. */
   daylight: DaylightRow[];
   /** The launch's best window for the day. */
   window?: FlyingWindow | undefined;
@@ -36,6 +47,8 @@ export interface LaunchEvaluation {
 
 export interface BestWindow {
   launch: Launch;
+  /** The launch's primary model. */
+  model: ModelName;
   window: FlyingWindow;
 }
 
@@ -58,6 +71,8 @@ export interface SiteRecommendation {
 }
 
 export interface RecommendationResult {
+  /** The requested primary model. A launch may still fall back to ECMWF (`LaunchEvaluation.fellBack`). */
+  model: ModelName;
   /** The day the sites are evaluated for. */
   day: DayKey;
   /** Today's day key (by the clock the result was computed with). */

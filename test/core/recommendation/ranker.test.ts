@@ -8,11 +8,12 @@ import {
 } from "../../../src/core/recommendation/ranker";
 import type {
   LaunchEvaluation,
+  ModelRow,
   RecommendationResult,
   SiteRecommendation,
 } from "../../../src/core/recommendation/types";
 import { REASON_KIND_ORDER, REASON_SEVERITY } from "../../../src/core/scoring/hourEvaluator";
-import type { HourResult, ReasonKind } from "../../../src/core/scoring/hourEvaluator";
+import type { HourResult, ModelName, ReasonKind } from "../../../src/core/scoring/hourEvaluator";
 import type { FlyingWindow } from "../../../src/core/scoring/windowFinder";
 import type { Launch, Site } from "../../../src/core/sites/site";
 import { distanceM } from "../../../src/core/sites/coordinate";
@@ -50,7 +51,7 @@ function rec(
     call:
       o.closed === true ? "closed" : o.score === undefined ? "noGo" : o.flyable === true ? "flyable" : "good",
     distanceM: o.distance,
-    best: o.score === undefined ? undefined : { launch: first, window: window(o.score) },
+    best: o.score === undefined ? undefined : { launch: first, model: "ecmwf", window: window(o.score) },
     launches: [],
   };
 }
@@ -114,6 +115,7 @@ describe("rankSites", () => {
 
 describe("withDistances", () => {
   const result = (sites: SiteRecommendation[]): RecommendationResult => ({
+    model: "ecmwf",
     day: "2026-11-08",
     today: "2026-11-08",
     dayOver: false,
@@ -162,15 +164,20 @@ function hourResult(time: number, kinds: ReasonKind[], call: HourResult["call"] 
   };
 }
 
+const modelRow = (result: HourResult): ModelRow => ({ result, hour: { time: result.time, levels: {} } });
+
 function evaluation(
   id: string,
   daylight: HourResult[],
   windowScore?: number,
   windowHours: HourResult[] = [],
+  model: ModelName = "ecmwf",
 ): LaunchEvaluation {
   return {
     launch: launch(id),
-    daylight: daylight.map((ecmwf) => ({ time: ecmwf.time, ecmwf, ecmwfHour: { time: ecmwf.time, levels: {} } })),
+    model,
+    fellBack: false,
+    daylight: daylight.map((result) => ({ time: result.time, primary: modelRow(result) })),
     window: windowScore === undefined ? undefined : window(windowScore, windowHours),
   };
 }
@@ -185,6 +192,18 @@ describe("bestWindow", () => {
   it("whenLaunchWindowsTieTheFirstLaunchInTheJSONWins", () => {
     const best = bestWindow([evaluation("first", [], 55), evaluation("second", [], 55)]);
     expect(best?.launch.id).toBe("first");
+  });
+
+  it("carriesTheBestLaunchsModel", () => {
+    const best = bestWindow([
+      evaluation("ecmwf", [], 40, [], "ecmwf"),
+      evaluation("rrfs", [], 70, [], "rrfs"),
+    ]);
+    expect(best?.launch.id).toBe("rrfs");
+    expect(best?.model).toBe("rrfs");
+    expect(bestWindow([evaluation("a", [], 40, [], "rrfs"), evaluation("b", [], 70, [], "ecmwf")])?.model).toBe(
+      "ecmwf",
+    );
   });
 
   it("noWindowsGivesUndefined", () => {
@@ -263,6 +282,20 @@ describe("mainReason", () => {
     expect(mainReason([onlyWarnings]).kind).toBe("noFlyableHour");
   });
 
+  it("countsOnlyThePrimaryModelsReasons", () => {
+    // The check side has more no-go hours, of a kind declared earlier. Reading it would give
+    // precipitation.
+    const rows = [0, 1, 2].map((k) => ({
+      time: T0 + k * HOUR_MS,
+      primary: modelRow(hourResult(T0 + k * HOUR_MS, k === 0 ? ["windTooStrong"] : [], k === 0 ? "noGo" : "flyable")),
+      check: modelRow(hourResult(T0 + k * HOUR_MS, ["precipitation"])),
+    }));
+    for (const model of ["ecmwf", "rrfs"] as const) {
+      const e: LaunchEvaluation = { launch: launch("a"), model, fellBack: false, daylight: rows, window: undefined };
+      expect(mainReason([e])).toEqual({ kind: "windTooStrong", severity: "noGo", text: "text windTooStrong" });
+    }
+  });
+
   it("noDataCountsAsANoGoKind", () => {
     expect(mainReason([evaluation("a", [hourResult(T0, ["noData"], "noData")])]).kind).toBe("noData");
   });
@@ -291,6 +324,7 @@ describe("recommendSite", () => {
     expect(r.mainReason).toBeUndefined();
     expect(r.call).toBe("closed");
     const result: RecommendationResult = {
+      model: "ecmwf",
       day: "2026-11-08",
       today: "2026-11-08",
       dayOver: false,
