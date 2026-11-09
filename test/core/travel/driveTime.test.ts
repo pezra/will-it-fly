@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { KeyValueStore } from "../../../src/core/forecast/forecastCache";
+import type { KeyValueStore } from "../../../src/core/keyValueStore";
 import type { Transport } from "../../../src/core/forecast/openMeteoClient";
+import { distanceM } from "../../../src/core/sites/coordinate";
 import type { Coordinate } from "../../../src/core/sites/site";
 import {
   DRIVE_TIME_CACHE_KEY,
@@ -8,10 +9,13 @@ import {
   driveTimesFor,
   estimateDriveSeconds,
   fetchDriveTimes,
+  MAX_ROAD_MPH,
   roundStart,
   startKey,
+  withinReach,
 } from "../../../src/core/travel/driveTime";
-import { mapStore } from "../../support/builders";
+import { METERS_PER_MILE } from "../../../src/core/units";
+import { mapStore, testLaunch, testSite } from "../../support/builders";
 import tableJSON from "../../fixtures/osrm-table.json?raw";
 import tableURL from "../../fixtures/osrm-table.url.txt?raw";
 
@@ -86,6 +90,51 @@ describe("estimateDriveSeconds", () => {
 
   it("isZeroForTheSamePoint", () => {
     expect(estimateDriveSeconds(BOULDER, BOULDER)).toBe(0);
+  });
+});
+
+describe("withinReach", () => {
+  const siteAt = (id: string, c: Coordinate) =>
+    testSite({ id, launches: [testLaunch({ id: `${id}/main`, coordinate: c })] });
+  const ids = (sites: readonly { id: string }[]) => sites.map((s) => s.id);
+  // About 30 km (18.6 mi) from BOULDER, and about 280 km (174 mi) from it.
+  const NEAR = coord(39.7461, -105.2407);
+  const FAR = coord(37.5, -105.2407);
+
+  it("keepsSitesInsideAndDropsSitesOutside", () => {
+    const sites = [siteAt("near", NEAR), siteAt("far", FAR)];
+    expect(ids(withinReach(sites, BOULDER, 2))).toEqual(["near"]);
+  });
+
+  it("widensWithTheHours", () => {
+    const sites = [siteAt("far", FAR)];
+    expect(withinReach(sites, BOULDER, 1)).toEqual([]);
+    expect(ids(withinReach(sites, BOULDER, 4))).toEqual(["far"]);
+  });
+
+  it("keepsASiteExactlyAtTheBoundAndDropsOneJustOver", () => {
+    const site = siteAt("edge", NEAR);
+    const miles = distanceM(BOULDER, NEAR) / METERS_PER_MILE;
+    const hours = miles / MAX_ROAD_MPH;
+    expect(MAX_ROAD_MPH * hours).toBe(miles);
+    expect(ids(withinReach([site], BOULDER, hours))).toEqual(["edge"]);
+    expect(withinReach([site], BOULDER, hours * (1 - 1e-9))).toEqual([]);
+  });
+
+  it("keepsASiteWithoutALaunch", () => {
+    const none = testSite({ id: "none", launches: [] });
+    expect(ids(withinReach([none], BOULDER, 1))).toEqual(["none"]);
+  });
+
+  it("measuresToTheFirstLaunch", () => {
+    const site = testSite({
+      id: "two",
+      launches: [
+        testLaunch({ id: "two/a", coordinate: FAR }),
+        testLaunch({ id: "two/b", coordinate: NEAR }),
+      ],
+    });
+    expect(withinReach([site], BOULDER, 1)).toEqual([]);
   });
 });
 
@@ -359,6 +408,29 @@ describe("driveTimesFor", () => {
     expect(pathCoordinates(transport.mock.calls[0]![0])).toEqual(["-105.27,40.01", pair(d)]);
     expect(times.get("d")).toEqual({ seconds: 6892.5, source: "route" });
     expect(times.get("a")).toEqual({ seconds: 2285, source: "route" });
+    expect(Object.keys((stored(map) as { times: object }[])[0]!.times).sort()).toEqual([
+      "a",
+      "b",
+      "c",
+      "d",
+    ]);
+  });
+
+  it("aNarrowerCallAsksNothingAndAWiderOneAsksOnlyForTheNewDestinations", async () => {
+    const map = new Map<string, string>();
+    const cache = mapStore(map);
+    const first = fakeOSRM(ROUTED);
+    await driveTimesFor(BOULDER, [a, c], { transport: first, cache });
+    expect(first).toHaveBeenCalledTimes(1);
+    const narrower = fakeOSRM(ROUTED);
+    const subset = await driveTimesFor(BOULDER, [c], { transport: narrower, cache });
+    expect(narrower).not.toHaveBeenCalled();
+    expect([...subset.keys()]).toEqual(["c"]);
+    const wider = fakeOSRM(ROUTED);
+    await driveTimesFor(BOULDER, [a, b, c, d], { transport: wider, cache });
+    expect(wider).toHaveBeenCalledTimes(1);
+    expect(pathCoordinates(wider.mock.calls[0]![0])).toEqual(["-105.27,40.01", pair(b), pair(d)]);
+    // The start's entry grew; nothing it already had was dropped.
     expect(Object.keys((stored(map) as { times: object }[])[0]!.times).sort()).toEqual([
       "a",
       "b",

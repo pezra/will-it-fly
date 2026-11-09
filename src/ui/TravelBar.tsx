@@ -1,19 +1,19 @@
-import { useState } from "preact/hooks";
+import { useEffect, useState } from "preact/hooks";
 import { travelSummary } from "./format";
 import { DRIVE_HOUR_CHOICES } from "./travelSettings";
-import type { MaxHours } from "./travelSettings";
 import type { Travel } from "./useTravel";
 
-const RADIUS_CHOICES: readonly MaxHours[] = [...DRIVE_HOUR_CHOICES, "any"];
 const OPTIONS_ID = "travel-options";
 
-function radiusLabel(choice: MaxHours): string {
-  return choice === "any" ? "Any" : `${choice} h`;
-}
-
-/** The start point and drive limit: a summary line that expands to the controls. */
-export function TravelBar({ travel }: { travel: Travel }) {
-  const [open, setOpen] = useState(false);
+/**
+ * The start point and drive limit: a summary line that expands to the controls. `openWhen` opens
+ * them when it turns true (no start yet, so the search is the next step); the user can still close them.
+ */
+export function TravelBar({ travel, openWhen = false }: { travel: Travel; openWhen?: boolean }) {
+  const [open, setOpen] = useState(openWhen);
+  useEffect(() => {
+    if (openWhen) setOpen(true);
+  }, [openWhen]);
   const [query, setQuery] = useState("");
   const { settings, searchState } = travel;
   const searching = searchState.status === "searching";
@@ -33,14 +33,14 @@ export function TravelBar({ travel }: { travel: Travel }) {
       {open && (
         <div id={OPTIONS_ID} class="travel-options">
           <div class="travel-radius" role="group" aria-label="Drive time">
-            {RADIUS_CHOICES.map((choice) => (
+            {DRIVE_HOUR_CHOICES.map((choice) => (
               <button
                 key={choice}
                 type="button"
                 aria-pressed={settings.maxHours === choice}
                 onClick={() => travel.setMaxHours(choice)}
               >
-                {radiusLabel(choice)}
+                {choice} h
               </button>
             ))}
           </div>

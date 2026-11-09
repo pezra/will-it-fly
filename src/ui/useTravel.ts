@@ -1,18 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
-import { firstLaunchCoordinate } from "../core/recommendation/ranker";
 import type { SiteRecommendation } from "../core/recommendation/types";
-import type { Coordinate } from "../core/sites/site";
+import type { Coordinate, Site } from "../core/sites/site";
 import { bundledSiteProvider } from "../core/sites/siteProvider";
 import { applyTravel } from "../core/travel/applyTravel";
 import type { TravelTimes } from "../core/travel/applyTravel";
-import { OSRM_TIMEOUT_MS, driveTimesFor, startKey } from "../core/travel/driveTime";
-import type { Destination } from "../core/travel/driveTime";
+import { OSRM_TIMEOUT_MS, driveTimesFor, startKey, withinReach } from "../core/travel/driveTime";
+import type { DriveTime } from "../core/travel/driveTime";
+import { inRangeIds, mergeTimes, missingDestinations, travelStage } from "../core/travel/inRange";
+import type { TravelStage } from "../core/travel/inRange";
 import { GEOCODE_TIMEOUT_MS, searchPlaces, shortPlaceName } from "../core/travel/geocode";
 import type { Place } from "../core/travel/geocode";
 import type { DebugParams } from "./debugParams";
 import { describeError } from "./format";
 import { locate } from "./location";
-import type { LocationResult } from "./location";
+import type { LocationResult, LocationStatus } from "./location";
 import { localStorageStore } from "./storage";
 import { fetchTransportWithTimeout } from "./transport";
 import {
@@ -22,7 +23,7 @@ import {
   saveTravelSettings,
 } from "./travelSettings";
 import type { MaxHours, TravelSettings, TravelStart } from "./travelSettings";
-import type { Recommendations } from "./useRecommendations";
+import type { ForecastLoad, Recommendations } from "./useRecommendations";
 
 /** A place search: `results` holds at least one place; `none` is an empty answer. */
 type SearchState =
@@ -32,15 +33,28 @@ type SearchState =
   | { status: "none" }
   | { status: "error"; message: string };
 
-export interface Travel {
-  /** The recommendations with distances and drive times from the start. `state` is unfiltered. */
-  recs: Recommendations;
-  /** The sites within the drive limit, in rank order. Empty until the forecast loads. */
-  shown: SiteRecommendation[];
-  hiddenCount: number;
+/** What `useTravel` returns: the start, the drive limit and which sites are in range. */
+export interface TravelPipeline {
   settings: TravelSettings;
-  /** The start in use: the chosen place, else the found location, else none (nothing filtered). */
+  /** The start in use: the chosen place, else the found location, else none (nothing loads until one is set). */
   effectiveStart: Coordinate | undefined;
+  /** The drive times fetched so far for the current start (routed or estimated). */
+  times: TravelTimes | undefined;
+  /** How many sites the catalog has, 0 until it is read. */
+  catalogSize: number;
+  /** The ids of every catalog site, undefined until the catalog is read. */
+  catalogIds: ReadonlySet<string> | undefined;
+  stage: TravelStage;
+  /** The sites within the drive limit, in catalog order. Meaningful once `stage` is ready. */
+  inRangeIds: readonly string[];
+  location: LocationStatus;
+  /** The geolocation answer, undefined while pending. */
+  locationResult: LocationResult | undefined;
+  /**
+   * Replaces the location after the user asks for it again. A load-time answer that arrives
+   * later is ignored.
+   */
+  relocate: (result: LocationResult) => void;
   setMaxHours: (maxHours: MaxHours) => void;
   /** Starts from `place`, stored under its short name. */
   setPlace: (place: Place) => void;
@@ -55,6 +69,16 @@ export interface Travel {
    */
   search: (query: string) => void;
   searchState: SearchState;
+}
+
+/** The travel pipeline applied to the loaded forecast, as the list and the travel bar use it. */
+export interface Travel extends TravelPipeline {
+  /** The recommendations with distances and drive times from the start. `state` is unfiltered. */
+  recs: Recommendations;
+  /** The sites within the drive limit, in rank order. Empty until the forecast loads. */
+  shown: SiteRecommendation[];
+  /** Catalog sites not shown, 0 without a start or a loaded forecast. */
+  hiddenCount: number;
 }
 
 /** The chosen place wins; else the location if it was found; else there is no start. */
@@ -77,31 +101,28 @@ export function placeStart(place: Place): TravelStart {
 const routeTransport = fetchTransportWithTimeout(OSRM_TIMEOUT_MS);
 const geocodeTransport = fetchTransportWithTimeout(GEOCODE_TIMEOUT_MS);
 
-let destinations: Promise<Destination[]> | undefined;
+let catalog: Promise<Site[]> | undefined;
 
-/** Every site's first launch, from the catalog, so drive times don't wait for the forecast. */
-function siteDestinations(): Promise<Destination[]> {
-  destinations ??= bundledSiteProvider()
+/** The bundled catalog, read once. A failure is not kept, so the next call tries again. */
+function loadCatalog(): Promise<Site[]> {
+  catalog ??= bundledSiteProvider()
     .sites()
-    .then((sites) =>
-      sites.flatMap((site) => {
-        const coordinate = firstLaunchCoordinate(site);
-        return coordinate === undefined ? [] : [{ id: site.id, coordinate }];
-      }),
-    )
     .catch((error: unknown) => {
-      destinations = undefined;
+      catalog = undefined;
       throw error;
     });
-  return destinations;
+  return catalog;
 }
 
+const NO_TIMES: ReadonlyMap<string, DriveTime> = new Map();
+
 /**
- * Owns the start point, the drive limit and the place search, and applies them to `recs`. Drive
- * times are fetched once per rounded start (never on a radius change); until they arrive every
- * site uses the straight-line estimate. The settings are stored between visits.
+ * Owns everything before the weather: the location, the start point, the drive limit, the place
+ * search and the drive times. The candidates are the catalog sites `withinReach` of the start;
+ * OSRM is asked only for candidates the current start has no time for yet, so narrowing the limit
+ * asks nothing and widening asks only for the new sites. The settings are stored between visits.
  */
-export function useTravel(recs: Recommendations, debug: DebugParams): Travel {
+export function useTravel(debug: DebugParams): TravelPipeline {
   const store = useMemo(() => localStorageStore(), []);
   const [settings, setSettings] = useState<TravelSettings>(() => loadTravelSettings(store));
   const saved = useRef(settings);
@@ -111,40 +132,95 @@ export function useTravel(recs: Recommendations, debug: DebugParams): Travel {
     saveTravelSettings(store, settings);
   }, [settings, store]);
 
-  const { locationResult, relocate } = recs;
+  const [locationResult, setLocationResult] = useState<LocationResult | undefined>(undefined);
+  const relocated = useRef(false);
+  const relocate = useCallback((result: LocationResult) => {
+    relocated.current = true;
+    setLocationResult(result);
+  }, []);
+  useEffect(() => {
+    let cancelled = false;
+    void locate(debug).then((r) => {
+      if (!cancelled && !relocated.current) setLocationResult(r);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [debug.noLocation, debug.location]);
+
+  const [sites, setSites] = useState<Site[] | undefined>(undefined);
+  useEffect(() => {
+    let cancelled = false;
+    loadCatalog().then(
+      (all) => {
+        if (!cancelled) setSites(all);
+      },
+      (error: unknown) => console.error("Could not read the site catalog", error),
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const catalogIds = useMemo(() => sites && new Set(sites.map((s) => s.id)), [sites]);
+
   const effectiveStart = useMemo(
     () => resolveStart(settings, locationResult),
     [settings, locationResult],
   );
-
-  // Keyed on the rounded start only, so a radius change or a re-render never refetches.
   const key = effectiveStart === undefined ? undefined : startKey(effectiveStart);
+  const candidates = useMemo(
+    () =>
+      sites === undefined || effectiveStart === undefined
+        ? undefined
+        : withinReach(sites, effectiveStart, settings.maxHours),
+    [sites, effectiveStart, settings.maxHours],
+  );
+  // Ids in catalog order, so the same candidates always give the same string.
+  const candidateKey = candidates?.map((s) => s.id).join("\n");
+
+  const [times, setTimes] = useState<TravelTimes | undefined>(undefined);
+  // Read by the drive-time effect, which runs only when the start or the candidates change.
   const startRef = useRef(effectiveStart);
   startRef.current = effectiveStart;
-  const [times, setTimes] = useState<TravelTimes | undefined>(undefined);
+  const candidatesRef = useRef(candidates);
+  candidatesRef.current = candidates;
+  const timesRef = useRef(times);
+  timesRef.current = times;
   const timesRequest = useRef(0);
   useEffect(() => {
     const id = ++timesRequest.current;
     const start = startRef.current;
-    if (key === undefined || start === undefined) return;
+    const wanted = candidatesRef.current;
+    if (key === undefined || start === undefined || wanted === undefined) return;
+    const missing = missingDestinations(wanted, timesRef.current, key);
+    if (missing.length === 0) {
+      // Nothing to ask, but a new start (with no candidates, say) still needs its own map.
+      setTimes((prev) => mergeTimes(prev, key, NO_TIMES));
+      return;
+    }
     const deps = { transport: routeTransport, cache: store, baseURL: debug.routeBaseURL };
-    siteDestinations()
-      .then((dests) => driveTimesFor(start, dests, deps))
-      .then(
-        (result) => {
-          if (id === timesRequest.current) setTimes({ startKey: key, times: result });
-        },
-        (error: unknown) => console.warn("Could not load drive times", error),
-      );
-  }, [key, debug.routeBaseURL, store]);
+    driveTimesFor(start, missing, deps).then(
+      (result) => {
+        if (id === timesRequest.current) setTimes((prev) => mergeTimes(prev, key, result));
+      },
+      (error: unknown) => console.warn("Could not load drive times", error),
+    );
+  }, [key, candidateKey, debug.routeBaseURL, store]);
 
   const limit = maxSeconds(settings);
-  const applied = useMemo(
+  const stage = travelStage({
+    start: effectiveStart,
+    locationPending: locationResult === undefined,
+    candidates,
+    times,
+  });
+  const inRange = useMemo(
     () =>
-      recs.state.status === "loaded"
-        ? applyTravel(recs.state.result, effectiveStart, times, limit)
-        : undefined,
-    [recs.state, effectiveStart, times, limit],
+      candidates === undefined || key === undefined || times?.startKey !== key
+        ? []
+        : inRangeIds(candidates, times.times, limit),
+    [candidates, key, times, limit],
   );
 
   const [locating, setLocating] = useState(false);
@@ -204,16 +280,17 @@ export function useTravel(recs: Recommendations, debug: DebugParams): Travel {
     setSettings((s) => ({ ...s, maxHours }));
   }, []);
 
-  const state =
-    applied !== undefined && recs.state.status === "loaded"
-      ? { ...recs.state, result: applied.result }
-      : recs.state;
   return {
-    recs: { ...recs, state },
-    shown: applied?.shown ?? [],
-    hiddenCount: applied?.hiddenCount ?? 0,
     settings,
     effectiveStart,
+    times,
+    catalogSize: sites?.length ?? 0,
+    catalogIds,
+    stage,
+    inRangeIds: inRange,
+    location: locationResult?.status ?? "pending",
+    locationResult,
+    relocate,
     setMaxHours,
     setPlace,
     useMyLocation,
@@ -221,5 +298,34 @@ export function useTravel(recs: Recommendations, debug: DebugParams): Travel {
     locationError,
     search,
     searchState,
+  };
+}
+
+/**
+ * Applies the start and the drive limit to the loaded forecast: distances and drive times on every
+ * site, and `shown`, the ones within the limit. A site loaded for its own page that is not a
+ * candidate gets the straight-line estimate, which is always over the limit, so it stays hidden.
+ */
+export function useTravelView(travel: TravelPipeline, recs: ForecastLoad): Travel {
+  const { effectiveStart, times, settings, catalogSize, location, locationResult, relocate } = travel;
+  const limit = maxSeconds(settings);
+  const applied = useMemo(
+    () =>
+      recs.state.status === "loaded"
+        ? applyTravel(recs.state.result, effectiveStart, times, limit)
+        : undefined,
+    [recs.state, effectiveStart, times, limit],
+  );
+
+  const state =
+    applied !== undefined && recs.state.status === "loaded"
+      ? { ...recs.state, result: applied.result }
+      : recs.state;
+  const shown = applied?.shown ?? [];
+  return {
+    ...travel,
+    recs: { ...recs, state, location, locationResult, relocate },
+    shown,
+    hiddenCount: applied === undefined || effectiveStart === undefined ? 0 : catalogSize - shown.length,
   };
 }

@@ -21,9 +21,9 @@ export function applyTravel(
   result: RecommendationResult,
   start: Coordinate | undefined,
   times: TravelTimes | undefined,
-  maxSeconds: number | undefined,
-): { result: RecommendationResult; shown: SiteRecommendation[]; hiddenCount: number } {
-  if (start === undefined) return { result, shown: [...result.sites], hiddenCount: 0 };
+  maxSeconds: number,
+): { result: RecommendationResult; shown: SiteRecommendation[] } {
+  if (start === undefined) return { result, shown: [...result.sites] };
 
   const key = startKey(start);
   const routed = times?.startKey === key ? times.times : undefined;
@@ -37,8 +37,6 @@ export function applyTravel(
     };
     return { ...rec, driveTime };
   });
-  const shown = sites.filter(
-    (rec) => maxSeconds === undefined || rec.driveTime === undefined || rec.driveTime.seconds <= maxSeconds,
-  );
-  return { result: { ...annotated, sites }, shown, hiddenCount: sites.length - shown.length };
+  const shown = sites.filter((rec) => rec.driveTime === undefined || rec.driveTime.seconds <= maxSeconds);
+  return { result: { ...annotated, sites }, shown };
 }

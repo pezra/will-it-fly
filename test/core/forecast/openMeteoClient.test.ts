@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   fetchForecasts,
   launchRequestURL,
+  NEIGHBOR_POINTS_PER_LAUNCH,
   neighborRequestURL,
   OpenMeteoError,
   parseForecasts,
+  splitRaw,
 } from "../../../src/core/forecast/openMeteoClient";
 import type { Transport } from "../../../src/core/forecast/openMeteoClient";
 import type { LaunchForecast } from "../../../src/core/forecast/models";
@@ -68,7 +70,12 @@ async function rejection(promise: Promise<unknown>): Promise<OpenMeteoError> {
   throw new Error("expected fetch to reject");
 }
 
-type RawSeries = Record<string, (number | null)[]>;
+/** `value` through JSON, which writes -0 as 0 (`toEqual` tells them apart). */
+function zeroSign(value: unknown): unknown {
+  return JSON.parse(JSON.stringify(value));
+}
+
+type RawSeries =Record<string, (number | null)[]>;
 function rawHourly(json: string): RawSeries[] {
   const arr = JSON.parse(json) as { hourly: RawSeries }[];
   return arr.map((el) => el.hourly);
@@ -274,6 +281,45 @@ describe("OpenMeteoClient", () => {
     const err = await rejection(fetchForecasts(launches, { transport: odd }));
     expect(err.kind).toBe("api");
     expect(err.status).toBeUndefined();
+  });
+
+  it.each([
+    [[1, 2]],
+    [[2, 1]],
+    [[1, 1, 1]],
+  ])("splitRawSlicesParseLikeTheWholeResponse: %j", (counts) => {
+    const slices = splitRaw(launchesJSON, neighborsJSON, counts);
+    expect(slices).toHaveLength(counts.length);
+    const whole = parsed();
+    let start = 0;
+    slices.forEach((slice, i) => {
+      const n = counts[i]!;
+      const own = launches.slice(start, start + n);
+      expect(JSON.parse(slice.launchRaw)).toHaveLength(n);
+      expect(JSON.parse(slice.neighborRaw)).toHaveLength(n * NEIGHBOR_POINTS_PER_LAUNCH);
+      // Re-serializing writes the recording's -0 as 0, which is the same number.
+      expect(zeroSign(parseForecasts(slice.launchRaw, slice.neighborRaw, own))).toEqual(
+        zeroSign(whole.slice(start, start + n)),
+      );
+      start += n;
+    });
+  });
+
+  it("splitRawAcceptsTheSingleObjectResponse", () => {
+    const body = '{"hourly":{"time":[1794034800]},"daily":{"time":[1794034800]}}';
+    const [slice, ...rest] = splitRaw(body, neighborBody(5), [1]);
+    expect(rest).toEqual([]);
+    expect(JSON.parse(slice!.launchRaw)).toEqual([JSON.parse(body)]);
+    expect(parseForecasts(slice!.launchRaw, slice!.neighborRaw, [launches[0]!])).toEqual(
+      parseForecasts(body, neighborBody(5), [launches[0]!]),
+    );
+  });
+
+  it("splitRawCountMismatchIsUnexpectedShape", () => {
+    shapeError(() => splitRaw(launchesJSON, neighborsJSON, [1, 1]));
+    shapeError(() => splitRaw(launchesJSON, neighborsJSON, [2, 2]));
+    shapeError(() => splitRaw(launchesJSON, neighborBody(14), [1, 2]));
+    shapeError(() => splitRaw("nonsense", neighborsJSON, [3]));
   });
 
   it("parsedValuesComeFromTheMatchingRawElements", () => {

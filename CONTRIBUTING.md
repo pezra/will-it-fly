@@ -14,11 +14,12 @@ npm ci
 ```
 src/core/            all logic, with no DOM or browser globals
   sites/             site types, arcs, coordinates
-  forecast/          Open-Meteo client and parser, forecast cache
+  forecast/          Open-Meteo client and parser, per-site forecast cache
   scoring/           SCORING_DEFAULTS, derived values, hour evaluator,
                      model agreement, window finder
   recommendation/    per-launch evaluation, ranking, getRecommendations
-  travel/            drive times (OSRM, with estimates), place search, the drive-time filter
+  travel/            straight-line prefilter, drive times (OSRM, with estimates), place search,
+                     which sites are in range
   time.ts            America/Denver calendar helpers
 src/ui/              Preact components, location, storage, debug params
 sites.json           the curated RMHPA site catalog
@@ -56,6 +57,17 @@ Tests read fixture files with Vite's `?raw` import rather than `node:fs`.
 | `?base=https://invalid.example` | points at a dead Open-Meteo host. Combined with a `now` more than an hour after the last fetch, it shows the offline fallback |
 
 The service worker only registers in production builds. To try it, run `npm run build && npm run preview`, load the page twice, stop the server and reload.
+
+## Order of work
+
+The UI loads things in this order, and each step narrows what the next one asks for:
+
+1. The location (or the place the user chose). With no start point nothing else loads.
+2. `withinReach`: sites farther than 80 mph times the chosen hours in a straight line are dropped.
+3. OSRM drive times for the sites left. Only the sites with no time for this start are asked for, so narrowing the radius asks for nothing and widening asks for the new sites only.
+4. Weather, only for the sites within the drive time. A site's detail page loads just its own site at once, without waiting for 1 to 3.
+
+Only the in-range sites' launch coordinates go to Open-Meteo, and the rounded start point goes only to OSRM. Forecasts are cached per site in `will-it-fly/forecast-v2` in localStorage, keeping the 30 most recently used sites (about 2 MB). Each entry has its own fetch time, so a changed radius fetches only the sites with no fresh entry. The old `forecast-v1` entries are deleted when the cache is created. The radius choices are 1 to 4 h; there is no unlimited option.
 
 ## Scoring
 

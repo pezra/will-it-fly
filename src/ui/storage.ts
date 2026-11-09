@@ -1,10 +1,10 @@
-import type { KeyValueStore } from "../core/forecast/forecastCache";
+import type { RemovableStore } from "../core/keyValueStore";
 
 /**
- * A `KeyValueStore` over `localStorage`. A blocked or full store never throws out of `get`, which
- * reads as "nothing cached"; `set` throws so the cache can log it and carry on.
+ * A `RemovableStore` over `localStorage`. A blocked or full store never throws out of `get`, which
+ * reads as "nothing cached"; `set` and `remove` throw so the cache can log it and carry on.
  */
-export function localStorageStore(): KeyValueStore {
+export function localStorageStore(): RemovableStore {
   return {
     get(key) {
       try {
@@ -16,6 +16,9 @@ export function localStorageStore(): KeyValueStore {
     },
     set(key, value) {
       window.localStorage.setItem(key, value);
+    },
+    remove(key) {
+      window.localStorage.removeItem(key);
     },
   };
 }
