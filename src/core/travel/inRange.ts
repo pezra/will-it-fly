@@ -113,8 +113,13 @@ export function weatherLoadKey(day: DayKey | undefined, ids: readonly string[]):
   return JSON.stringify([day ?? null, [...ids].sort()]);
 }
 
+/** The `ids` that `result` has no site for. */
+export function missingSiteIds(result: RecommendationResult, ids: readonly string[]): string[] {
+  const have = new Set(result.sites.map((r) => r.site.id));
+  return ids.filter((id) => !have.has(id));
+}
+
 /** True when `result` already has every one of `ids`, so loading them again would add nothing. */
 export function containsSites(result: RecommendationResult, ids: readonly string[]): boolean {
-  const have = new Set(result.sites.map((r) => r.site.id));
-  return ids.every((id) => have.has(id));
+  return missingSiteIds(result, ids).length === 0;
 }

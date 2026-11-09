@@ -6,6 +6,7 @@ import { startKey, withinReach } from "../../../src/core/travel/driveTime";
 import type { DriveTime } from "../../../src/core/travel/driveTime";
 import {
   containsSites,
+  missingSiteIds,
   inRangeIds,
   mergeTimes,
   missingDestinations,
@@ -242,5 +243,10 @@ describe("containsSites", () => {
     expect(containsSites(result(near, mid), ["mid"])).toBe(true);
     expect(containsSites(result(near, mid), [])).toBe(true);
     expect(containsSites(result(near), ["near", "mid"])).toBe(false);
+  });
+
+  it("listsTheMissingIdsInTheOrderAsked", () => {
+    expect(missingSiteIds(result(near), ["mid", "near", "far"])).toEqual(["mid", "far"]);
+    expect(missingSiteIds(result(near, mid), ["mid"])).toEqual([]);
   });
 });

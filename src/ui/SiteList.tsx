@@ -1,5 +1,6 @@
 import type { Recommendations } from "./useRecommendations";
 import type { Travel } from "./useTravel";
+import { missingSiteIds } from "../core/travel/inRange";
 import { addDays, denverDayKey } from "../core/time";
 import type { DayKey } from "../core/time";
 import { DayPicker } from "./DayPicker";
@@ -37,7 +38,7 @@ export function SiteList({ travel, day }: { travel: Travel; day: DayKey | undefi
         <DayPicker today={denverDayKey(now())} shown={day} />
         {/* The travel bar is the only way to set a start when there is none. */}
         <TravelBar travel={travel} openWhen={travel.stage === "needsStart"} />
-        {state.status !== "loaded" && (state.status === "failed" || message === undefined) ? (
+        {state.status === "failed" || (state.status === "loading" && message === undefined) ? (
           <ForecastStatus state={state} retry={retry} />
         ) : (
           <p class="status" role="status">{message}</p>
@@ -48,8 +49,7 @@ export function SiteList({ travel, day }: { travel: Travel; day: DayKey | undefi
   }
 
   const { result } = state;
-  const have = new Set(result.sites.map((r) => r.site.id));
-  const missing = travel.inRangeIds.filter((id) => !have.has(id)).length;
+  const missing = missingSiteIds(result, travel.inRangeIds).length;
   return (
     <>
       <header class="list-header">
@@ -76,7 +76,6 @@ export function SiteList({ travel, day }: { travel: Travel; day: DayKey | undefi
       {state.refreshError !== undefined && (
         <p class="banner" role="alert">Refresh failed: {state.refreshError}</p>
       )}
-      {travel.effectiveStart === undefined && <LocationNote location={location} />}
       {result.dayOver ? (
         <p class="banner">
           Today's sunset has passed. <a href={listHref(addDays(result.today, 1))}>See tomorrow</a>
