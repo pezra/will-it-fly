@@ -17,7 +17,7 @@ export interface FlyingWindow {
   start: number;
   /** Start of the last hour plus one hour (epoch ms). */
   end: number;
-  /** The run's ECMWF hour results, in time order. */
+  /** The run's primary-model hour results, in time order. */
   hours: HourResult[];
   /** Mean hour score x run-length weight x confidence weight. */
   score: number;
@@ -62,10 +62,10 @@ export function windowLabel(w: Pick<FlyingWindow, "start" | "end">): string {
 
 function buildWindow(
   run: HourResult[],
-  rrfsByTime: ReadonlyMap<number, HourResult>,
+  checkByTime: ReadonlyMap<number, HourResult>,
   defaults: ScoringDefaults,
 ): FlyingWindow {
-  const confidence = runConfidence(run, rrfsByTime, defaults);
+  const confidence = runConfidence(run, checkByTime, defaults);
   const mean = run.reduce((sum, h) => sum + h.score, 0) / run.length;
   const first = run[0];
   const last = run[run.length - 1];
@@ -99,13 +99,14 @@ function firstPerKind(run: readonly HourResult[], severity: Reason["severity"]):
 }
 
 /**
- * The highest-scoring run of consecutive good or flyable ECMWF hours, from `daylight` (the target
- * day's ECMWF results from `daylightHours`, in time order). A no-go, no-data or missing hour breaks
- * a run. Ties go to the earlier run.
+ * The highest-scoring run of consecutive good or flyable primary-model hours, from `daylight` (the
+ * target day's primary-model results from `daylightHours`, in time order). A no-go, no-data or
+ * missing hour breaks a run. Ties go to the earlier run. `checkByTime` is the check model's results,
+ * for the window's confidence.
  */
 export function findBestWindow(
   daylight: readonly HourResult[],
-  rrfsByTime: ReadonlyMap<number, HourResult>,
+  checkByTime: ReadonlyMap<number, HourResult>,
   defaults: ScoringDefaults = SCORING_DEFAULTS,
 ): FlyingWindow | undefined {
   let best: FlyingWindow | undefined;
@@ -113,7 +114,7 @@ export function findBestWindow(
 
   const close = (): void => {
     if (run.length > 0) {
-      const w = buildWindow(run, rrfsByTime, defaults);
+      const w = buildWindow(run, checkByTime, defaults);
       if (best === undefined || w.score > best.score) best = w;
     }
     run = [];

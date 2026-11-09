@@ -129,7 +129,7 @@ export function confidenceLabel(confidence: Confidence): string {
       return "medium confidence";
     case "low":
       return "low confidence";
-    case "ecmwfOnly":
+    case "primaryOnly":
       return "ECMWF only";
   }
 }

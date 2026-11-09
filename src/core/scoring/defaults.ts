@@ -105,18 +105,18 @@ export interface ScoringDefaults {
   /** Dry adiabatic lapse rate for the TI parcel. */
   dryAdiabaticLapseCPerM: number;
   // Model agreement
-  /** RRFS agrees when its launch wind direction is within this of ECMWF's ... */
+  /** The check model agrees when its launch wind direction is within this of the primary's ... */
   agreementMaxDirDiffDeg: number;
   /** ... or both launch winds are below this (direction ignored) ... */
   agreementCalmBelowMph: number;
-  /** ... and its launch wind speed is within this of ECMWF's. */
+  /** ... and its launch wind speed is within this of the primary's. */
   agreementMaxSpeedDiffMph: number;
-  /** Share of RRFS-covered hours agreeing for high confidence. */
+  /** Share of check-covered hours agreeing for high confidence. */
   highConfidenceMinShare: number;
-  /** Share of RRFS-covered hours agreeing for medium confidence. Below is low. */
+  /** Share of check-covered hours agreeing for medium confidence. Below is low. */
   mediumConfidenceMinShare: number;
-  /** If RRFS covers less than this share of a run's hours, confidence is "ECMWF only". */
-  rrfsMinCoverageShare: number;
+  /** If the check model covers less than this share of a run's hours, confidence is "primary only". */
+  checkMinCoverageShare: number;
   // Window score weights
   oneHourRunWeight: number;
   twoHourRunWeight: number;
@@ -125,7 +125,7 @@ export interface ScoringDefaults {
   highConfidenceWeight: number;
   mediumConfidenceWeight: number;
   lowConfidenceWeight: number;
-  ecmwfOnlyConfidenceWeight: number;
+  primaryOnlyConfidenceWeight: number;
   // Cache
   /** A cached forecast younger than this (ms) is used without fetching. */
   cacheMaxAgeMs: number;
@@ -191,7 +191,7 @@ export const SCORING_DEFAULTS: Readonly<ScoringDefaults> = Object.freeze({
   agreementMaxSpeedDiffMph: 5,
   highConfidenceMinShare: 0.75,
   mediumConfidenceMinShare: 0.4,
-  rrfsMinCoverageShare: 0.5,
+  checkMinCoverageShare: 0.5,
   // Window score weights
   oneHourRunWeight: 0.6,
   twoHourRunWeight: 0.8,
@@ -199,7 +199,7 @@ export const SCORING_DEFAULTS: Readonly<ScoringDefaults> = Object.freeze({
   highConfidenceWeight: 1,
   mediumConfidenceWeight: 0.85,
   lowConfidenceWeight: 0.7,
-  ecmwfOnlyConfidenceWeight: 0.85,
+  primaryOnlyConfidenceWeight: 0.85,
   // Cache
   cacheMaxAgeMs: 60 * 60 * 1000,
   forcedRefreshMinIntervalMs: 5 * 60 * 1000,

@@ -69,7 +69,7 @@ describe("labels", () => {
     expect(callLabel("noGo")).toBe("No-go");
   });
   it("labels confidence", () => {
-    expect(confidenceLabel("ecmwfOnly")).toBe("ECMWF only");
+    expect(confidenceLabel("primaryOnly")).toBe("ECMWF only");
     expect(confidenceLabel("high")).toBe("high confidence");
   });
   it("labels days relative to today", () => {
