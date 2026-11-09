@@ -15,6 +15,7 @@ function result(call: HourCall, speedMph?: number, dirDeg?: number): HourResult 
     reasons: [],
     launchWind: speedMph === undefined ? undefined : { speedMph, dirDeg: dirDeg ?? 270 },
     unpenalizedScore: 50,
+    conditions: [],
   };
 }
 

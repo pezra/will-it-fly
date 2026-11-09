@@ -157,6 +157,7 @@ function hourResult(time: number, kinds: ReasonKind[], call: HourResult["call"] 
     call,
     score: 0,
     unpenalizedScore: 0,
+    conditions: [],
     reasons: kinds.map((kind) => ({ kind, severity: REASON_SEVERITY[kind], text: `text ${kind}` })),
   };
 }
