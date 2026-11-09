@@ -1,5 +1,6 @@
 import type { Recommendations } from "./useRecommendations";
 import type { Travel } from "./useTravel";
+import type { ModelName } from "../core/scoring/hourEvaluator";
 import { missingSiteIds } from "../core/travel/inRange";
 import { addDays, denverDayKey } from "../core/time";
 import type { DayKey } from "../core/time";
@@ -24,8 +25,19 @@ function LocationNote({ location }: { location: Recommendations["location"] }) {
   return null;
 }
 
-/** `day` is the route's day, undefined for the default day. Lists `travel.shown`. */
-export function SiteList({ travel, day }: { travel: Travel; day: DayKey | undefined }) {
+/**
+ * `day` is the route's day, undefined for the default day; `model` is the route's model, kept by
+ * every link. Lists `travel.shown`.
+ */
+export function SiteList({
+  travel,
+  day,
+  model,
+}: {
+  travel: Travel;
+  day: DayKey | undefined;
+  model: ModelName;
+}) {
   const { state, location, now, refresh, retry } = travel.recs;
 
   // With no start, a loaded result can only be a site page's own site, so it is not the list.
@@ -35,7 +47,7 @@ export function SiteList({ travel, day }: { travel: Travel; day: DayKey | undefi
     return (
       <>
         <h1>Will it fly?</h1>
-        <DayPicker today={denverDayKey(now())} shown={day} />
+        <DayPicker today={denverDayKey(now())} shown={day} model={model} />
         {/* The travel bar is the only way to set a start when there is none. */}
         <TravelBar travel={travel} openWhen={travel.stage === "needsStart"} />
         {state.status === "failed" || (state.status === "loading" && message === undefined) ? (
@@ -59,7 +71,7 @@ export function SiteList({ travel, day }: { travel: Travel; day: DayKey | undefi
         </button>
       </header>
       <p class="age">{forecastAge(result.fetchedAt, now())}</p>
-      <DayPicker today={result.today} shown={result.day} />
+      <DayPicker today={result.today} shown={result.day} model={model} />
       <TravelBar travel={travel} />
       {/* Until routing is done and the in-range sites arrive the hidden count is wrong, so it waits. */}
       {travel.stage === "ready" && missing === 0 && travel.hiddenCount > 0 && !result.dayOver && (
@@ -78,12 +90,12 @@ export function SiteList({ travel, day }: { travel: Travel; day: DayKey | undefi
       )}
       {result.dayOver ? (
         <p class="banner">
-          Today's sunset has passed. <a href={listHref(addDays(result.today, 1))}>See tomorrow</a>
+          Today's sunset has passed. <a href={listHref(model, addDays(result.today, 1))}>See tomorrow</a>
         </p>
       ) : (
         <ul class="rows">
           {travel.shown.map((rec) => (
-            <SiteRow key={rec.site.id} rec={rec} day={day} />
+            <SiteRow key={rec.site.id} rec={rec} day={day} model={model} />
           ))}
         </ul>
       )}

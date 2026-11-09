@@ -1,4 +1,5 @@
 import { useEffect, useState } from "preact/hooks";
+import type { ModelName } from "../core/scoring/hourEvaluator";
 import { wantedSiteIds } from "../core/travel/inRange";
 import type { DebugParams } from "./debugParams";
 import { parseRoute } from "./route";
@@ -23,6 +24,8 @@ function useHashRoute(): Route {
 
 export function App({ debug }: { debug: DebugParams }) {
   const route = useHashRoute();
+  // Step 4 makes the route always carry a model; until then a missing one reads as the default.
+  const model: ModelName = route.model ?? "ecmwf";
   // Location, prefilter and drive times first; weather only for the sites they leave (or the
   // site page's own site, at once).
   const travel = useTravel(debug);
@@ -39,9 +42,9 @@ export function App({ debug }: { debug: DebugParams }) {
     <>
       <main>
         {route.page === "site" ? (
-          <SiteDetail siteId={route.id} day={route.day} recs={view.recs} catalogIds={view.catalogIds} />
+          <SiteDetail siteId={route.id} day={route.day} model={model} recs={view.recs} catalogIds={view.catalogIds} />
         ) : (
-          <SiteList travel={view} day={route.day} />
+          <SiteList travel={view} day={route.day} model={model} />
         )}
       </main>
       <footer>

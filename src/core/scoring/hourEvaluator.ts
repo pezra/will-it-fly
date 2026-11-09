@@ -16,7 +16,13 @@ import {
 } from "./derived";
 import type { Wind } from "./derived";
 
-export type ModelName = "ecmwf" | "rrfs";
+/** The forecast models, the single definition: the route, the saved default and the UI read it. */
+export const MODEL_NAMES = ["ecmwf", "rrfs"] as const;
+export type ModelName = (typeof MODEL_NAMES)[number];
+
+export function isModelName(value: unknown): value is ModelName {
+  return (MODEL_NAMES as readonly unknown[]).includes(value);
+}
 
 export type HourCall = "good" | "flyable" | "noGo" | "noData";
 
@@ -181,7 +187,8 @@ export interface HourContext {
   site: Site;
 }
 
-const MODEL_LABEL: Readonly<Record<ModelName, string>> = { ecmwf: "ECMWF", rrfs: "RRFS" };
+/** The model's name as shown to the pilot. */
+export const MODEL_LABEL: Readonly<Record<ModelName, string>> = { ecmwf: "ECMWF", rrfs: "RRFS" };
 function windText(w: Wind): string {
   return `${compass(w.dirDeg)} ${mph(w.speedMph)}`;
 }

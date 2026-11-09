@@ -1,4 +1,5 @@
 import type { LaunchEvaluation } from "../core/recommendation/types";
+import type { ModelName } from "../core/scoring/hourEvaluator";
 import { windowLabel } from "../core/scoring/windowFinder";
 import { effectiveLimits } from "../core/sites/site";
 import type { Launch, Site } from "../core/sites/site";
@@ -45,22 +46,25 @@ function LaunchSection({ site, evaluation }: { site: Site; evaluation: LaunchEva
 }
 
 /**
- * `day` is the route's day, undefined for the default day. `catalogIds` is undefined until the
- * catalog is read; only an id outside it is "not found".
+ * `day` is the route's day, undefined for the default day, and `model` its model; the back link
+ * keeps both. `catalogIds` is undefined until the catalog is read; only an id outside it is
+ * "not found".
  */
 export function SiteDetail({
   siteId,
   day,
+  model,
   recs,
   catalogIds,
 }: {
   siteId: string;
   day: DayKey | undefined;
+  model: ModelName;
   recs: Recommendations;
   catalogIds: ReadonlySet<string> | undefined;
 }) {
   const { state } = recs;
-  const back = <a class="back" href={listHref(day)}>← All sites</a>;
+  const back = <a class="back" href={listHref(model, day)}>← All sites</a>;
 
   if (catalogIds?.has(siteId) === false) {
     return (
