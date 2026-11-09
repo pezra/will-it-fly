@@ -1,4 +1,4 @@
-import type { KeyValueStore } from "../../src/core/forecast/forecastCache";
+import type { RemovableStore } from "../../src/core/keyValueStore";
 import type { Reason, ReasonKind } from "../../src/core/scoring/hourEvaluator";
 import type { Launch, Site, WindLimits } from "../../src/core/sites/site";
 import { METERS_PER_FOOT } from "../../src/core/units";
@@ -38,9 +38,13 @@ export function testSite(overrides: Partial<Site> = {}): Site {
   };
 }
 
-/** A `KeyValueStore` over a `Map` (a new one unless given). */
-export function mapStore(map = new Map<string, string>()): KeyValueStore {
-  return { get: (k) => map.get(k), set: (k, v) => void map.set(k, v) };
+/** A `RemovableStore` over a `Map` (a new one unless given). */
+export function mapStore(map = new Map<string, string>()): RemovableStore {
+  return {
+    get: (k) => map.get(k),
+    set: (k, v) => void map.set(k, v),
+    remove: (k) => void map.delete(k),
+  };
 }
 
 /** The reason kinds of a result, in order. */
