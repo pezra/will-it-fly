@@ -67,6 +67,19 @@ export function SiteDetail({
   }
 
   const rec = state.result.sites.find((r) => r.site.id === siteId);
+  // The shown result can be the list's while this site's own load is in flight, or after it failed.
+  if (rec === undefined && (state.refreshing || state.refreshError !== undefined)) {
+    const status =
+      state.refreshError === undefined || state.refreshing
+        ? { status: "loading" as const }
+        : { status: "failed" as const, message: state.refreshError };
+    return (
+      <>
+        {back}
+        <ForecastStatus state={status} retry={recs.retry} />
+      </>
+    );
+  }
   if (rec === undefined) {
     return (
       <>

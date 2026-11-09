@@ -1,11 +1,12 @@
 import { useEffect, useState } from "preact/hooks";
+import { wantedSiteIds } from "../core/travel/inRange";
 import type { DebugParams } from "./debugParams";
 import { parseRoute } from "./route";
 import type { Route } from "./route";
 import { SiteDetail } from "./SiteDetail";
 import { SiteList } from "./SiteList";
 import { useRecommendations } from "./useRecommendations";
-import { useTravel } from "./useTravel";
+import { useTravel, useTravelView } from "./useTravel";
 
 function useHashRoute(): Route {
   const [hash, setHash] = useState(window.location.hash);
@@ -22,15 +23,25 @@ function useHashRoute(): Route {
 
 export function App({ debug }: { debug: DebugParams }) {
   const route = useHashRoute();
-  const travel = useTravel(useRecommendations(debug, route.day), debug);
+  // Location, prefilter and drive times first; weather only for the sites they leave (or the
+  // site page's own site, at once).
+  const travel = useTravel(debug);
+  const wanted = wantedSiteIds({
+    page: route.page,
+    routeSiteId: route.page === "site" ? route.id : undefined,
+    stage: travel.stage,
+    inRangeIds: travel.inRangeIds,
+  });
+  const recs = useRecommendations(debug, route.day, wanted);
+  const view = useTravelView(travel, recs);
 
   return (
     <>
       <main>
         {route.page === "site" ? (
-          <SiteDetail siteId={route.id} day={route.day} recs={travel.recs} />
+          <SiteDetail siteId={route.id} day={route.day} recs={view.recs} />
         ) : (
-          <SiteList travel={travel} day={route.day} />
+          <SiteList travel={view} day={route.day} />
         )}
       </main>
       <footer>

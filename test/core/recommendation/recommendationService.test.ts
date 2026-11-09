@@ -4,7 +4,6 @@ import {
   launchRequestURL,
   neighborRequestURL,
   parseForecasts,
-  splitRaw,
 } from "../../../src/core/forecast/openMeteoClient";
 import type { RawSlice, Transport } from "../../../src/core/forecast/openMeteoClient";
 import { createSiteForecastCache, dayKey, mainKey } from "../../../src/core/forecast/siteForecastCache";
@@ -24,13 +23,21 @@ import { SCORING_DEFAULTS } from "../../../src/core/scoring/defaults";
 import { denverDayKey } from "../../../src/core/time";
 import type { DayKey } from "../../../src/core/time";
 import { windowLabel } from "../../../src/core/scoring/windowFinder";
-import { bundledSiteProvider } from "../../../src/core/sites/siteProvider";
 import type { Launch, Site } from "../../../src/core/sites/site";
 import launchesJSON from "../../fixtures/openmeteo-launches.json?raw";
 import neighborsJSON from "../../fixtures/openmeteo-neighbors.json?raw";
 import launchesURL from "../../fixtures/openmeteo-launches.url.txt?raw";
 import neighborsURL from "../../fixtures/openmeteo-neighbors.url.txt?raw";
 import { mapStore } from "../../support/builders";
+import {
+  BOULDER,
+  BUTTE,
+  COPPER,
+  GLENWOOD,
+  fixtureResponse,
+  fixtureSites,
+  fixtureSlice,
+} from "../../support/fixtureWeather";
 
 const MIN_MS = 60_000;
 
@@ -52,40 +59,15 @@ const NOW_EARLIER = Date.UTC(2026, 10, 5, 18, 0, 0);
 let sites: Site[] = [];
 
 beforeAll(async () => {
-  const all = await bundledSiteProvider().sites();
-  const trimmed = (siteID: string, launchID: string): Site => {
-    const site = all.find((s) => s.id === siteID);
-    const launch = site?.launches.find((l) => l.id === launchID);
-    if (site === undefined || launch === undefined) throw new Error(`no ${launchID}`);
-    return { ...site, launches: [launch] };
-  };
-  const copper = all.find((s) => s.id === "rmhpa/copper-mountain");
-  if (copper === undefined) throw new Error("no copper");
-  sites = [
-    trimmed("rmhpa/glenwood-lookout-mtn", "rmhpa/glenwood-lookout-mtn/north"),
-    trimmed("rmhpa/crested-butte", "rmhpa/crested-butte/browns"),
-    trimmed("rmhpa/boulder-wonderland", "rmhpa/boulder-wonderland/upper"),
-    copper,
-  ];
+  sites = await fixtureSites();
 });
 
 const openSites = (): Site[] => sites.filter((s) => s.status.state === "open");
 const openLaunches = (): Launch[] => openSites().flatMap((s) => s.launches);
 const allIds = (): string[] => sites.map((s) => s.id);
 
-const GLENWOOD = "rmhpa/glenwood-lookout-mtn";
-const BUTTE = "rmhpa/crested-butte";
-const BOULDER = "rmhpa/boulder-wonderland";
-const COPPER = "rmhpa/copper-mountain";
-
 function site(id: string): Site {
   return sites.find((s) => s.id === id) ?? never();
-}
-
-/** Each open site's slice of the recorded responses, by site id. */
-function fixtureSlice(id: string): RawSlice {
-  const index = openSites().findIndex((s) => s.id === id);
-  return splitRaw(launchesJSON, neighborsJSON, [1, 1, 1])[index] ?? never();
 }
 
 /** A request for every site, plus overrides. */
@@ -125,14 +107,11 @@ function dayTransport(day: string): Stub {
 /** Serves the recorded slices of exactly these sites (in this order), and fails any other request. */
 function subsetTransport(ids: readonly string[], day?: DayKey): Stub {
   const urls: string[] = [];
-  const launches = ids.flatMap((id) => site(id).launches);
-  const join = (part: keyof RawSlice): string =>
-    JSON.stringify(ids.flatMap((id) => JSON.parse(fixtureSlice(id)[part]) as unknown[]));
   const transport: Transport = async (url) => {
     urls.push(url);
-    if (url === launchRequestURL(launches, undefined, day)) return { status: 200, body: join("launchRaw") };
-    if (url === neighborRequestURL(launches, undefined, day)) return { status: 200, body: join("neighborRaw") };
-    throw new Error(`unexpected request: ${url}`);
+    const body = fixtureResponse(sites, ids, url, day);
+    if (body === undefined) throw new Error(`unexpected request: ${url}`);
+    return { status: 200, body };
   };
   return { transport, urls };
 }
