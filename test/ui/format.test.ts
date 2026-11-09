@@ -12,8 +12,10 @@ import {
   forecastAge,
   hiddenLine,
   idealLabel,
+  loadingMoreLine,
   miles,
   oneDecimal,
+  stageMessage,
   travelSummary,
   whole,
 } from "../../src/ui/format";
@@ -144,5 +146,32 @@ describe("hiddenLine", () => {
   });
   it("uses the singular for one", () => {
     expect(hiddenLine(1, 4)).toBe("1 site hidden (over 4 h away)");
+  });
+  it("says all are over the limit when nothing is left to show", () => {
+    expect(hiddenLine(21, 2, 21)).toBe("All 21 sites are over 2 h away");
+    expect(hiddenLine(1, 1, 1)).toBe("The only site is over 1 h away");
+  });
+  it("keeps the count form when some are shown", () => {
+    expect(hiddenLine(3, 2, 21)).toBe("3 sites hidden (over 2 h away)");
+  });
+});
+
+describe("stageMessage", () => {
+  it("names what the list is waiting for", () => {
+    expect(stageMessage("locating")).toBe("Finding your location…");
+    expect(stageMessage("routing")).toBe("Finding sites in range…");
+    expect(stageMessage("needsStart")).toBe("Set a starting point");
+  });
+  it("has nothing to say once ready", () => {
+    expect(stageMessage("ready")).toBeUndefined();
+  });
+});
+
+describe("loadingMoreLine", () => {
+  it("counts the sites still loading", () => {
+    expect(loadingMoreLine(4)).toBe("Loading 4 more sites…");
+  });
+  it("uses the singular for one", () => {
+    expect(loadingMoreLine(1)).toBe("Loading 1 more site…");
   });
 });

@@ -44,47 +44,49 @@ function LaunchSection({ site, evaluation }: { site: Site; evaluation: LaunchEva
   );
 }
 
-/** `day` is the route's day, undefined for the default day. */
+/**
+ * `day` is the route's day, undefined for the default day. `catalogIds` is undefined until the
+ * catalog is read; only an id outside it is "not found".
+ */
 export function SiteDetail({
   siteId,
   day,
   recs,
+  catalogIds,
 }: {
   siteId: string;
   day: DayKey | undefined;
   recs: Recommendations;
+  catalogIds: ReadonlySet<string> | undefined;
 }) {
   const { state } = recs;
   const back = <a class="back" href={listHref(day)}>← All sites</a>;
 
-  if (state.status !== "loaded") {
-    return (
-      <>
-        {back}
-        <ForecastStatus state={state} retry={recs.retry} />
-      </>
-    );
-  }
-
-  const rec = state.result.sites.find((r) => r.site.id === siteId);
-  // The shown result can be the list's while this site's own load is in flight, or after it failed.
-  if (rec === undefined && (state.refreshing || state.refreshError !== undefined)) {
-    const status =
-      state.refreshError === undefined || state.refreshing
-        ? { status: "loading" as const }
-        : { status: "failed" as const, message: state.refreshError };
-    return (
-      <>
-        {back}
-        <ForecastStatus state={status} retry={recs.retry} />
-      </>
-    );
-  }
-  if (rec === undefined) {
+  if (catalogIds?.has(siteId) === false) {
     return (
       <>
         {back}
         <p class="status">No site with that id.</p>
+      </>
+    );
+  }
+
+  const rec = state.status === "loaded" ? state.result.sites.find((r) => r.site.id === siteId) : undefined;
+  if (state.status !== "loaded" || rec === undefined) {
+    // The shown result can be the list's while this site's own load starts or is in flight.
+    // Only a failed load with none running shows the failure.
+    const failure =
+      state.status === "failed"
+        ? state.message
+        : state.status === "loaded" && !state.refreshing
+          ? state.refreshError
+          : undefined;
+    const status =
+      failure === undefined ? { status: "loading" as const } : { status: "failed" as const, message: failure };
+    return (
+      <>
+        {back}
+        <ForecastStatus state={status} retry={recs.retry} />
       </>
     );
   }

@@ -42,6 +42,8 @@ export interface TravelPipeline {
   times: TravelTimes | undefined;
   /** How many sites the catalog has, 0 until it is read. */
   catalogSize: number;
+  /** The ids of every catalog site, undefined until the catalog is read. */
+  catalogIds: ReadonlySet<string> | undefined;
   stage: TravelStage;
   /** The sites within the drive limit, in catalog order. Meaningful once `stage` is ready. */
   inRangeIds: readonly string[];
@@ -159,6 +161,8 @@ export function useTravel(debug: DebugParams): TravelPipeline {
       cancelled = true;
     };
   }, []);
+
+  const catalogIds = useMemo(() => sites && new Set(sites.map((s) => s.id)), [sites]);
 
   const effectiveStart = useMemo(
     () => resolveStart(settings, locationResult),
@@ -281,6 +285,7 @@ export function useTravel(debug: DebugParams): TravelPipeline {
     effectiveStart,
     times,
     catalogSize: sites?.length ?? 0,
+    catalogIds,
     stage,
     inRangeIds: inRange,
     location: locationResult?.status ?? "pending",

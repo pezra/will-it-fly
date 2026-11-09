@@ -1,5 +1,6 @@
 import { METERS_PER_FOOT, METERS_PER_MILE, compass } from "../core/units";
 import type { DriveTime } from "../core/travel/driveTime";
+import type { TravelStage } from "../core/travel/inRange";
 import type { Confidence } from "../core/scoring/modelAgreement";
 import type { HourCall } from "../core/scoring/hourEvaluator";
 import { SCORING_DEFAULTS } from "../core/scoring/defaults";
@@ -154,10 +155,37 @@ export function travelSummary(
   return `Within ${settings.maxHours} h of ${where}`;
 }
 
-/** "3 sites hidden (over 2 h away)". Only shown when a limit hides something. */
-export function hiddenLine(hiddenCount: number, maxHours: MaxHours): string {
+/**
+ * "3 sites hidden (over 2 h away)". Only shown when a limit hides something. With the catalog
+ * size, hiding every site reads "All 21 sites are over 2 h away".
+ */
+export function hiddenLine(hiddenCount: number, maxHours: MaxHours, total?: number): string {
+  if (total !== undefined && total > 0 && hiddenCount >= total) {
+    return total === 1
+      ? `The only site is over ${maxHours} h away`
+      : `All ${total} sites are over ${maxHours} h away`;
+  }
   const noun = hiddenCount === 1 ? "site" : "sites";
   return `${hiddenCount} ${noun} hidden (over ${maxHours} h away)`;
+}
+
+/** What the list says while it waits on the start or the drive times. Nothing once ready. */
+export function stageMessage(stage: TravelStage): string | undefined {
+  switch (stage) {
+    case "locating":
+      return "Finding your location…";
+    case "routing":
+      return "Finding sites in range…";
+    case "needsStart":
+      return "Set a starting point";
+    case "ready":
+      return undefined;
+  }
+}
+
+/** "Loading 4 more sites…", for in-range sites whose weather is still coming. */
+export function loadingMoreLine(count: number): string {
+  return `Loading ${count} more ${count === 1 ? "site" : "sites"}…`;
 }
 
 /** The message of an Error, else String(error). */

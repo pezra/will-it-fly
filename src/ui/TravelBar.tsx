@@ -1,13 +1,19 @@
-import { useState } from "preact/hooks";
+import { useEffect, useState } from "preact/hooks";
 import { travelSummary } from "./format";
 import { DRIVE_HOUR_CHOICES } from "./travelSettings";
 import type { Travel } from "./useTravel";
 
 const OPTIONS_ID = "travel-options";
 
-/** The start point and drive limit: a summary line that expands to the controls. */
-export function TravelBar({ travel }: { travel: Travel }) {
-  const [open, setOpen] = useState(false);
+/**
+ * The start point and drive limit: a summary line that expands to the controls. `openWhen` opens
+ * them when it turns true (no start yet, so the search is the next step); the user can still close them.
+ */
+export function TravelBar({ travel, openWhen = false }: { travel: Travel; openWhen?: boolean }) {
+  const [open, setOpen] = useState(openWhen);
+  useEffect(() => {
+    if (openWhen) setOpen(true);
+  }, [openWhen]);
   const [query, setQuery] = useState("");
   const { settings, searchState } = travel;
   const searching = searchState.status === "searching";
