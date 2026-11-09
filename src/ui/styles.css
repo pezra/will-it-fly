@@ -172,9 +172,8 @@ button:disabled { opacity: 0.6; }
   border: 1px solid currentColor;
 }
 .badge-soar, .badge-xc { color: var(--good); background: var(--good-bg); }
-.badge-sledder { color: var(--neutral); background: var(--neutral-bg); }
 .badge-noGo { color: var(--nogo); background: var(--nogo-bg); }
-.badge-noData, .badge-closed { color: var(--neutral); background: var(--neutral-bg); }
+.badge-sledder, .badge-noData, .badge-closed { color: var(--neutral); background: var(--neutral-bg); }
 
 .back { display: inline-block; padding: 8px 0; }
 .detail-head { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; }
