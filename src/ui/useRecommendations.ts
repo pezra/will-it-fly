@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
-import { DEFAULT_CACHE_KEY, createForecastCache } from "../core/forecast/forecastCache";
+import { createSiteForecastCache } from "../core/forecast/siteForecastCache";
 import { getRecommendations } from "../core/recommendation/recommendationService";
 import type { RecommendationResult } from "../core/recommendation/types";
 import { bundledSiteProvider } from "../core/sites/siteProvider";
@@ -41,9 +41,6 @@ export interface Recommendations {
   retry: () => void;
 }
 
-/** The cache slot for a single day after tomorrow. Only the last one fetched is kept. */
-const DAY_CACHE_KEY = `${DEFAULT_CACHE_KEY}/day`;
-
 /** How often the forecast age re-renders while the page is visible. */
 const TICK_MS = 60_000;
 
@@ -64,8 +61,8 @@ export function useRecommendations(debug: DebugParams, day: DayKey | undefined):
       siteProvider: bundledSiteProvider(),
       transport: fetchTransport,
       baseURL: debug.baseURL,
-      cache: createForecastCache(localStorageStore()),
-      dayCache: createForecastCache(localStorageStore(), DAY_CACHE_KEY),
+      // Built once here: creating it also removes the old one-blob cache.
+      cache: createSiteForecastCache(localStorageStore()),
       now,
     }),
     [debug.baseURL, now],
@@ -86,23 +83,29 @@ export function useRecommendations(debug: DebugParams, day: DayKey | undefined):
           ? { status: "loaded", requested: day, result: prev.result, refreshing: true }
           : { status: "loading" },
       );
-      getRecommendations({ forceRefresh, day }, deps).then(
-        (result) => {
-          inFlight.current--;
-          if (id !== requestId.current) return;
-          setBase({ status: "loaded", requested: day, result, refreshing: false });
-        },
-        (error: unknown) => {
-          inFlight.current--;
-          if (id !== requestId.current) return;
-          console.error("Could not load recommendations", error);
-          setBase((prev) =>
-            prev.status === "loaded"
-              ? { ...prev, refreshing: false, refreshError: describeError(error) }
-              : { status: "failed", message: describeError(error) },
-          );
-        },
-      );
+      // Every site for now, so the drive-time filter still runs after the load.
+      deps.siteProvider
+        .sites()
+        .then((sites) =>
+          getRecommendations({ forceRefresh, day, siteIds: sites.map((s) => s.id) }, deps),
+        )
+        .then(
+          (result) => {
+            inFlight.current--;
+            if (id !== requestId.current) return;
+            setBase({ status: "loaded", requested: day, result, refreshing: false });
+          },
+          (error: unknown) => {
+            inFlight.current--;
+            if (id !== requestId.current) return;
+            console.error("Could not load recommendations", error);
+            setBase((prev) =>
+              prev.status === "loaded"
+                ? { ...prev, refreshing: false, refreshError: describeError(error) }
+                : { status: "failed", message: describeError(error) },
+            );
+          },
+        );
     },
     [deps, day],
   );
