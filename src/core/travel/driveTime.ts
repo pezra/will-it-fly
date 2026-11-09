@@ -2,12 +2,15 @@ import type { KeyValueStore } from "../forecast/forecastCache";
 import type { Transport } from "../forecast/openMeteoClient";
 import { isRecord } from "../isRecord";
 import { tryParseJSON } from "../json";
+import { firstLaunchCoordinate } from "../recommendation/ranker";
 import { distanceM } from "../sites/coordinate";
-import type { Coordinate } from "../sites/site";
+import type { Coordinate, Site } from "../sites/site";
 import { METERS_PER_MILE, SECONDS_PER_HOUR } from "../units";
 
 /** The speed that turns straight-line miles into an estimated drive time. */
 const ESTIMATED_DRIVE_MPH = 40;
+/** The fastest a road trip is assumed to go. `withinReach` uses it as a bound, not an estimate. */
+export const MAX_ROAD_MPH = 80;
 const OSRM_BASE_URL = "https://router.project-osrm.org";
 /** How long the UI's transport waits for OSRM before the estimates take over. */
 export const OSRM_TIMEOUT_MS = 8000;
@@ -77,7 +80,23 @@ export class DriveTimeError extends Error {
 
 /** Straight-line distance driven at `ESTIMATED_DRIVE_MPH`, in seconds. */
 export function estimateDriveSeconds(from: Coordinate, to: Coordinate): number {
-  return (distanceM(from, to) / METERS_PER_MILE / ESTIMATED_DRIVE_MPH) * SECONDS_PER_HOUR;
+  return (straightLineMiles(from, to) / ESTIMATED_DRIVE_MPH) * SECONDS_PER_HOUR;
+}
+
+function straightLineMiles(from: Coordinate, to: Coordinate): number {
+  return distanceM(from, to) / METERS_PER_MILE;
+}
+
+/**
+ * The sites whose first launch is within `MAX_ROAD_MPH` × `hours` straight-line miles of `start`,
+ * inclusive. No road trip is faster, so a site dropped here can't be in range. A site with no
+ * launch is kept.
+ */
+export function withinReach(sites: readonly Site[], start: Coordinate, hours: number): Site[] {
+  return sites.filter((site) => {
+    const first = firstLaunchCoordinate(site);
+    return first === undefined || straightLineMiles(start, first) <= MAX_ROAD_MPH * hours;
+  });
 }
 
 function roundToStep(deg: number): number {

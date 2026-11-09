@@ -151,16 +151,11 @@ export function travelSummary(
       : "Set a starting point";
   }
   const where = settings.start.kind === "place" ? settings.start.name : "your location";
-  return settings.maxHours === "any"
-    ? `Any distance from ${where}`
-    : `Within ${settings.maxHours} h of ${where}`;
+  return `Within ${settings.maxHours} h of ${where}`;
 }
 
 /** "3 sites hidden (over 2 h away)". Only shown when a limit hides something. */
-export function hiddenLine(
-  hiddenCount: number,
-  maxHours: Exclude<MaxHours, "any">,
-): string {
+export function hiddenLine(hiddenCount: number, maxHours: MaxHours): string {
   const noun = hiddenCount === 1 ? "site" : "sites";
   return `${hiddenCount} ${noun} hidden (over ${maxHours} h away)`;
 }

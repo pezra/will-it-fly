@@ -49,11 +49,8 @@ export function SiteList({ travel, day }: { travel: Travel; day: DayKey | undefi
       <p class="age">{forecastAge(result.fetchedAt, now())}</p>
       <DayPicker today={result.today} shown={result.day} />
       <TravelBar travel={travel} />
-      {travel.hiddenCount > 0 && !result.dayOver && travel.settings.maxHours !== "any" && (
-        <p class="hidden-line">
-          {hiddenLine(travel.hiddenCount, travel.settings.maxHours)}{" "}
-          <button type="button" onClick={() => travel.setMaxHours("any")}>Show all</button>
-        </p>
+      {travel.hiddenCount > 0 && !result.dayOver && (
+        <p class="hidden-line">{hiddenLine(travel.hiddenCount, travel.settings.maxHours)}</p>
       )}
       {result.isOffline && (
         <p class="banner" role="status">

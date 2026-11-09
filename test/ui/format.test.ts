@@ -122,19 +122,11 @@ describe("travelSummary", () => {
       "Within 3 h of your location",
     );
   });
-  it("says any distance for no limit", () => {
-    expect(travelSummary({ start: place, maxHours: "any" }, boulder, "found")).toBe(
-      "Any distance from Boulder",
-    );
-    expect(travelSummary({ start: here, maxHours: "any" }, boulder, "found")).toBe(
-      "Any distance from your location",
-    );
-  });
   it("asks for a start when there is none", () => {
     expect(travelSummary({ start: here, maxHours: 2 }, undefined, "denied")).toBe(
       "Set a starting point",
     );
-    expect(travelSummary({ start: here, maxHours: "any" }, undefined, "unavailable")).toBe(
+    expect(travelSummary({ start: here, maxHours: 4 }, undefined, "unavailable")).toBe(
       "Set a starting point",
     );
   });

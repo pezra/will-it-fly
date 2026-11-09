@@ -7,8 +7,8 @@ import { SECONDS_PER_HOUR } from "../core/units";
 const TRAVEL_SETTINGS_KEY = "willItFly.travel.v1";
 /** The radius choices in hours. The single definition: the UI and the parser both read it. */
 export const DRIVE_HOUR_CHOICES = [1, 2, 3, 4] as const;
-/** A drive limit in whole hours, or `"any"` for no limit. */
-export type MaxHours = (typeof DRIVE_HOUR_CHOICES)[number] | "any";
+/** A drive limit in whole hours. */
+export type MaxHours = (typeof DRIVE_HOUR_CHOICES)[number];
 /** The radius used when nothing is stored. */
 const DEFAULT_MAX_HOURS: MaxHours = 2;
 
@@ -31,9 +31,9 @@ export function defaultTravelSettings(): TravelSettings {
   return { start: { kind: "geolocation" }, maxHours: DEFAULT_MAX_HOURS };
 }
 
-/** The drive limit in seconds, or undefined for any distance. */
-export function maxSeconds(settings: TravelSettings): number | undefined {
-  return settings.maxHours === "any" ? undefined : settings.maxHours * SECONDS_PER_HOUR;
+/** The drive limit in seconds. */
+export function maxSeconds(settings: TravelSettings): number {
+  return settings.maxHours * SECONDS_PER_HOUR;
 }
 
 function isFiniteIn(value: unknown, limit: number): value is number {
@@ -61,7 +61,8 @@ function parseStart(value: unknown): TravelStart | undefined {
 }
 
 function parseMaxHours(value: unknown): MaxHours | undefined {
-  if (value === "any") return "any";
+  // "any" was a choice once; it reads as the default so the stored start survives.
+  if (value === "any") return DEFAULT_MAX_HOURS;
   return (DRIVE_HOUR_CHOICES as readonly unknown[]).includes(value)
     ? (value as MaxHours)
     : undefined;
