@@ -15,23 +15,27 @@ The list shows the RMHPA sites within a drive time of your start point, in this 
 3. Open sites without a window, nearest first, with the main reason.
 4. Closed sites.
 
-The start point and drive time are set in the bar under the day picker. It starts at 2 h from your location. Tap it to choose 1, 2, 3 or 4 h, or Any. You can also search for a town or address and start from there, and "Use my location" switches back to your location once a place is chosen. Start point and drive time are remembered on this device.
+The start point and drive time are set in the bar under the day picker. It starts at 2 h from your location. Tap it to choose 1, 2, 3 or 4 h. You can also search for a town or address and start from there, and "Use my location" switches back to your location once a place is chosen. Start point and drive time are remembered on this device.
 
-Each site shows its drive time, then its straight-line distance. A time with "≈" in front is an estimate: the straight-line distance at 40 mph. Estimates are used when routing is unavailable and until routed times arrive.
+Each site shows its drive time, then its straight-line distance. A time with "≈" in front is an estimate: the straight-line distance at 40 mph. Estimates are used when routing is unavailable.
 
-When sites are hidden, the list says how many (for example "3 sites hidden (over 2 h away)") and "Show all" removes the limit. "Show all" sets the drive time to Any and keeps it that way, so the limit doesn't come back on reload. Without a start point, nothing is filtered: the bar says "Set a starting point" and every site shows.
+When sites are hidden, the list says how many (for example "3 sites hidden (over 2 h away)"). Widen the drive time to see them. Without a start point the list is empty and asks you to set one, since there is nothing to measure from.
 
-Tap a site to see its launches, the hour by hour ECMWF and RRFS conditions, and the reasons for each hour's call. Refresh fetches a new forecast, unless the last one is under 5 minutes old. Forecasts are otherwise reused for an hour.
+The order of work is: find your location, drop sites too far away in a straight line (more than 80 mph times the hours, so 160 mi for 2 h), get routed drive times for the rest, and only then fetch the forecast, for the sites within the drive time. Widening the drive time fetches only the sites you haven't seen yet. A link to a single site's page fetches just that site, whatever its distance.
+
+Tap a site to see its launches, the hour by hour ECMWF and RRFS conditions, and the reasons for each hour's call. Refresh fetches a new forecast, unless the last one is under 5 minutes old. Each site's forecast is reused for an hour, and the age shown is that of the oldest one on screen.
 
 After local sunset it shows tomorrow instead of today. The Today and Tomorrow buttons, and the date picker, show any day up to 14 days out. A day after tomorrow is fetched on its own when you pick it. RRFS only runs about 3½ days ahead, so windows further out are ECMWF only, and a two-week forecast is a rough guide at best.
 
-If you allow location access, the drive times and distances are measured from where you are. Without it everything still works: you can search for a start point, or, with neither, every site is shown with no distances. (To change it on an iPhone: Settings → Safari → Location.)
+If you allow location access, the drive times and distances are measured from where you are. Without it everything still works: you can search for a start point, or, with neither, the list waits for you to set one. (To change it on an iPhone: Settings → Safari → Location.)
 
 ## Data
 
 - Weather data by [Open-Meteo.com](https://open-meteo.com/) (CC BY 4.0), using the free non-commercial tier.
 - Drive times are routed by [OSRM](https://project-osrm.org/) and place search uses [Nominatim](https://nominatim.openstreetmap.org/). Both use [OpenStreetMap](https://www.openstreetmap.org/) data (© OpenStreetMap contributors, [ODbL](https://opendatacommons.org/licenses/odbl/)). Nominatim's [usage policy](https://operations.osmfoundation.org/policies/nominatim/) applies.
 - For drive times, the start point rounded to about 1 km goes to the OSRM server, along with the site coordinates, which are public. The text you type in search goes to Nominatim. The app keeps the drive times for the last five rounded start points on your device.
+- Open-Meteo gets the launch coordinates of the sites in drive range, or of the one site whose page you open. It never gets your start point.
+- Forecasts are cached on your device per site, for the 30 most recently used sites. The old single-entry forecast cache (`forecast-v1`) is removed on first load.
 - Site information from [RMHPA](https://www.rmhpa.org/flying-sites), curated by hand into `sites.json`. Each site links to its RMHPA page. Verify before flying.
 
 ## How sites are scored

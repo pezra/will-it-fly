@@ -19,7 +19,7 @@ const PLACE: TravelSettings = {
 
 describe("loadTravelSettings and saveTravelSettings", () => {
   it("round-trips geolocation with each radius", () => {
-    for (const maxHours of [1, 2, 3, 4, "any"] as const) {
+    for (const maxHours of [1, 2, 3, 4] as const) {
       const store = mapStore();
       const settings: TravelSettings = { start: { kind: "geolocation" }, maxHours };
       saveTravelSettings(store, settings);
@@ -85,9 +85,21 @@ describe("loadTravelSettings and saveTravelSettings", () => {
     expect(loadTravelSettings(store)).toEqual(defaultTravelSettings());
   });
 
+  it("reads a stored \"any\" as the default radius and keeps the start", () => {
+    const stored = { start: PLACE.start, maxHours: "any" };
+    const store = mapStore(new Map([[KEY, JSON.stringify(stored)]]));
+    expect(loadTravelSettings(store)).toEqual({ start: PLACE.start, maxHours: 2 });
+  });
+
+  it("returns the defaults for a radius that was never offered", () => {
+    const stored = { start: PLACE.start, maxHours: 5 };
+    const store = mapStore(new Map([[KEY, JSON.stringify(stored)]]));
+    expect(loadTravelSettings(store)).toEqual(defaultTravelSettings());
+  });
+
   it("accepts coordinates on the range limits and a 120-character name", () => {
     const edges: TravelSettings[] = [
-      { start: { kind: "place", name: "x".repeat(120), coordinate: { latitude: 90, longitude: 180 } }, maxHours: "any" },
+      { start: { kind: "place", name: "x".repeat(120), coordinate: { latitude: 90, longitude: 180 } }, maxHours: 4 },
       { start: { kind: "place", name: "y", coordinate: { latitude: -90, longitude: -180 } }, maxHours: 1 },
     ];
     for (const settings of edges) {
@@ -139,7 +151,4 @@ describe("maxSeconds", () => {
     expect(maxSeconds({ start: { kind: "geolocation" }, maxHours: 4 })).toBe(14400);
   });
 
-  it("is undefined for any distance", () => {
-    expect(maxSeconds({ start: { kind: "geolocation" }, maxHours: "any" })).toBeUndefined();
-  });
 });
