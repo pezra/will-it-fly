@@ -4,20 +4,22 @@ Architectural decisions that would be costly to reverse. Newest first.
 
 ## Condition labels are derived in the scorer, apart from the call and the score (2026-11-09, `condition-labels`)
 
-**Decision.** `evaluateHour` outputs the condition labels (Soar, XC, Sledder) as a field on each hour result, and windows summarize them. The labels don't change an hour's call, its score or the list order. The XC label uses the thermal test at any site, while the XC bonus and reason still need a site curated `xc`.
-**Motivation.** The UI is not allowed to re-derive scoring thresholds, and the labels needed facts (ungated XC) that no reason carries. Keeping the call and score untouched means a display change can't reorder sites.
-**Rejected.**
+`evaluateHour` outputs the condition labels (Soar, XC, Sledder) as a field on each hour result, and windows summarize them. The labels don't change an hour's call, its score or the list order. The XC label uses the thermal test at any site, while the XC bonus and reason still need a site curated `xc`.
+
+The UI is not allowed to re-derive scoring thresholds, and the labels needed facts (ungated XC) that no reason carries. Keeping the call and score untouched means a display change can't reorder sites.
+
+### Rejected
 - Emitting a new reason kind for the labels. Reasons drive caution counts and the no-window reason, and the severity would be new.
 - Applying the XC bonus to every site. It would reorder lists and ignore RMHPA's own site descriptions.
 - Deriving labels in the UI from reason kinds. It can't see the ungated XC fact and would duplicate rules across layers.
 
 ## Weather is fetched only for sites in drive range
 
-**Decision.** The page works out which sites are in range before it asks Open-Meteo for anything: find the start point, drop sites farther than 80 mph × the chosen hours in a straight line, route the rest with OSRM, then fetch weather for the sites within the drive time. With no start point nothing is fetched. A link to a site's page fetches just that site and doesn't wait for the location.
+The page works out which sites are in range before it asks Open-Meteo for anything: find the start point, drop sites farther than 80 mph × the chosen hours in a straight line, route the rest with OSRM, then fetch weather for the sites within the drive time. With no start point nothing is fetched. A link to a site's page fetches just that site and doesn't wait for the location.
 
-**Motivation.** The first version fetched every site's weather and hid the far ones afterwards. That is wasted traffic and it grows with the catalog, which is expected to get much bigger. The 80 mph prefilter is a bound, not an estimate (no road trip is faster), so it can't drop a site that is really in range. The 40 mph estimate is only the displayed time and the fallback when OSRM is down.
+The first version fetched every site's weather and hid the far ones afterwards. That is wasted traffic and it grows with the catalog, which is expected to get much bigger. The 80 mph prefilter is a bound, not an estimate (no road trip is faster), so it can't drop a site that is really in range. The 40 mph estimate is only the displayed time and the fallback when OSRM is down.
 
-**Rejected.**
+### Rejected
 - Filter after the forecast. Changing the radius never refetched, but every site was fetched on every visit.
 - Prefilter at the 40 mph estimate. It would drop sites that highways make reachable.
 - Showing every site when there is no start point. Doesn't scale with the catalog.
@@ -50,3 +52,15 @@ Architectural decisions that would be costly to reverse. Newest first.
 **Motivation.** A shareable URL would leak someone's home location into every link they send.
 
 **Rejected.** Putting them in the URL hash.
+
+## Get weather forecasts from Open-Meteo
+
+Use Open-Meteo for all weather forecast data and RRFS for cross checks.
+
+### Motivation
+
+Windy's point forecast API doesn't include ECMWF because of licensing, and ECMWF is the default model. Open-Meteo is free for non-commercial use and has the models we need. HRRR on Open-Meteo is discontinued at the end of November 2026, and RRFS is NOAA's replacement, so use RRFS forcross checks.
+
+### Rejected
+- Using Windy.com with HRRR as primary and some other weak model for cross checks.
+- using different APIs for different models.
