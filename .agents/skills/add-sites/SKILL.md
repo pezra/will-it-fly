@@ -15,6 +15,7 @@ description: Add flying sites to sites.json from a site guide (club pages, a Goo
 - RMHPA (`rmhpa/`): one page per site under https://www.rmhpa.org/flying-sites.
 - Pawnee (`pawnee/`): pawneeparagliding.com redirects to a My Map, `mid=1I8Q0FGZfJT_J_VO8GnWyizANwfYgwPu6`. Each folder is a site.
 - BHGC (`bhgc/`): one page per region, e.g. https://www.bhgc.org/sites/laketahoe-renoarea/index.html, with `#site_<slug>` anchors. Its data file, https://raw.githubusercontent.com/BHGC/website/master/content/sites/sites.dcf, has `WindDirections` the page doesn't show. `Requirements` are hang gliding ratings. HangGliding.org links block automated fetches.
+- Manual (`manual/`): sites the author gives directly. `sourceURL` is https://github.com/pezra/will-it-fly/blob/main/sites.json, and what the author gave goes in the curation notes.
 
 ## Sites
 
@@ -65,7 +66,7 @@ Pilot information first: closures, directions, hazards, access, camping. Then `C
 ## Tests and docs
 
 - `test/core/sites/sitesData.test.ts`: the count and the `closedSites` list. For a new source, `SOURCE_HOSTS` and the `hasCleanIds` regex. Add `arcsContain` checks for arcs that could go the wrong way and for judgment calls.
-- New source: the footer in `src/ui/App.tsx`, the README's first line and credit, CONTRIBUTING's source list and id prefix, and "Sources" above.
+- New source: an entry in `sources` in sites.json (its id is the site id prefix, and its URL's host must match its sites' `sourceURL`s; the footer credits it by name), and "Sources" above.
 
 ## Verify
 

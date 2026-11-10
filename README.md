@@ -1,6 +1,6 @@
 # Will it fly?
 
-Ranks the nearby paragliding sites (just RMHPA, Pawnee and BHGC's Lake Tahoe-Reno guide so far) by how flyable they look today. Each site is evaluated for safey (no-go call), XC/Soaring potential, its best time window, how much the models agree. Flyable sites are labeled Soar, XC or Sledder, with any cautions listed beside the labels.
+Ranks the nearby paragliding sites (only a few regions so far) by how flyable they look today. Each site is evaluated for safey (no-go call), XC/Soaring potential, its best time window, how much the models agree. Flyable sites are labeled Soar, XC or Sledder, with any cautions listed beside the labels.
 
 [Try it!](https://pezra.github.io/will-it-fly)
 
@@ -36,7 +36,7 @@ If you allow location access, the drive times and distances are measured from wh
 - Open-Meteo gets the launch coordinates of the sites in drive range, or of the one site whose page you open. It never gets your start point.
 - Forecasts are cached on your device per site, for the 30 most recently used sites.
 - Your last forecast model choice is saved on your device.
-- Site information from [RMHPA](https://www.rmhpa.org/flying-sites) and the [Pawnee Playground map](https://pawneeparagliding.com/) and the [BHGC Lake Tahoe-Reno Area guide](https://www.bhgc.org/sites/laketahoe-renoarea/index.html), curated by hand into `sites.json`. Each site links to its source. Verify before flying.
+- Site information from the club guides and maps credited in the app's footer, curated by hand into `sites.json`. Each site links to its source. Verify before flying.
 
 ## How sites are scored
 

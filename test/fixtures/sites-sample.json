@@ -1,5 +1,8 @@
 {
   "curatedOn": "2026-11-07",
+  "sources": [
+    { "id": "rmhpa", "name": "RMHPA", "url": "https://www.rmhpa.org/" }
+  ],
   "sites": [
     {
       "id": "rmhpa/glenwood-lookout",

@@ -49,6 +49,13 @@ export interface SiteXC {
   notes: string;
 }
 
+/** A guide the sites are curated from. Its id is the first part of its sites' ids. */
+export interface SiteSource {
+  id: string; // "rmhpa"
+  name: string;
+  url: string;
+}
+
 export interface Site {
   id: string; // "rmhpa/crested-butte"
   name: string;

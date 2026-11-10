@@ -1,5 +1,11 @@
 {
-  "curatedOn": "2026-11-09",
+  "curatedOn": "2026-11-10",
+  "sources": [
+    { "id": "rmhpa", "name": "RMHPA", "url": "https://www.rmhpa.org/" },
+    { "id": "pawnee", "name": "pawneeparagliding.com", "url": "https://pawneeparagliding.com/" },
+    { "id": "bhgc", "name": "BHGC", "url": "https://www.bhgc.org/" },
+    { "id": "manual", "name": "the author", "url": "https://github.com/pezra/will-it-fly" }
+  ],
   "sites": [
     {
       "id": "rmhpa/boulder-wonderland",
@@ -1103,6 +1109,31 @@
           "directions": {
             "ok": [ { "from": 328, "to": 58 } ],
             "ideal": [ { "from": 358, "to": 28 } ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "manual/hallelujah-junction",
+      "name": "Hallelujah Junction",
+      "sourceURL": "https://github.com/pezra/will-it-fly/blob/main/sites.json",
+      "notes": "The launch is partway up the west face of the ridge east of Hallelujah Junction, and works in a west wind. Curation notes: added by the author (2026-11-10), who gave the name, the launch position and an altitude of 1768 m. The P2 rating, the soaring call and the west direction are the author's (2026-11-10). The direction came from the terrain: the contours at the launch run about N-S and the terrain script put the face at 260, so the face is taken as 270, with ok = 270 +/-45 and ideal = 270 +/-15. No LZ or PG limits were given, so the limits are the default.",
+      "rating": "P2",
+      "status": { "state": "open" },
+      "limits": { "minMph": 0, "maxMph": 15, "gustFactorMph": 5 },
+      "limitsSource": "default",
+      "soaring": {"notes": "Author (2026-11-10): Hallelujah Junction soars."},
+      "launches": [
+        {
+          "id": "manual/hallelujah-junction/main",
+          "name": "Launch",
+          "coordinate": { "latitude": 39.7738, "longitude": -120.0121 },
+          "elevationFt": 5801,
+          "elevationSource": "author (1768 m)",
+          "directionsSource": "terrain, confirmed by the author: contours about N-S, face 270 (script estimate 260)",
+          "directions": {
+            "ok": [ { "from": 225, "to": 315 } ],
+            "ideal": [ { "from": 255, "to": 285 } ]
           }
         }
       ]

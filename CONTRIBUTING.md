@@ -82,9 +82,9 @@ The rules are in `src/core/scoring/hourEvaluator.ts`, and every threshold and we
 
 ## Site data
 
-Sites live in `sites.json`, curated by hand from the [RMHPA site pages](https://www.rmhpa.org/flying-sites), the Pawnee Playground Google My Map that [pawneeparagliding.com](https://pawneeparagliding.com/) redirects to, and the [BHGC Lake Tahoe-Reno Area guide](https://www.bhgc.org/sites/laketahoe-renoarea/index.html). `parseSites` validates the file when it loads, and `test/core/sites/sitesData.test.ts` checks it for plausible values.
+Sites live in `sites.json`, curated by hand from the guides in its `sources` list. Each source has an `id`, a `name` the footer credits it by, and a `url` whose host matches its sites' `sourceURL`s. The `manual` source is for sites the author added directly. `parseSites` validates the file when it loads, and `test/core/sites/sitesData.test.ts` checks it for plausible values.
 
-Each site has an `id` (`<source>/<slug>`, where the source is `rmhpa`, `pawnee` or `bhgc`), `name`, `sourceURL`, `rating`, `status` (`{"state": "open"}` or `{"state": "closed", "reason": "..."}`), site-level PG `limits` in mph (`minMph`, `idealMph`, `maxMph`, `gustFactorMph`), optional `notes`, and `launches`. Each launch has an `id` (`<site id>/<slug>`), `name`, `coordinate`, `elevationFt`, `directions` and optional `limits` that replace the site's.
+Each site has an `id` (`<source>/<slug>`, where the source is a `sources` id), `name`, `sourceURL`, `rating`, `status` (`{"state": "open"}` or `{"state": "closed", "reason": "..."}`), site-level PG `limits` in mph (`minMph`, `idealMph`, `maxMph`, `gustFactorMph`), optional `notes`, and `launches`. Each launch has an `id` (`<site id>/<slug>`), `name`, `coordinate`, `elevationFt`, `directions` and optional `limits` that replace the site's.
 
 `directions` holds `ok` and `ideal` lists of arcs, `{"from": 250, "to": 310}` in degrees clockwise. An arc can wrap through north (`{"from": 337.5, "to": 135}`). An empty `ok` means the direction isn't curated, and the launch is then always flyable at best. An empty `ideal` means anywhere in `ok` counts as ideal.
 

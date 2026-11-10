@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { arcsContain } from "../../../src/core/sites/degreeArc";
 import type { Launch, Site, WindLimits } from "../../../src/core/sites/site";
-import { bundledSiteProvider } from "../../../src/core/sites/siteProvider";
+import { bundledSiteProvider, bundledSources } from "../../../src/core/sites/siteProvider";
 import rawSites from "../../../sites.json";
 
 /** Sanity checks on the real curated sites.json. */
@@ -11,27 +11,23 @@ function allLimits(site: Site): WindLimits[] {
   return [site.limits, ...site.launches.flatMap((l) => (l.limits === undefined ? [] : [l.limits]))];
 }
 
-/** Each id prefix and the host its sites are curated from. */
-const SOURCE_HOSTS: Readonly<Record<string, string>> = {
-  rmhpa: "www.rmhpa.org",
-  pawnee: "pawneeparagliding.com",
-  bhgc: "www.bhgc.org",
-};
+const sources = bundledSources();
+const sourceHosts = new Map(sources.map((s) => [s.id, new URL(s.url).host]));
 
 function inRange(x: number, lo: number, hi: number): boolean {
   return x >= lo && x <= hi;
 }
 
 describe("sites.json", () => {
-  it("hasAll34SitesWithUniqueIds", () => {
-    expect(sites.length).toBe(34);
+  it("hasAll35SitesWithUniqueIds", () => {
+    expect(sites.length).toBe(35);
     expect(new Set(sites.map((s) => s.id)).size).toBe(sites.length);
     const launchIds = sites.flatMap((s) => s.launches.map((l) => l.id));
     expect(new Set(launchIds).size).toBe(launchIds.length);
     for (const site of sites) {
       const prefix = site.id.split("/")[0] ?? "";
-      expect(Object.keys(SOURCE_HOSTS), site.id).toContain(prefix);
-      expect(new URL(site.sourceURL).host, site.id).toBe(SOURCE_HOSTS[prefix]);
+      expect([...sourceHosts.keys()], site.id).toContain(prefix);
+      expect(new URL(site.sourceURL).host, site.id).toBe(sourceHosts.get(prefix));
       for (const launch of site.launches) {
         expect(launch.id.startsWith(`${site.id}/`), launch.id).toBe(true);
       }
@@ -39,10 +35,16 @@ describe("sites.json", () => {
   });
 
   it("hasCleanIds", () => {
-    const re = /^(rmhpa|pawnee|bhgc)\/[a-z0-9]+(-[a-z0-9]+)*(\/[a-z0-9]+(-[a-z0-9]+)*)?$/;
+    const re = /^[a-z0-9]+\/[a-z0-9]+(-[a-z0-9]+)*(\/[a-z0-9]+(-[a-z0-9]+)*)?$/;
     for (const site of sites) {
       expect(site.id).toMatch(re);
       for (const launch of site.launches) expect(launch.id).toMatch(re);
+    }
+  });
+
+  it("everySourceHasSites", () => {
+    for (const source of sources) {
+      expect(sites.some((s) => s.id.startsWith(`${source.id}/`)), source.id).toBe(true);
     }
   });
 
