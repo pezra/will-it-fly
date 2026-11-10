@@ -31,6 +31,11 @@ export function miles(meters: number | undefined): string | undefined {
   return mi < 10 ? `${mi.toFixed(1)} mi` : `${Math.round(mi)} mi`;
 }
 
+/** The link text for a site's source: its host without "www.", e.g. "rmhpa.org". */
+export function sourceLabel(sourceURL: string): string {
+  return new URL(sourceURL).hostname.replace(/^www\./, "");
+}
+
 /** "Forecast from 3 h ago", "12 min ago", "just now". Negative ages count as just now. */
 export function forecastAge(fetchedAt: number, now: number): string {
   const minutes = Math.floor(Math.max(0, now - fetchedAt) / 60_000);

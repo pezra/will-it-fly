@@ -1,5 +1,5 @@
 {
-  "curatedOn": "2026-11-08",
+  "curatedOn": "2026-11-09",
   "sites": [
     {
       "id": "rmhpa/boulder-wonderland",
@@ -709,6 +709,143 @@
         }
       ],
       "landingZones": [ { "name": "LZ (field on map)", "latitude": 39.6575, "longitude": -105.8719 } ]
+    },
+    {
+      "id": "pawnee/pony-ridge",
+      "name": "Pawnee - Pony Ridge",
+      "sourceURL": "https://pawneeparagliding.com/",
+      "notes": "West Launch works best W-WNW. It's about the same difficulty as South Launch but has much higher consequences. South Launch works best WSW-S. It's an easy hike back up, with excellent kiting in the landing area, and the map calls it a great first stop in the Pawnee area. Both launches are an easy walk from the main parking area, and there's a southern parking area with its own walk up. Close the gate behind you at the entrance. Not all the land is public, so check the map's Public Land layer. The camping area by the entrance is good for camping and kiting. Curation notes: the map gives no rating or PG limits, so the rating is 'Unrated' and the limits are the default. The soaring note is the author's (2026-11-09). The map names the launches only in its hike lines ('South Launch', 'West Launch'). Not included: the Training hills next to the main parking (training hills aren't curated), the pay-in towing area at the entrance camping, and the map's Bird Tour Tow Area and 103 Tow Site (powerlines cross the 103 tow road about half way), since towing isn't scored. Elevations from Open-Meteo. Curated from the 'Pawnee Playground' Google My Map that pawneeparagliding.com redirects to.",
+      "rating": "Unrated",
+      "status": { "state": "open" },
+      "limits": { "minMph": 0, "maxMph": 15, "gustFactorMph": 5 },
+      "limitsSource": "default",
+      "soaring": {"notes": "Author (2026-11-09): Pony Ridge is soarable. Ridge lift needs 10 mph here, since the face is only about 200 ft.", "minMph": 10},
+      "launches": [
+        {
+          "id": "pawnee/pony-ridge/west",
+          "name": "West Launch",
+          "coordinate": { "latitude": 40.8155, "longitude": -104.0693 },
+          "elevationFt": 5377,
+          "elevationSource": "open-meteo",
+          "directionsSource": "ideal-midpoint+-45: 'Works best W-WNW'",
+          "directions": {
+            "ok": [ { "from": 236.25, "to": 326.25 } ],
+            "ideal": [ { "from": 270, "to": 292.5 } ]
+          }
+        },
+        {
+          "id": "pawnee/pony-ridge/south",
+          "name": "South Launch",
+          "coordinate": { "latitude": 40.8118, "longitude": -104.0616 },
+          "elevationFt": 5466,
+          "elevationSource": "open-meteo",
+          "directionsSource": "ideal-midpoint+-45: 'Works best WSW-SW-S'",
+          "directions": {
+            "ok": [ { "from": 168.75, "to": 258.75 } ],
+            "ideal": [ { "from": 180, "to": 247.5 } ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "pawnee/pawnee-west",
+      "name": "Pawnee West",
+      "sourceURL": "https://pawneeparagliding.com/",
+      "notes": "Technical cliff launch on a NNW-SSE escarpment, facing about WSW. The steep face is only about 165 ft, above a gentle slope west, so ridge lift likely needs 10+ mph, and the cliff lip compresses the wind. Open plain upwind to the west. Wind turbines stand on the plateau 1-1.5 km E and NE, downwind in a westerly. Parking at the launch, with camping for 3-4 cars. Close the gate behind you at the entrance. Curation notes: the map says only 'Technical Cliff Launch.' The P3+ rating and the soaring note are the author's (2026-11-09). The direction and ideal speed are estimated from OpenTopoMap contours (2026-11-09): the contour through the launch runs about 154 degrees, so the face looks about 245, swinging toward 260 a few hundred metres north and 230 to the south. ok = 245 +/-45 and ideal = 245 +/-15. The steep face runs from about 1,670 m down to 1,620 m, above a slope to about 1,590 m. Ideal 12 mph, with the default 15 mph max kept. Elevation from Open-Meteo. Curated from the 'Pawnee Playground' Google My Map that pawneeparagliding.com redirects to.",
+      "rating": "P3+",
+      "status": { "state": "open" },
+      "limits": { "minMph": 0, "maxMph": 15, "idealMph": 12, "gustFactorMph": 5 },
+      "limitsSource": "default, ideal from terrain (OpenTopoMap contours)",
+      "soaring": {"notes": "Author (2026-11-09): Pawnee West is soarable. Ridge lift needs 10 mph here, since the face is only about 165 ft.", "minMph": 10},
+      "launches": [
+        {
+          "id": "pawnee/pawnee-west/main",
+          "name": "Launch",
+          "coordinate": { "latitude": 40.8426, "longitude": -104.109 },
+          "elevationFt": 5459,
+          "elevationSource": "open-meteo",
+          "directionsSource": "terrain: OpenTopoMap contours, face about 245",
+          "directions": {
+            "ok": [ { "from": 200, "to": 290 } ],
+            "ideal": [ { "from": 230, "to": 260 } ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "pawnee/the-buttes",
+      "name": "Pawnee - The Buttes",
+      "sourceURL": "https://pawneeparagliding.com/",
+      "notes": "Closed for peregrine nesting March 1 to June 30. The app has no seasonal closures, so it shows this site as open then: don't fly it. Works NE-E-SE. Mildly technical. Curation notes: the map gives no rating or PG limits. The P2 rating and the soaring note are the author's (2026-11-09), and the limits are the default. Elevation from Open-Meteo. Curated from the 'Pawnee Playground' Google My Map that pawneeparagliding.com redirects to.",
+      "rating": "P2",
+      "status": { "state": "open" },
+      "limits": { "minMph": 0, "maxMph": 15, "gustFactorMph": 5 },
+      "limitsSource": "default",
+      "soaring": {"notes": "Author (2026-11-09): The Buttes is soarable. Ridge lift needs 10 mph here, since the face is only about 215 ft.", "minMph": 10},
+      "launches": [
+        {
+          "id": "pawnee/the-buttes/main",
+          "name": "Launch",
+          "coordinate": { "latitude": 40.8188, "longitude": -104.0012 },
+          "elevationFt": 5423,
+          "elevationSource": "open-meteo",
+          "directionsSource": "explicit-ok-only: 'Works NE-E-SE'",
+          "directions": {
+            "ok": [ { "from": 45, "to": 135 } ],
+            "ideal": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "pawnee/indian-caves",
+      "name": "Pawnee - Indian Caves",
+      "sourceURL": "https://pawneeparagliding.com/",
+      "notes": "Works best with a S wind. Launch anywhere along the ridge. There's a barbed wire fence near the base of the ridge. Only a small section of the ridge is public, so check the map's Public Land layer. Camping is more secluded: park near the trail and don't drive onto the ridge. Curation notes: the map gives no rating or PG limits, so the rating is 'Unrated' and the limits are the default. 'Works best with S wind' is used as a single-degree ideal of 180, with ok = 180 +/-45. Elevation from Open-Meteo. Curated from the 'Pawnee Playground' Google My Map that pawneeparagliding.com redirects to.",
+      "rating": "Unrated",
+      "status": { "state": "open" },
+      "limits": { "minMph": 0, "maxMph": 15, "gustFactorMph": 5 },
+      "limitsSource": "default",
+      "soaring": {"notes": "Pawnee map: 'Low but fun soaring.'"},
+      "launches": [
+        {
+          "id": "pawnee/indian-caves/main",
+          "name": "Launch",
+          "coordinate": { "latitude": 40.9134, "longitude": -103.6043 },
+          "elevationFt": 4678,
+          "elevationSource": "open-meteo",
+          "directionsSource": "stated-facing+-45 (single-degree ideal 180): 'Works best with S wind'",
+          "directions": {
+            "ok": [ { "from": 135, "to": 225 } ],
+            "ideal": [ { "from": 180, "to": 180 } ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "pawnee/section-15",
+      "name": "Pawnee - Section 15",
+      "sourceURL": "https://pawneeparagliding.com/",
+      "notes": "Launch on the SE face of a small knob at the ESE end of a low bluff line. The knob's steep side wraps from E round to S. The steep face is only about 115 ft, above open plain falling gently S and SE, so ridge lift likely needs 10+ mph, and wind can go round a knob. The launch is on State Land (see the map's layer). Curation notes: the map gives only a launch and an entrance, with no direction, rating or PG limits, so the rating is 'Unrated'. The soaring note is the author's (2026-11-09). The direction and ideal speed are estimated from OpenTopoMap contours (2026-11-09): the contours through the launch run about 40 degrees, so the face looks about 130. ok = 130 +/-45 and ideal = 130 +/-15. Open-Meteo's coarser (about 90 m) elevation data puts the downhill direction nearer 65, so the direction is less certain than it looks. The steep face runs from about 1,380 m down to 1,340 m, above plain at about 1,330 m. Ideal 12 mph, with the default 15 mph max kept. Elevation from Open-Meteo. Curated from the 'Pawnee Playground' Google My Map that pawneeparagliding.com redirects to.",
+      "rating": "Unrated",
+      "status": { "state": "open" },
+      "limits": { "minMph": 0, "maxMph": 15, "idealMph": 12, "gustFactorMph": 5 },
+      "limitsSource": "default, ideal from terrain (OpenTopoMap contours)",
+      "soaring": {"notes": "Author (2026-11-09): Section 15 is soarable. Ridge lift needs 10 mph here, since the face is only about 115 ft.", "minMph": 10},
+      "launches": [
+        {
+          "id": "pawnee/section-15/main",
+          "name": "Launch",
+          "coordinate": { "latitude": 40.9308, "longitude": -103.5245 },
+          "elevationFt": 4557,
+          "elevationSource": "open-meteo",
+          "directionsSource": "terrain: OpenTopoMap contours, face about 130",
+          "directions": {
+            "ok": [ { "from": 85, "to": 175 } ],
+            "ideal": [ { "from": 115, "to": 145 } ]
+          }
+        }
+      ]
     }
   ]
 }

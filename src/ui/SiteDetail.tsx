@@ -6,7 +6,7 @@ import { effectiveLimits } from "../core/sites/site";
 import type { Launch, Site } from "../core/sites/site";
 import { ResultBadge } from "./CallBadge";
 import { ForecastStatus } from "./ForecastStatus";
-import { arcsLabel, cautionLine, confidenceLabel, dayLabel, driveLabel, feet, idealLabel, launchFallbackNote, miles, siteModel } from "./format";
+import { arcsLabel, cautionLine, confidenceLabel, dayLabel, driveLabel, feet, idealLabel, launchFallbackNote, miles, siteModel, sourceLabel } from "./format";
 import { HourlyTable } from "./HourlyTable";
 import { listHref } from "./route";
 import type { DayKey } from "../core/time";
@@ -137,7 +137,7 @@ export function SiteDetail({
         )}
         <dt>Source</dt>
         <dd>
-          <a href={site.sourceURL} rel="noopener noreferrer">RMHPA page</a>
+          <a href={site.sourceURL} rel="noopener noreferrer">{sourceLabel(site.sourceURL)}</a>
         </dd>
       </dl>
       {closedReason !== undefined && <p class="banner">Closed: {closedReason}</p>}

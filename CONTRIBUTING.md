@@ -22,7 +22,7 @@ src/core/            all logic, with no DOM or browser globals
                      which sites are in range
   time.ts            America/Denver calendar helpers
 src/ui/              Preact components, location, storage, debug params
-sites.json           the curated RMHPA site catalog
+sites.json           the curated site catalog
 public/              manifest, icons, service worker template
 test/                Vitest tests, mirroring src/core
 scripts/             make-icons.mjs
@@ -82,17 +82,13 @@ The rules are in `src/core/scoring/hourEvaluator.ts`, and every threshold and we
 
 ## Site data
 
-Sites live in `sites.json`, curated by hand from the [RMHPA site pages](https://www.rmhpa.org/flying-sites). `parseSites` validates the file when it loads, and `test/core/sites/rmhpaSitesData.test.ts` checks it for plausible values.
+Sites live in `sites.json`, curated by hand from the [RMHPA site pages](https://www.rmhpa.org/flying-sites) and the Pawnee Playground Google My Map that [pawneeparagliding.com](https://pawneeparagliding.com/) redirects to. `parseSites` validates the file when it loads, and `test/core/sites/sitesData.test.ts` checks it for plausible values.
 
-Each site has an `id` (`rmhpa/<slug>`), `name`, `sourceURL`, `rating`, `status` (`{"state": "open"}` or `{"state": "closed", "reason": "..."}`), site-level PG `limits` in mph (`minMph`, `idealMph`, `maxMph`, `gustFactorMph`), optional `notes`, and `launches`. Each launch has an `id` (`<site id>/<slug>`), `name`, `coordinate`, `elevationFt`, `directions` and optional `limits` that replace the site's.
+Each site has an `id` (`<source>/<slug>`, where the source is `rmhpa` or `pawnee`), `name`, `sourceURL`, `rating`, `status` (`{"state": "open"}` or `{"state": "closed", "reason": "..."}`), site-level PG `limits` in mph (`minMph`, `idealMph`, `maxMph`, `gustFactorMph`), optional `notes`, and `launches`. Each launch has an `id` (`<site id>/<slug>`), `name`, `coordinate`, `elevationFt`, `directions` and optional `limits` that replace the site's.
 
-`directions` holds `ok` and `ideal` lists of arcs, `{"from": 250, "to": 310}` in degrees clockwise. An arc can wrap through north (`{"from": 337.5, "to": 135}`). When a page doesn't give both ranges:
+`directions` holds `ok` and `ideal` lists of arcs, `{"from": 250, "to": 310}` in degrees clockwise. An arc can wrap through north (`{"from": 337.5, "to": 135}`). An empty `ok` means the direction isn't curated, and the launch is then always flyable at best. An empty `ideal` means anywhere in `ok` counts as ideal.
 
-1. Explicit OK and ideal ranges are used as written.
-2. With only an ideal range, or a stated facing ("west facing"), the launch faces the middle of the ideal range (or the stated facing) and `ok` is facing ±45°.
-3. With no direction information, `ok` is empty. The launch is then always flyable at best ("launch direction not curated") until someone fills it in.
-
-A missing elevation comes from the Open-Meteo elevation API, `https://api.open-meteo.com/v1/elevation?latitude=..&longitude=..`, converted from metres to feet and recorded with `"elevationSource": "open-meteo"`. Missing PG limits use the default (0 / 15 mph, gust factor 5) with `"limitsSource": "default"`. The `*Source` fields and `landingZones` are notes for curators, and the app ignores them. Put any judgment call in the site's `notes` so the next curator can see it.
+The `*Source` fields (`elevationSource`, `limitsSource`, `directionsSource`) and `landingZones` are notes for curators, and the app ignores them.
 
 ## Open-Meteo fixtures
 
