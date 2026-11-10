@@ -72,6 +72,7 @@ Each hour is **no-go** if any of these hold:
 | Over the back aloft | aloft wind ≥ 20 mph from outside the OK range |
 | Strong wind aloft | ≥ 35 mph from any direction |
 | Inconsistent wind 5 mi away | differs by > 90°, or by > 60° with the neighbor ≥ 10 mph (both ≥ 5 mph) |
+| Wind 5 mi away outside the OK range | ≥ 10 mph and > 30° outside the launch's OK range |
 
 These things produce warnings and lower the score:
 
@@ -84,6 +85,7 @@ These things produce warnings and lower the score:
 | Near max | launch wind within 2 mph of the site max |
 | Low cloud | cloud base < 1500 ft above launch, or low cloud cover ≥ 60% |
 | Inconsistent wind 5 mi away | differs by > 60° (both ≥ 5 mph) |
+| Wind 5 mi away outside the OK range | ≥ 5 mph from outside the OK range (the launch's own wind can be calm) |
 | Direction OK but not ideal | inside the OK range, outside the ideal range |
 | Direction not curated | the launch has no OK range |
 
@@ -106,7 +108,7 @@ The direction rules (outside the OK range, not ideal, and the ideal-direction sc
 
 If a launch has no ideal range, anywhere in its OK range counts as ideal. A single ideal heading (e.g. "Ideal 200") counts as ±15°.
 
-The nearby-wind check compares 10 m winds at the launch's grid point and at points 5 mi N, E, S and W, within one model. It uses RRFS when it can, whichever model is primary, because ECMWF's ~9 km grid barely resolves 5 mi, and falls back to ECMWF.
+The nearby-wind check compares 10 m winds at the launch's grid point and at points 5 mi N, E, S and W, within one model. It uses RRFS when it can, whichever model is primary, because ECMWF's ~9 km grid barely resolves 5 mi, and falls back to ECMWF. The check for wind 5 mi away outside the OK range uses the same four points and the same model. It compares each point's own wind with the launch's OK range, whatever the wind at launch, and only applies to launches with a curated OK range.
 
 **Gusts are not scored.** Model gusts on light thermal days often run 10–14 mph over the mean wind, which says little about what you'll find at launch. Instead, an hour shows "⚠ high gusts possible" when the gust factor (each hour's gust minus that hour's 10 m wind, the larger of h and h+1) is at least 3× the site's gust-factor limit. That's 15 mph at the default limit of 5.
 
@@ -123,7 +125,7 @@ No-go hours score 0. Other hours start at 50, then:
 | Cloud base | +5 if ≥ 3000 ft above launch |
 | Ridge lift (soarable sites) | +10 |
 | XC potential (XC sites) | +5 |
-| Each flyable-level or sledder reason | −5 |
+| Each flyable-level or sledder reason | −5 (the two nearby-wind cautions, inconsistent and outside the OK range, cost −5 together) |
 
 The score is clamped to 0–100.
 

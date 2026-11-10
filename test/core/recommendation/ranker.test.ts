@@ -316,6 +316,21 @@ describe("recommendSite", () => {
     expect(r.mainReason?.kind).toBe("precipitation");
   });
 
+  it("anOffDirectionNeighborCanBeTheMainReason", () => {
+    const hours = [
+      hourResult(T0, ["neighborOffDirectionStrong"]),
+      hourResult(T0 + HOUR_MS, ["neighborOffDirectionStrong", "neighborOffDirection"]),
+      hourResult(T0 + 2 * HOUR_MS, ["windTooWeak"]),
+    ];
+    const r = recommendSite(site("s"), [evaluation("x", hours)]);
+    expect(r.best).toBeUndefined();
+    expect(r.mainReason).toEqual({
+      kind: "neighborOffDirectionStrong",
+      severity: "noGo",
+      text: "text neighborOffDirectionStrong",
+    });
+  });
+
   it("aClosedSiteHasNoLaunchesBestOrReason", () => {
     const where = { latitude: 39.5, longitude: -106 };
     const r = recommendSite(site("s", { closed: true }), [evaluation("x", [], 99)]);
