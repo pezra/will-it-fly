@@ -431,30 +431,41 @@ describe("boundaries", () => {
     expect(r.call).not.toBe("noGo");
   });
 
-  it("direction rule ignores direction below 4 mph", () => {
+  const windAt = (mph: number, dir: number): HourResult => {
     const limits: WindLimits = { minMph: 0, idealMph: 8, maxMph: 15, gustFactorMph: 20 };
-    const light = evalWith({
-      siteLimits: limits,
-      hour: hourWith((h) => ((h.windMph = 3.9), (h.windDir = 90))),
-    });
-    expect(kinds(light)).not.toContain("wrongDirection");
-    expect(light.call).not.toBe("noGo");
-    const at = evalWith({
-      siteLimits: limits,
-      hour: hourWith((h) => ((h.windMph = 4), (h.windDir = 90))),
-    });
-    expect(kinds(at)).toContain("wrongDirection");
+    return evalWith({ siteLimits: limits, hour: hourWith((h) => ((h.windMph = mph), (h.windDir = dir))) });
+  };
+
+  it("direction rule applies at light wind, but not when it rounds to 0 mph", () => {
+    for (const mph of [3.9, 0.5]) {
+      const r = windAt(mph, 90);
+      expect(kinds(r), `${mph} mph`).toContain("wrongDirection");
+      expect(r.call, `${mph} mph`).toBe("noGo");
+    }
+    for (const mph of [0.49, 0]) {
+      const r = windAt(mph, 90);
+      expect(kinds(r), `${mph} mph`).not.toContain("wrongDirection");
+      expect(r.call, `${mph} mph`).not.toBe("noGo");
+    }
   });
 
-  it("below 4 mph there is no ideal bonus and no not-ideal caution", () => {
-    const limits: WindLimits = { minMph: 0, idealMph: 3.9, maxMph: 15, gustFactorMph: 20 };
-    const inIdeal = evalWith({ siteLimits: limits, hour: hourWith((h) => (h.windMph = 3.9)) });
-    const notIdeal = evalWith({
-      siteLimits: limits,
-      hour: hourWith((h) => ((h.windMph = 3.9), (h.windDir = 240))),
-    });
-    expect(kinds(notIdeal)).not.toContain("directionNotIdeal");
-    expect(inIdeal.score).toBe(notIdeal.score);
+  it("at light wind, ideal gets the bonus and not-ideal is a caution", () => {
+    const inIdeal = windAt(3.9, 270);
+    const notIdeal = windAt(3.9, 240);
+    expect(kinds(inIdeal)).not.toContain("directionNotIdeal");
+    expect(kinds(notIdeal)).toContain("directionNotIdeal");
+    expect(inIdeal.unpenalizedScore - notIdeal.unpenalizedScore).toBe(d.idealDirectionBonus);
+  });
+
+  it("rounding to 0 mph, direction gives no reason, bonus or caution", () => {
+    // Ideal, OK but not ideal, and outside OK.
+    const results = [270, 240, 90].map((dir) => windAt(0.4, dir));
+    for (const r of results) {
+      expect(kinds(r)).not.toContain("wrongDirection");
+      expect(kinds(r)).not.toContain("directionNotIdeal");
+    }
+    expect(new Set(results.map((r) => r.score)).size).toBe(1);
+    expect(new Set(results.map((r) => r.unpenalizedScore)).size).toBe(1);
   });
 
   it("CAPE 499 / 500", () => {
@@ -1394,12 +1405,15 @@ describe("Nov 7 2026 at Golden North (gusts not scored)", () => {
     }
   });
 
-  it("every hour is good, with no gust reason or warning", () => {
+  it("every hour is flyable, with no gust reason or warning", () => {
     const results = evaluate();
-    expect(results.map((r) => r.call)).toEqual(Array(6).fill("good"));
+    // 10:00 and 11:00 are 3 mph from 3° and 37°: in the OK range, short of the ideal 45-90.
+    expect(results.map((r) => r.call)).toEqual(["flyable", "flyable", "good", "good", "good", "good"]);
     for (const r of results) {
       expect(r.reasons.filter((x) => /gust/i.test(x.text)), formatDenverTime(r.time)).toEqual([]);
-      expect(r.reasons.filter((x) => x.severity === "caution" || x.severity === "noGo")).toEqual([]);
+      const cautions = r.reasons.filter((x) => x.severity === "caution" || x.severity === "noGo");
+      const expected = r.call === "flyable" ? ["directionNotIdeal"] : [];
+      expect(cautions.map((x) => x.kind), formatDenverTime(r.time)).toEqual(expected);
     }
   });
 

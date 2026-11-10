@@ -5,14 +5,13 @@ import { METERS_PER_FOOT } from "../units";
  *
  * Units: heights in metres, temperatures in degrees C, winds in mph, unless a name says otherwise
  * (`...Ft` thresholds are kept in feet as the design states them; use the `...M` helpers).
- * Field names and values are identical to the Swift `ScoringDefaults.standard`.
+ * Most field names and values come from the Swift `ScoringDefaults.standard`; the web has added
+ * and removed some, each marked "Web-only" in the test that pins these values.
  */
 export interface ScoringDefaults {
   // No-go
   /** Precipitation in hour h or h+1 at or above this is no-go. */
   precipNoGoMm: number;
-  /** Below this launch wind speed, direction is treated as variable and the direction rules are ignored. */
-  variableDirectionBelowMph: number;
   /** Aloft wind at or above this from outside every `ok` arc is no-go (over the back). */
   overTheBackAloftNoGoMph: number;
   /** Aloft wind at or above this from any direction is no-go. */
@@ -107,8 +106,6 @@ export interface ScoringDefaults {
   // Model agreement
   /** The check model agrees when its launch wind direction is within this of the primary's ... */
   agreementMaxDirDiffDeg: number;
-  /** ... or both launch winds are below this (direction ignored) ... */
-  agreementCalmBelowMph: number;
   /** ... and its launch wind speed is within this of the primary's. */
   agreementMaxSpeedDiffMph: number;
   /** Share of check-covered hours agreeing for high confidence. */
@@ -142,7 +139,6 @@ export interface ScoringDefaults {
 export const SCORING_DEFAULTS: Readonly<ScoringDefaults> = Object.freeze({
   // No-go
   precipNoGoMm: 0.25,
-  variableDirectionBelowMph: 4,
   overTheBackAloftNoGoMph: 20,
   strongAloftNoGoMph: 35,
   // Neighbor wind (5 mi away)
@@ -193,7 +189,6 @@ export const SCORING_DEFAULTS: Readonly<ScoringDefaults> = Object.freeze({
   dryAdiabaticLapseCPerM: 0.0098,
   // Model agreement
   agreementMaxDirDiffDeg: 30,
-  agreementCalmBelowMph: 4,
   agreementMaxSpeedDiffMph: 5,
   highConfidenceMinShare: 0.75,
   mediumConfidenceMinShare: 0.4,

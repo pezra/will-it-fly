@@ -54,23 +54,19 @@ describe("checkAgrees", () => {
     expect(checkAgrees(e, result("good", 10, 21))).toBe(false);
   });
 
-  it("both winds under 4 mph agree regardless of direction", () => {
-    expect(checkAgrees(result("good", 3.9, 0), result("good", 3.9, 180))).toBe(true);
+  it("direction matters at light wind", () => {
+    expect(checkAgrees(result("good", 3, 270), result("good", 3, 0))).toBe(false);
+    expect(checkAgrees(result("good", 0.5, 0), result("good", 0.5, 180))).toBe(false);
   });
 
-  it("4 mph is not calm, so direction still matters", () => {
-    expect(checkAgrees(result("good", 4, 0), result("good", 4, 180))).toBe(false);
+  it("a wind that rounds to 0 mph on either side waives direction", () => {
+    expect(checkAgrees(result("good", 0.49, 90), result("good", 3, 270))).toBe(true);
+    expect(checkAgrees(result("good", 3, 270), result("good", 0, 90))).toBe(true);
+    expect(checkAgrees(result("good", 0, 90), result("good", 0.4, 270))).toBe(true);
   });
 
-  it("one calm wind and one not is judged on direction", () => {
-    expect(checkAgrees(result("good", 3, 0), result("good", 6, 180))).toBe(false);
-  });
-
-  it("calm waives direction but not the speed check", () => {
-    // Under the calm threshold the speeds can never differ by more than 5, so this holds
-    // with the default numbers; with a tighter speed limit the speed check still bites.
-    const tight = { ...SCORING_DEFAULTS, agreementMaxSpeedDiffMph: 0.5 };
-    expect(checkAgrees(result("good", 1, 0), result("good", 3, 180), tight)).toBe(false);
+  it("a wind that rounds to 0 mph waives direction but not the speed check", () => {
+    expect(checkAgrees(result("good", 0, 90), result("good", 6, 270))).toBe(false);
   });
 
   it("speed: 5 mph apart agrees, 5.1 apart does not", () => {

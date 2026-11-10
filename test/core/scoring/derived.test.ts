@@ -480,7 +480,8 @@ describe("SCORING_DEFAULTS", () => {
   it("pinsEveryFieldToTheSwiftValue", () => {
     expect(SCORING_DEFAULTS).toStrictEqual({
       precipNoGoMm: 0.25,
-      variableDirectionBelowMph: 4,
+      // Web-only: Swift's variableDirectionBelowMph 4 is removed; direction matters unless the
+      // wind rounds to 0 mph (author, 2026-11-10).
       overTheBackAloftNoGoMph: 20,
       strongAloftNoGoMph: 35,
       neighborMinWindMph: 5,
@@ -526,7 +527,8 @@ describe("SCORING_DEFAULTS", () => {
       cloudBaseMPerDegSpread: 125,
       dryAdiabaticLapseCPerM: 0.0098,
       agreementMaxDirDiffDeg: 30,
-      agreementCalmBelowMph: 4,
+      // Web-only: Swift's agreementCalmBelowMph 4 is removed; directions must agree unless a
+      // wind rounds to 0 mph (author, 2026-11-10).
       agreementMaxSpeedDiffMph: 5,
       highConfidenceMinShare: 0.75,
       mediumConfidenceMinShare: 0.4,

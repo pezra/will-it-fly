@@ -74,7 +74,7 @@ exports[`ECMWF-primary characterization > pins the recorded forecast for 2026-11
             "rrfs": {
               "call": "good",
               "kinds": [],
-              "score": 63.5,
+              "score": 73.5,
             },
             "time": 1794088800000,
           },
@@ -84,12 +84,12 @@ exports[`ECMWF-primary characterization > pins the recorded forecast for 2026-11
               "kinds": [
                 "sledder",
               ],
-              "score": 52.75,
+              "score": 62.75,
             },
             "rrfs": {
               "call": "good",
               "kinds": [],
-              "score": 60.5,
+              "score": 70.5,
             },
             "time": 1794092400000,
           },
@@ -99,7 +99,7 @@ exports[`ECMWF-primary characterization > pins the recorded forecast for 2026-11
           "cautions": [],
           "confidence": "high",
           "end": 1794096000000,
-          "score": 72.66666666666667,
+          "score": 74.33333333333333,
           "start": 1794074400000,
         },
       },
@@ -115,11 +115,12 @@ exports[`ECMWF-primary characterization > pins the recorded forecast for 2026-11
         "hours": [
           {
             "ecmwf": {
-              "call": "good",
+              "call": "noGo",
               "kinds": [
+                "wrongDirection",
                 "sledder",
               ],
-              "score": 57.75,
+              "score": 0,
             },
             "rrfs": {
               "call": "noGo",
@@ -133,9 +134,11 @@ exports[`ECMWF-primary characterization > pins the recorded forecast for 2026-11
           },
           {
             "ecmwf": {
-              "call": "good",
-              "kinds": [],
-              "score": 58.75,
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+              ],
+              "score": 0,
             },
             "rrfs": {
               "call": "noGo",
@@ -148,9 +151,11 @@ exports[`ECMWF-primary characterization > pins the recorded forecast for 2026-11
           },
           {
             "ecmwf": {
-              "call": "good",
-              "kinds": [],
-              "score": 61.75,
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+              ],
+              "score": 0,
             },
             "rrfs": {
               "call": "noGo",
@@ -163,25 +168,30 @@ exports[`ECMWF-primary characterization > pins the recorded forecast for 2026-11
           },
           {
             "ecmwf": {
-              "call": "good",
-              "kinds": [],
-              "score": 63,
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+              ],
+              "score": 0,
             },
             "rrfs": {
-              "call": "good",
-              "kinds": [],
-              "score": 64.5,
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+              ],
+              "score": 0,
             },
             "time": 1794085200000,
           },
           {
             "ecmwf": {
-              "call": "flyable",
+              "call": "noGo",
               "kinds": [
+                "wrongDirection",
                 "neighborWind",
                 "sledder",
               ],
-              "score": 53.75,
+              "score": 0,
             },
             "rrfs": {
               "call": "flyable",
@@ -195,12 +205,13 @@ exports[`ECMWF-primary characterization > pins the recorded forecast for 2026-11
           },
           {
             "ecmwf": {
-              "call": "flyable",
+              "call": "noGo",
               "kinds": [
+                "wrongDirection",
                 "neighborWind",
                 "sledder",
               ],
-              "score": 49.5,
+              "score": 0,
             },
             "rrfs": {
               "call": "flyable",
@@ -208,7 +219,7 @@ exports[`ECMWF-primary characterization > pins the recorded forecast for 2026-11
                 "neighborWind",
                 "sledder",
               ],
-              "score": 51.75,
+              "score": 61.75,
             },
             "time": 1794092400000,
           },
@@ -226,28 +237,26 @@ exports[`ECMWF-primary characterization > pins the recorded forecast for 2026-11
                 "lowCloud",
                 "sledder",
               ],
-              "score": 48.5,
+              "score": 58.5,
             },
             "time": 1794096000000,
           },
         ],
         "id": "rmhpa/glenwood-lookout-mtn/north",
         "window": {
-          "cautions": [
-            "neighborWind",
-          ],
-          "confidence": "medium",
+          "cautions": [],
+          "confidence": "high",
           "end": 1794099600000,
-          "score": 47.99464285714286,
-          "start": 1794074400000,
+          "score": 30.45,
+          "start": 1794096000000,
         },
       },
     ],
     "mainReason": null,
   },
   {
-    "best": "rmhpa/crested-butte/browns",
-    "call": "good",
+    "best": null,
+    "call": "noGo",
     "id": "rmhpa/crested-butte",
     "launches": [
       {
@@ -262,11 +271,12 @@ exports[`ECMWF-primary characterization > pins the recorded forecast for 2026-11
               "score": 0,
             },
             "rrfs": {
-              "call": "good",
+              "call": "noGo",
               "kinds": [
+                "wrongDirection",
                 "sledder",
               ],
-              "score": 54.99708914174306,
+              "score": 0,
             },
             "time": 1794074400000,
           },
@@ -280,9 +290,11 @@ exports[`ECMWF-primary characterization > pins the recorded forecast for 2026-11
               "score": 0,
             },
             "rrfs": {
-              "call": "good",
-              "kinds": [],
-              "score": 62.17716276862387,
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+              ],
+              "score": 0,
             },
             "time": 1794078000000,
           },
@@ -343,11 +355,12 @@ exports[`ECMWF-primary characterization > pins the recorded forecast for 2026-11
           },
           {
             "ecmwf": {
-              "call": "good",
+              "call": "noGo",
               "kinds": [
+                "wrongDirection",
                 "sledder",
               ],
-              "score": 56.720327894682924,
+              "score": 0,
             },
             "rrfs": {
               "call": "noGo",
@@ -361,11 +374,12 @@ exports[`ECMWF-primary characterization > pins the recorded forecast for 2026-11
           },
           {
             "ecmwf": {
-              "call": "good",
+              "call": "noGo",
               "kinds": [
+                "wrongDirection",
                 "sledder",
               ],
-              "score": 55.11423267003138,
+              "score": 0,
             },
             "rrfs": {
               "call": "noGo",
@@ -379,16 +393,13 @@ exports[`ECMWF-primary characterization > pins the recorded forecast for 2026-11
           },
         ],
         "id": "rmhpa/crested-butte/browns",
-        "window": {
-          "cautions": [],
-          "confidence": "low",
-          "end": 1794099600000,
-          "score": 31.313676958120006,
-          "start": 1794092400000,
-        },
+        "window": null,
       },
     ],
-    "mainReason": null,
+    "mainReason": {
+      "kind": "wrongDirection",
+      "text": "wind from N, outside launch directions",
+    },
   },
   {
     "best": null,
@@ -411,12 +422,13 @@ exports[`ECMWF-primary characterization > pins the recorded forecast for 2026-11
         "hours": [
           {
             "ecmwf": {
-              "call": "flyable",
+              "call": "noGo",
               "kinds": [
+                "wrongDirection",
                 "neighborWind",
                 "sledder",
               ],
-              "score": 47,
+              "score": 0,
             },
             "rrfs": {
               "call": "noGo",
@@ -431,62 +443,69 @@ exports[`ECMWF-primary characterization > pins the recorded forecast for 2026-11
           },
           {
             "ecmwf": {
-              "call": "good",
+              "call": "noGo",
               "kinds": [
+                "wrongDirection",
                 "sledder",
               ],
-              "score": 54.5,
+              "score": 0,
             },
             "rrfs": {
-              "call": "good",
+              "call": "noGo",
               "kinds": [
+                "wrongDirection",
                 "sledder",
               ],
-              "score": 56.75,
+              "score": 0,
             },
             "time": 1794150000000,
           },
           {
             "ecmwf": {
-              "call": "good",
+              "call": "noGo",
               "kinds": [
+                "wrongDirection",
                 "sledder",
               ],
-              "score": 57,
+              "score": 0,
             },
             "rrfs": {
-              "call": "good",
+              "call": "noGo",
               "kinds": [
+                "wrongDirection",
                 "sledder",
               ],
-              "score": 54.5,
+              "score": 0,
             },
             "time": 1794153600000,
           },
           {
             "ecmwf": {
-              "call": "good",
+              "call": "noGo",
               "kinds": [
+                "wrongDirection",
                 "sledder",
               ],
-              "score": 55.25,
+              "score": 0,
             },
             "rrfs": {
-              "call": "good",
+              "call": "noGo",
               "kinds": [
+                "wrongDirection",
                 "sledder",
               ],
-              "score": 55.5,
+              "score": 0,
             },
             "time": 1794157200000,
           },
           {
             "ecmwf": {
-              "call": "good",
+              "call": "noGo",
               "kinds": [
+                "wrongDirection",
                 "sledder",
               ],
-              "score": 54,
+              "score": 0,
             },
             "rrfs": {
               "call": "noGo",
@@ -500,11 +519,12 @@ exports[`ECMWF-primary characterization > pins the recorded forecast for 2026-11
           },
           {
             "ecmwf": {
-              "call": "good",
+              "call": "flyable",
               "kinds": [
+                "directionNotIdeal",
                 "sledder",
               ],
-              "score": 57.5,
+              "score": 52.5,
             },
             "rrfs": {
               "call": "noGo",
@@ -577,7 +597,7 @@ exports[`ECMWF-primary characterization > pins the recorded forecast for 2026-11
               "kinds": [
                 "sledder",
               ],
-              "score": 57.75,
+              "score": 67.75,
             },
             "rrfs": {
               "call": "good",
@@ -590,18 +610,19 @@ exports[`ECMWF-primary characterization > pins the recorded forecast for 2026-11
           },
           {
             "ecmwf": {
-              "call": "good",
+              "call": "noGo",
               "kinds": [
+                "wrongDirection",
                 "sledder",
               ],
-              "score": 57.5,
+              "score": 0,
             },
             "rrfs": {
               "call": "good",
               "kinds": [
                 "sledder",
               ],
-              "score": 52.25,
+              "score": 62.25,
             },
             "time": 1794182400000,
           },
@@ -612,8 +633,8 @@ exports[`ECMWF-primary characterization > pins the recorded forecast for 2026-11
             "neighborWind",
           ],
           "confidence": "high",
-          "end": 1794186000000,
-          "score": 65.5625,
+          "end": 1794182400000,
+          "score": 71.58333333333333,
           "start": 1794171600000,
         },
       },
@@ -629,11 +650,12 @@ exports[`ECMWF-primary characterization > pins the recorded forecast for 2026-11
         "hours": [
           {
             "ecmwf": {
-              "call": "good",
+              "call": "noGo",
               "kinds": [
+                "wrongDirection",
                 "sledder",
               ],
-              "score": 51,
+              "score": 0,
             },
             "rrfs": {
               "call": "noGo",
@@ -647,11 +669,12 @@ exports[`ECMWF-primary characterization > pins the recorded forecast for 2026-11
           },
           {
             "ecmwf": {
-              "call": "good",
+              "call": "noGo",
               "kinds": [
+                "wrongDirection",
                 "sledder",
               ],
-              "score": 53,
+              "score": 0,
             },
             "rrfs": {
               "call": "noGo",
@@ -669,14 +692,14 @@ exports[`ECMWF-primary characterization > pins the recorded forecast for 2026-11
               "kinds": [
                 "sledder",
               ],
-              "score": 53.75,
+              "score": 63.75,
             },
             "rrfs": {
               "call": "good",
               "kinds": [
                 "sledder",
               ],
-              "score": 55,
+              "score": 65,
             },
             "time": 1794153600000,
           },
@@ -765,7 +788,7 @@ exports[`ECMWF-primary characterization > pins the recorded forecast for 2026-11
               "kinds": [
                 "sledder",
               ],
-              "score": 59.25,
+              "score": 69.25,
             },
             "rrfs": {
               "call": "good",
@@ -780,12 +803,12 @@ exports[`ECMWF-primary characterization > pins the recorded forecast for 2026-11
               "kinds": [
                 "sledder",
               ],
-              "score": 55,
+              "score": 65,
             },
             "rrfs": {
               "call": "good",
               "kinds": [],
-              "score": 61.75,
+              "score": 71.75,
             },
             "time": 1794178800000,
           },
@@ -795,8 +818,8 @@ exports[`ECMWF-primary characterization > pins the recorded forecast for 2026-11
           "cautions": [],
           "confidence": "high",
           "end": 1794182400000,
-          "score": 63.3,
-          "start": 1794146400000,
+          "score": 69.875,
+          "start": 1794153600000,
         },
       },
     ],
@@ -804,84 +827,94 @@ exports[`ECMWF-primary characterization > pins the recorded forecast for 2026-11
   },
   {
     "best": "rmhpa/crested-butte/browns",
-    "call": "good",
+    "call": "flyable",
     "id": "rmhpa/crested-butte",
     "launches": [
       {
         "hours": [
           {
             "ecmwf": {
-              "call": "good",
+              "call": "noGo",
               "kinds": [
+                "wrongDirection",
                 "sledder",
               ],
-              "score": 49.53909462776053,
+              "score": 0,
             },
             "rrfs": {
-              "call": "good",
+              "call": "noGo",
               "kinds": [
+                "wrongDirection",
                 "sledder",
               ],
-              "score": 55.92842379226994,
+              "score": 0,
             },
             "time": 1794146400000,
           },
           {
             "ecmwf": {
-              "call": "good",
+              "call": "noGo",
               "kinds": [
+                "wrongDirection",
                 "sledder",
               ],
-              "score": 55.1059438291873,
+              "score": 0,
             },
             "rrfs": {
-              "call": "good",
+              "call": "noGo",
               "kinds": [
+                "wrongDirection",
                 "sledder",
               ],
-              "score": 55.231401413124395,
+              "score": 0,
             },
             "time": 1794150000000,
           },
           {
             "ecmwf": {
-              "call": "good",
+              "call": "noGo",
               "kinds": [
+                "wrongDirection",
                 "sledder",
               ],
-              "score": 55.035029645383695,
+              "score": 0,
             },
             "rrfs": {
-              "call": "good",
+              "call": "noGo",
               "kinds": [
+                "wrongDirection",
                 "sledder",
               ],
-              "score": 53.2,
+              "score": 0,
             },
             "time": 1794153600000,
           },
           {
             "ecmwf": {
-              "call": "good",
+              "call": "noGo",
               "kinds": [
+                "wrongDirection",
                 "sledder",
               ],
-              "score": 55.20671529739997,
+              "score": 0,
             },
             "rrfs": {
-              "call": "good",
+              "call": "noGo",
               "kinds": [
+                "wrongDirection",
                 "sledder",
               ],
-              "score": 56.8,
+              "score": 0,
             },
             "time": 1794157200000,
           },
           {
             "ecmwf": {
-              "call": "good",
-              "kinds": [],
-              "score": 61.494440777524815,
+              "call": "flyable",
+              "kinds": [
+                "directionNotIdeal",
+              ],
+              "score": 56.494440777524815,
             },
             "rrfs": {
               "call": "noGo",
@@ -981,10 +1014,10 @@ exports[`ECMWF-primary characterization > pins the recorded forecast for 2026-11
           "cautions": [
             "directionNotIdeal",
           ],
-          "confidence": "medium",
+          "confidence": "low",
           "end": 1794182400000,
-          "score": 48.109984434462035,
-          "start": 1794146400000,
+          "score": 40.37985390556745,
+          "start": 1794160800000,
         },
       },
     ],
@@ -1074,7 +1107,7 @@ exports[`ECMWF-primary characterization > pins the variant (RRFS gap and RRFS st
             "rrfs": {
               "call": "good",
               "kinds": [],
-              "score": 63.5,
+              "score": 73.5,
             },
             "time": 1794088800000,
           },
@@ -1084,12 +1117,12 @@ exports[`ECMWF-primary characterization > pins the variant (RRFS gap and RRFS st
               "kinds": [
                 "sledder",
               ],
-              "score": 52.75,
+              "score": 62.75,
             },
             "rrfs": {
               "call": "good",
               "kinds": [],
-              "score": 60.5,
+              "score": 70.5,
             },
             "time": 1794092400000,
           },
@@ -1099,7 +1132,7 @@ exports[`ECMWF-primary characterization > pins the variant (RRFS gap and RRFS st
           "cautions": [],
           "confidence": "high",
           "end": 1794096000000,
-          "score": 72.66666666666667,
+          "score": 74.33333333333333,
           "start": 1794074400000,
         },
       },
@@ -1115,11 +1148,12 @@ exports[`ECMWF-primary characterization > pins the variant (RRFS gap and RRFS st
         "hours": [
           {
             "ecmwf": {
-              "call": "good",
+              "call": "noGo",
               "kinds": [
+                "wrongDirection",
                 "sledder",
               ],
-              "score": 57.75,
+              "score": 0,
             },
             "rrfs": {
               "call": "noGo",
@@ -1133,9 +1167,11 @@ exports[`ECMWF-primary characterization > pins the variant (RRFS gap and RRFS st
           },
           {
             "ecmwf": {
-              "call": "good",
-              "kinds": [],
-              "score": 58.75,
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+              ],
+              "score": 0,
             },
             "rrfs": {
               "call": "noGo",
@@ -1148,9 +1184,11 @@ exports[`ECMWF-primary characterization > pins the variant (RRFS gap and RRFS st
           },
           {
             "ecmwf": {
-              "call": "good",
-              "kinds": [],
-              "score": 61.75,
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+              ],
+              "score": 0,
             },
             "rrfs": {
               "call": "noGo",
@@ -1163,25 +1201,30 @@ exports[`ECMWF-primary characterization > pins the variant (RRFS gap and RRFS st
           },
           {
             "ecmwf": {
-              "call": "good",
-              "kinds": [],
-              "score": 63,
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+              ],
+              "score": 0,
             },
             "rrfs": {
-              "call": "good",
-              "kinds": [],
-              "score": 64.5,
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+              ],
+              "score": 0,
             },
             "time": 1794085200000,
           },
           {
             "ecmwf": {
-              "call": "flyable",
+              "call": "noGo",
               "kinds": [
+                "wrongDirection",
                 "neighborWind",
                 "sledder",
               ],
-              "score": 53.75,
+              "score": 0,
             },
             "rrfs": {
               "call": "flyable",
@@ -1195,12 +1238,13 @@ exports[`ECMWF-primary characterization > pins the variant (RRFS gap and RRFS st
           },
           {
             "ecmwf": {
-              "call": "flyable",
+              "call": "noGo",
               "kinds": [
+                "wrongDirection",
                 "neighborWind",
                 "sledder",
               ],
-              "score": 49.5,
+              "score": 0,
             },
             "rrfs": {
               "call": "flyable",
@@ -1208,7 +1252,7 @@ exports[`ECMWF-primary characterization > pins the variant (RRFS gap and RRFS st
                 "neighborWind",
                 "sledder",
               ],
-              "score": 51.75,
+              "score": 61.75,
             },
             "time": 1794092400000,
           },
@@ -1226,28 +1270,26 @@ exports[`ECMWF-primary characterization > pins the variant (RRFS gap and RRFS st
                 "lowCloud",
                 "sledder",
               ],
-              "score": 48.5,
+              "score": 58.5,
             },
             "time": 1794096000000,
           },
         ],
         "id": "rmhpa/glenwood-lookout-mtn/north",
         "window": {
-          "cautions": [
-            "neighborWind",
-          ],
-          "confidence": "medium",
+          "cautions": [],
+          "confidence": "high",
           "end": 1794099600000,
-          "score": 47.99464285714286,
-          "start": 1794074400000,
+          "score": 30.45,
+          "start": 1794096000000,
         },
       },
     ],
     "mainReason": null,
   },
   {
-    "best": "rmhpa/crested-butte/browns",
-    "call": "good",
+    "best": null,
+    "call": "noGo",
     "id": "rmhpa/crested-butte",
     "launches": [
       {
@@ -1262,11 +1304,12 @@ exports[`ECMWF-primary characterization > pins the variant (RRFS gap and RRFS st
               "score": 0,
             },
             "rrfs": {
-              "call": "good",
+              "call": "noGo",
               "kinds": [
+                "wrongDirection",
                 "sledder",
               ],
-              "score": 54.99708914174306,
+              "score": 0,
             },
             "time": 1794074400000,
           },
@@ -1280,9 +1323,11 @@ exports[`ECMWF-primary characterization > pins the variant (RRFS gap and RRFS st
               "score": 0,
             },
             "rrfs": {
-              "call": "good",
-              "kinds": [],
-              "score": 62.17716276862387,
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+              ],
+              "score": 0,
             },
             "time": 1794078000000,
           },
@@ -1343,11 +1388,12 @@ exports[`ECMWF-primary characterization > pins the variant (RRFS gap and RRFS st
           },
           {
             "ecmwf": {
-              "call": "good",
+              "call": "noGo",
               "kinds": [
+                "wrongDirection",
                 "sledder",
               ],
-              "score": 56.720327894682924,
+              "score": 0,
             },
             "rrfs": {
               "call": "noGo",
@@ -1361,11 +1407,12 @@ exports[`ECMWF-primary characterization > pins the variant (RRFS gap and RRFS st
           },
           {
             "ecmwf": {
-              "call": "good",
+              "call": "noGo",
               "kinds": [
+                "wrongDirection",
                 "sledder",
               ],
-              "score": 55.11423267003138,
+              "score": 0,
             },
             "rrfs": {
               "call": "noGo",
@@ -1379,16 +1426,13 @@ exports[`ECMWF-primary characterization > pins the variant (RRFS gap and RRFS st
           },
         ],
         "id": "rmhpa/crested-butte/browns",
-        "window": {
-          "cautions": [],
-          "confidence": "low",
-          "end": 1794099600000,
-          "score": 31.313676958120006,
-          "start": 1794092400000,
-        },
+        "window": null,
       },
     ],
-    "mainReason": null,
+    "mainReason": {
+      "kind": "wrongDirection",
+      "text": "wind from N, outside launch directions",
+    },
   },
   {
     "best": null,
@@ -1403,228 +1447,6 @@ exports[`ECMWF-primary characterization > pins the variant (RRFS gap and RRFS st
 exports[`ECMWF-primary characterization > pins the variant (RRFS gap and RRFS storm) for 2026-11-08 1`] = `
 [
   {
-    "best": "rmhpa/glenwood-lookout-mtn/north",
-    "call": "good",
-    "id": "rmhpa/glenwood-lookout-mtn",
-    "launches": [
-      {
-        "hours": [
-          {
-            "ecmwf": {
-              "call": "flyable",
-              "kinds": [
-                "neighborWind",
-                "sledder",
-              ],
-              "score": 47,
-            },
-            "rrfs": {
-              "call": "noGo",
-              "kinds": [
-                "wrongDirection",
-                "neighborWind",
-                "sledder",
-              ],
-              "score": 0,
-            },
-            "time": 1794146400000,
-          },
-          {
-            "ecmwf": {
-              "call": "good",
-              "kinds": [
-                "sledder",
-              ],
-              "score": 54.5,
-            },
-            "rrfs": {
-              "call": "good",
-              "kinds": [
-                "sledder",
-              ],
-              "score": 56.75,
-            },
-            "time": 1794150000000,
-          },
-          {
-            "ecmwf": {
-              "call": "flyable",
-              "kinds": [
-                "rrfsSeesStorms",
-                "sledder",
-              ],
-              "score": 52,
-            },
-            "rrfs": {
-              "call": "noGo",
-              "kinds": [
-                "precipitation",
-                "sledder",
-              ],
-              "score": 0,
-            },
-            "time": 1794153600000,
-          },
-          {
-            "ecmwf": {
-              "call": "flyable",
-              "kinds": [
-                "rrfsSeesStorms",
-                "sledder",
-              ],
-              "score": 50.25,
-            },
-            "rrfs": {
-              "call": "noGo",
-              "kinds": [
-                "precipitation",
-                "sledder",
-              ],
-              "score": 0,
-            },
-            "time": 1794157200000,
-          },
-          {
-            "ecmwf": {
-              "call": "good",
-              "kinds": [
-                "sledder",
-              ],
-              "score": 54,
-            },
-            "rrfs": {
-              "call": "noGo",
-              "kinds": [
-                "wrongDirection",
-                "sledder",
-              ],
-              "score": 0,
-            },
-            "time": 1794160800000,
-          },
-          {
-            "ecmwf": {
-              "call": "good",
-              "kinds": [
-                "sledder",
-              ],
-              "score": 57.5,
-            },
-            "rrfs": {
-              "call": "noGo",
-              "kinds": [
-                "wrongDirection",
-                "sledder",
-              ],
-              "score": 0,
-            },
-            "time": 1794164400000,
-          },
-          {
-            "ecmwf": {
-              "call": "noGo",
-              "kinds": [
-                "neighborWindStrong",
-              ],
-              "score": 0,
-            },
-            "rrfs": {
-              "call": "noGo",
-              "kinds": [
-                "neighborWindStrong",
-                "directionNotIdeal",
-                "sledder",
-              ],
-              "score": 0,
-            },
-            "time": 1794168000000,
-          },
-          {
-            "ecmwf": {
-              "call": "flyable",
-              "kinds": [
-                "neighborWind",
-              ],
-              "score": 73.5,
-            },
-            "rrfs": {
-              "call": "flyable",
-              "kinds": [
-                "neighborWind",
-                "directionNotIdeal",
-                "sledder",
-              ],
-              "score": 59.71428571428572,
-            },
-            "time": 1794171600000,
-          },
-          {
-            "ecmwf": {
-              "call": "good",
-              "kinds": [
-                "sledder",
-              ],
-              "score": 73.5,
-            },
-            "rrfs": {
-              "call": "good",
-              "kinds": [
-                "sledder",
-              ],
-              "score": 79,
-            },
-            "time": 1794175200000,
-          },
-          {
-            "ecmwf": {
-              "call": "good",
-              "kinds": [
-                "sledder",
-              ],
-              "score": 57.75,
-            },
-            "rrfs": {
-              "call": "good",
-              "kinds": [
-                "sledder",
-              ],
-              "score": 76.75,
-            },
-            "time": 1794178800000,
-          },
-          {
-            "ecmwf": {
-              "call": "good",
-              "kinds": [
-                "sledder",
-              ],
-              "score": 57.5,
-            },
-            "rrfs": {
-              "call": "good",
-              "kinds": [
-                "sledder",
-              ],
-              "score": 52.25,
-            },
-            "time": 1794182400000,
-          },
-        ],
-        "id": "rmhpa/glenwood-lookout-mtn/north",
-        "window": {
-          "cautions": [
-            "neighborWind",
-          ],
-          "confidence": "high",
-          "end": 1794186000000,
-          "score": 65.5625,
-          "start": 1794171600000,
-        },
-      },
-    ],
-    "mainReason": null,
-  },
-  {
     "best": "rmhpa/boulder-wonderland/upper",
     "call": "good",
     "id": "rmhpa/boulder-wonderland",
@@ -1633,11 +1455,12 @@ exports[`ECMWF-primary characterization > pins the variant (RRFS gap and RRFS st
         "hours": [
           {
             "ecmwf": {
-              "call": "good",
+              "call": "noGo",
               "kinds": [
+                "wrongDirection",
                 "sledder",
               ],
-              "score": 51,
+              "score": 0,
             },
             "rrfs": {
               "call": "noGo",
@@ -1651,11 +1474,12 @@ exports[`ECMWF-primary characterization > pins the variant (RRFS gap and RRFS st
           },
           {
             "ecmwf": {
-              "call": "good",
+              "call": "noGo",
               "kinds": [
+                "wrongDirection",
                 "sledder",
               ],
-              "score": 53,
+              "score": 0,
             },
             "rrfs": {
               "call": "noGo",
@@ -1673,14 +1497,14 @@ exports[`ECMWF-primary characterization > pins the variant (RRFS gap and RRFS st
               "kinds": [
                 "sledder",
               ],
-              "score": 53.75,
+              "score": 63.75,
             },
             "rrfs": {
               "call": "good",
               "kinds": [
                 "sledder",
               ],
-              "score": 55,
+              "score": 65,
             },
             "time": 1794153600000,
           },
@@ -1775,7 +1599,7 @@ exports[`ECMWF-primary characterization > pins the variant (RRFS gap and RRFS st
               "kinds": [
                 "sledder",
               ],
-              "score": 59.25,
+              "score": 69.25,
             },
             "rrfs": {
               "call": "noData",
@@ -1792,7 +1616,7 @@ exports[`ECMWF-primary characterization > pins the variant (RRFS gap and RRFS st
               "kinds": [
                 "sledder",
               ],
-              "score": 55,
+              "score": 65,
             },
             "rrfs": {
               "call": "noData",
@@ -1809,8 +1633,241 @@ exports[`ECMWF-primary characterization > pins the variant (RRFS gap and RRFS st
           "cautions": [],
           "confidence": "primaryOnly",
           "end": 1794182400000,
-          "score": 53.805,
-          "start": 1794146400000,
+          "score": 59.39375,
+          "start": 1794153600000,
+        },
+      },
+    ],
+    "mainReason": null,
+  },
+  {
+    "best": "rmhpa/glenwood-lookout-mtn/north",
+    "call": "good",
+    "id": "rmhpa/glenwood-lookout-mtn",
+    "launches": [
+      {
+        "hours": [
+          {
+            "ecmwf": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+                "neighborWind",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "rrfs": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+                "neighborWind",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "time": 1794146400000,
+          },
+          {
+            "ecmwf": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "rrfs": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "time": 1794150000000,
+          },
+          {
+            "ecmwf": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "rrfs": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "time": 1794153600000,
+          },
+          {
+            "ecmwf": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "rrfs": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "time": 1794157200000,
+          },
+          {
+            "ecmwf": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "rrfs": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "time": 1794160800000,
+          },
+          {
+            "ecmwf": {
+              "call": "flyable",
+              "kinds": [
+                "directionNotIdeal",
+                "sledder",
+              ],
+              "score": 52.5,
+            },
+            "rrfs": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "time": 1794164400000,
+          },
+          {
+            "ecmwf": {
+              "call": "noGo",
+              "kinds": [
+                "neighborWindStrong",
+              ],
+              "score": 0,
+            },
+            "rrfs": {
+              "call": "noGo",
+              "kinds": [
+                "neighborWindStrong",
+                "directionNotIdeal",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "time": 1794168000000,
+          },
+          {
+            "ecmwf": {
+              "call": "flyable",
+              "kinds": [
+                "rrfsSeesStorms",
+                "neighborWind",
+              ],
+              "score": 68.5,
+            },
+            "rrfs": {
+              "call": "noGo",
+              "kinds": [
+                "precipitation",
+                "neighborWind",
+                "directionNotIdeal",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "time": 1794171600000,
+          },
+          {
+            "ecmwf": {
+              "call": "flyable",
+              "kinds": [
+                "rrfsSeesStorms",
+                "sledder",
+              ],
+              "score": 68.5,
+            },
+            "rrfs": {
+              "call": "noGo",
+              "kinds": [
+                "precipitation",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "time": 1794175200000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 67.75,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 76.75,
+            },
+            "time": 1794178800000,
+          },
+          {
+            "ecmwf": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 62.25,
+            },
+            "time": 1794182400000,
+          },
+        ],
+        "id": "rmhpa/glenwood-lookout-mtn/north",
+        "window": {
+          "cautions": [
+            "rrfsSeesStorms",
+            "neighborWind",
+          ],
+          "confidence": "low",
+          "end": 1794182400000,
+          "score": 47.775,
+          "start": 1794171600000,
         },
       },
     ],
@@ -1828,16 +1885,18 @@ exports[`ECMWF-primary characterization > pins the variant (RRFS gap and RRFS st
               "call": "noGo",
               "kinds": [
                 "precipitation",
+                "wrongDirection",
                 "sledder",
               ],
               "score": 0,
             },
             "rrfs": {
-              "call": "good",
+              "call": "noGo",
               "kinds": [
+                "wrongDirection",
                 "sledder",
               ],
-              "score": 55.92842379226994,
+              "score": 0,
             },
             "time": 1794146400000,
           },
@@ -1846,16 +1905,18 @@ exports[`ECMWF-primary characterization > pins the variant (RRFS gap and RRFS st
               "call": "noGo",
               "kinds": [
                 "precipitation",
+                "wrongDirection",
                 "sledder",
               ],
               "score": 0,
             },
             "rrfs": {
-              "call": "good",
+              "call": "noGo",
               "kinds": [
+                "wrongDirection",
                 "sledder",
               ],
-              "score": 55.231401413124395,
+              "score": 0,
             },
             "time": 1794150000000,
           },
@@ -1864,16 +1925,18 @@ exports[`ECMWF-primary characterization > pins the variant (RRFS gap and RRFS st
               "call": "noGo",
               "kinds": [
                 "precipitation",
+                "wrongDirection",
                 "sledder",
               ],
               "score": 0,
             },
             "rrfs": {
-              "call": "good",
+              "call": "noGo",
               "kinds": [
+                "wrongDirection",
                 "sledder",
               ],
-              "score": 53.2,
+              "score": 0,
             },
             "time": 1794153600000,
           },
@@ -1882,16 +1945,18 @@ exports[`ECMWF-primary characterization > pins the variant (RRFS gap and RRFS st
               "call": "noGo",
               "kinds": [
                 "precipitation",
+                "wrongDirection",
                 "sledder",
               ],
               "score": 0,
             },
             "rrfs": {
-              "call": "good",
+              "call": "noGo",
               "kinds": [
+                "wrongDirection",
                 "sledder",
               ],
-              "score": 56.8,
+              "score": 0,
             },
             "time": 1794157200000,
           },
@@ -1900,6 +1965,7 @@ exports[`ECMWF-primary characterization > pins the variant (RRFS gap and RRFS st
               "call": "noGo",
               "kinds": [
                 "precipitation",
+                "directionNotIdeal",
               ],
               "score": 0,
             },
