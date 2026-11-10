@@ -189,6 +189,9 @@ export interface HourContext {
 
 /** The model's name as shown to the pilot. */
 export const MODEL_LABEL: Readonly<Record<ModelName, string>> = { ecmwf: "ECMWF", rrfs: "RRFS" };
+/** The model that cross-checks each primary model. */
+export const CHECK_MODEL: Readonly<Record<ModelName, ModelName>> = { ecmwf: "rrfs", rrfs: "ecmwf" };
+
 function windText(w: Wind): string {
   return `${compass(w.dirDeg)} ${mph(w.speedMph)}`;
 }

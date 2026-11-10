@@ -51,8 +51,8 @@ function mostFrequent(
 
 /**
  * Why a site has no window: the most frequent no-go kind across every launch's daylight hours (the
- * primary model's results), else
- * the most frequent caution kind, else "no flyable hour". Count ties go to `REASON_KIND_ORDER`.
+ * primary model's results), else the most frequent caution kind, else "no flyable hour". Count
+ * ties go to `REASON_KIND_ORDER`.
  * The text is the first occurrence's.
  */
 export function mainReason(launches: readonly LaunchEvaluation[]): MainReason {

@@ -1,7 +1,7 @@
 import type { DaylightDay, LaunchForecast, ModelHour, NeighborWind } from "../forecast/models";
 import { SCORING_DEFAULTS } from "../scoring/defaults";
 import type { ScoringDefaults } from "../scoring/defaults";
-import { applyStormLookahead, evaluateHour } from "../scoring/hourEvaluator";
+import { CHECK_MODEL, applyStormLookahead, evaluateHour } from "../scoring/hourEvaluator";
 import type { HourContext, HourResult, ModelName } from "../scoring/hourEvaluator";
 import { daylightDayFor, daylightHours, findBestWindow } from "../scoring/windowFinder";
 import type { Launch, Site } from "../sites/site";
@@ -18,9 +18,6 @@ function evaluateSeries(
   const sorted = [...byTime(hours).values()].sort((a, b) => a.time - b.time);
   return applyStormLookahead(sorted.map(evaluate), sorted, defaults);
 }
-
-/** The model that cross-checks each primary model. */
-const CHECK_MODEL: Readonly<Record<ModelName, ModelName>> = { ecmwf: "rrfs", rrfs: "ecmwf" };
 
 /**
  * Evaluates every hour of both models for one launch. Every series is aligned by `time`, never by

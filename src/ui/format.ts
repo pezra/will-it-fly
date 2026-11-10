@@ -5,7 +5,7 @@ import type { Confidence } from "../core/scoring/modelAgreement";
 import type { SiteRecommendation } from "../core/recommendation/types";
 import type { HourCall, HourCondition, ModelName, Reason } from "../core/scoring/hourEvaluator";
 import { SCORING_DEFAULTS } from "../core/scoring/defaults";
-import { MODEL_LABEL, effectiveIdealArcs } from "../core/scoring/hourEvaluator";
+import { CHECK_MODEL, MODEL_LABEL, effectiveIdealArcs } from "../core/scoring/hourEvaluator";
 import type { Coordinate, DegreeArc, Launch } from "../core/sites/site";
 import { addDays, formatDayKey } from "../core/time";
 import type { DayKey } from "../core/time";
@@ -218,7 +218,7 @@ export interface HourlyColumn {
  */
 export function hourlyColumns(model: ModelName): readonly HourlyColumn[] {
   const primary = MODEL_LABEL[model];
-  const check = MODEL_LABEL[model === "ecmwf" ? "rrfs" : "ecmwf"];
+  const check = MODEL_LABEL[CHECK_MODEL[model]];
   return [
     { header: "Time", value: "time" },
     { header: primary, value: "call", side: "primary" },
