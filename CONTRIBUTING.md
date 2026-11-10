@@ -107,6 +107,10 @@ curl -s "$(cat test/fixtures/openmeteo-neighbors.url.txt)" > test/fixtures/openm
 
 Sites come through the `SiteProvider` interface in `src/core/sites/siteProvider.ts`, which is a single `sites(): Promise<Site[]>`. A new source, e.g. ParaglidingEarth, maps its data into the same `Site` type, and scoring and the UI need no changes. Merging two providers (and deduplicating sites that appear in both) would take a small composite provider that doesn't exist yet.
 
+## decisions.md
+
+`decisions.md` records the architectural decisions that would be costly to reverse, newest first. Read it before changing how something fundamental works, so you don't undo a choice someone already argued through. When you make such a decision, add an entry in the same change: a heading that states the decision, with the date and branch, then what was decided, why, and a "Rejected" list of the alternatives and what was wrong with each.
+
 ## README.md
 
-Only discuss the current state of the applicaiton in README.md. No history lessons or future wishes (execpt potentially safely related caveats). Focus on usage and confidence building information about how the app decides which sites are flyable.
+Only discuss the current state of the application in README.md. No history lessons or future wishes (except possibly safety-related caveats). Focus on usage and confidence-building information about how the app decides which sites are flyable.
