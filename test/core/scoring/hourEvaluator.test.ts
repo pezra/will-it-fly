@@ -431,35 +431,33 @@ describe("boundaries", () => {
     expect(r.call).not.toBe("noGo");
   });
 
-  it("direction rule applies at light wind, but not at 0 mph", () => {
+  const windAt = (mph: number, dir: number): HourResult => {
     const limits: WindLimits = { minMph: 0, idealMph: 8, maxMph: 15, gustFactorMph: 20 };
-    const at = (mph: number) =>
-      evalWith({ siteLimits: limits, hour: hourWith((h) => ((h.windMph = mph), (h.windDir = 90))) });
+    return evalWith({ siteLimits: limits, hour: hourWith((h) => ((h.windMph = mph), (h.windDir = dir))) });
+  };
+
+  it("direction rule applies at light wind, but not at 0 mph", () => {
     for (const mph of [3.9, 0.1]) {
-      expect(kinds(at(mph)), `${mph} mph`).toContain("wrongDirection");
-      expect(at(mph).call, `${mph} mph`).toBe("noGo");
+      const r = windAt(mph, 90);
+      expect(kinds(r), `${mph} mph`).toContain("wrongDirection");
+      expect(r.call, `${mph} mph`).toBe("noGo");
     }
-    expect(kinds(at(0))).not.toContain("wrongDirection");
-    expect(at(0).call).not.toBe("noGo");
+    const calm = windAt(0, 90);
+    expect(kinds(calm)).not.toContain("wrongDirection");
+    expect(calm.call).not.toBe("noGo");
   });
 
   it("at light wind, ideal gets the bonus and not-ideal is a caution", () => {
-    const limits: WindLimits = { minMph: 0, idealMph: 8, maxMph: 15, gustFactorMph: 20 };
-    const at = (dir: number) =>
-      evalWith({ siteLimits: limits, hour: hourWith((h) => ((h.windMph = 3.9), (h.windDir = dir))) });
-    const inIdeal = at(270);
-    const notIdeal = at(240);
+    const inIdeal = windAt(3.9, 270);
+    const notIdeal = windAt(3.9, 240);
     expect(kinds(inIdeal)).not.toContain("directionNotIdeal");
     expect(kinds(notIdeal)).toContain("directionNotIdeal");
     expect(inIdeal.unpenalizedScore - notIdeal.unpenalizedScore).toBe(d.idealDirectionBonus);
   });
 
   it("at 0 mph direction gives no reason, bonus or caution", () => {
-    const limits: WindLimits = { minMph: 0, idealMph: 8, maxMph: 15, gustFactorMph: 20 };
-    const at = (dir: number) =>
-      evalWith({ siteLimits: limits, hour: hourWith((h) => ((h.windMph = 0), (h.windDir = dir))) });
     // Ideal, OK but not ideal, and outside OK.
-    const results = [270, 240, 90].map(at);
+    const results = [270, 240, 90].map((dir) => windAt(0, dir));
     for (const r of results) {
       expect(kinds(r)).not.toContain("wrongDirection");
       expect(kinds(r)).not.toContain("directionNotIdeal");

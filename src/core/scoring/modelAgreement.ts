@@ -1,6 +1,7 @@
 import { angularDifference } from "../sites/degreeArc";
 import { SCORING_DEFAULTS } from "./defaults";
 import type { ScoringDefaults } from "./defaults";
+import { hasDirection } from "./derived";
 import type { HourResult } from "./hourEvaluator";
 
 export type Confidence = "high" | "medium" | "low" | "primaryOnly";
@@ -26,8 +27,8 @@ export function checkAgrees(
   const b = check.launchWind;
   if (a === undefined || b === undefined) return false;
   if (Math.abs(a.speedMph - b.speedMph) > defaults.agreementMaxSpeedDiffMph) return false;
-  const eitherCalm = a.speedMph === 0 || b.speedMph === 0;
-  return eitherCalm || angularDifference(a.dirDeg, b.dirDeg) <= defaults.agreementMaxDirDiffDeg;
+  if (!hasDirection(a) || !hasDirection(b)) return true;
+  return angularDifference(a.dirDeg, b.dirDeg) <= defaults.agreementMaxDirDiffDeg;
 }
 
 /** Confidence from the share of check-covered hours where the check agrees (not the primaryOnly case). */

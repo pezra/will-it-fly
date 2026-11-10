@@ -6,7 +6,7 @@ import { METERS_PER_FOOT } from "../units";
  * Units: heights in metres, temperatures in degrees C, winds in mph, unless a name says otherwise
  * (`...Ft` thresholds are kept in feet as the design states them; use the `...M` helpers).
  * Most field names and values come from the Swift `ScoringDefaults.standard`; the web has added
- * and removed some (see `pinsEveryFieldToTheSwiftValue` in the tests).
+ * and removed some.
  */
 export interface ScoringDefaults {
   // No-go

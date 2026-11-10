@@ -10,6 +10,7 @@ import type { ScoringDefaults } from "./defaults";
 import {
   aloftWind,
   cloudBaseAboveLaunchM,
+  hasDirection,
   launchWind,
   thermalIndex,
   topOfLiftM,
@@ -369,8 +370,6 @@ export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORI
   const limits = effectiveLimits(ctx.site, launch);
   const { ok } = launch.directions;
   const curated = ok.length > 0;
-  // A 0 mph wind has no meaningful direction.
-  const directional = wind.speedMph > 0;
 
   // Precipitation and gusts: the preceding-hour values, so max(h, h+1).
   const precip = precipNoGoMm(hour, next, defaults);
@@ -393,11 +392,11 @@ export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORI
     reasons.push(reason("windTooWeak", `wind ${mph(wind.speedMph)} under min ${mph(limits.minMph)}`));
   }
 
-  // Launch wind direction, at any speed but 0.
+  // Launch wind direction, unless the wind is 0 mph.
   let inIdeal = false;
   if (!curated) {
     reasons.push(reason("notCurated", "launch direction not curated"));
-  } else if (directional) {
+  } else if (hasDirection(wind)) {
     if (!arcsContain(ok, wind.dirDeg)) {
       reasons.push(reason("wrongDirection", `wind from ${compass(wind.dirDeg)}, outside launch directions`));
     } else if (arcsContain(effectiveIdealArcs(launch, defaults), wind.dirDeg)) {

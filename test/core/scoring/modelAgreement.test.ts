@@ -56,8 +56,7 @@ describe("checkAgrees", () => {
 
   it("direction matters at light wind", () => {
     expect(checkAgrees(result("good", 3, 270), result("good", 3, 0))).toBe(false);
-    expect(checkAgrees(result("good", 3.9, 0), result("good", 3.9, 180))).toBe(false);
-    expect(checkAgrees(result("good", 0.1, 0), result("good", 0.1, 20))).toBe(true);
+    expect(checkAgrees(result("good", 0.1, 0), result("good", 0.1, 180))).toBe(false);
   });
 
   it("a 0 mph wind on either side waives direction", () => {

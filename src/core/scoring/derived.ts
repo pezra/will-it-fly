@@ -11,6 +11,11 @@ export interface Wind {
   dirDeg: number;
 }
 
+/** False for a 0 mph wind, whose direction means nothing. */
+export function hasDirection(wind: Wind): boolean {
+  return wind.speedMph > 0;
+}
+
 /** Eastward component: -s*sin(theta). */
 export function windU(wind: Wind): number {
   return -wind.speedMph * Math.sin((wind.dirDeg * Math.PI) / 180);
