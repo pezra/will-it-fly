@@ -62,22 +62,14 @@ export function routeHref(route: Route, model: ModelName): string {
     : listHref(model, route.day);
 }
 
-/**
- * The hash `hash` should be rewritten to, or undefined when it is already canonical. A hash that
- * names no valid model gets `defaultModel`; unknown parameters and a non-canonical path are
- * dropped. It takes no store: only the model control writes the saved default, so a link someone
- * shares can't change it.
- */
-export function canonicalHash(hash: string, defaultModel: ModelName): string | undefined {
-  return resolveRoute(hash, defaultModel).rewrite;
-}
-
 /** A route that names its model, as the app uses it once the hash is canonical. */
 export type CanonicalRoute = Route & { model: ModelName };
 
 /**
  * The route for `hash`, with `defaultModel` when the hash names no valid model, and the hash to
- * rewrite the URL to when `hash` isn't canonical (see `canonicalHash`).
+ * rewrite the URL to when `hash` isn't canonical: a missing or bad model gets `defaultModel`, and
+ * unknown parameters and a non-canonical path are dropped. It takes no store: only the model control
+ * writes the saved default, so a link someone shares can't change it.
  */
 export function resolveRoute(
   hash: string,

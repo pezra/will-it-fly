@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { MODEL_NAMES } from "../../src/core/scoring/hourEvaluator";
-import { canonicalHash, listHref, parseRoute, resolveRoute, routeHref, siteHref } from "../../src/ui/route";
+import type { ModelName } from "../../src/core/scoring/hourEvaluator";
+import { listHref, parseRoute, resolveRoute, routeHref, siteHref } from "../../src/ui/route";
 
 const IDS = ["rmhpa/crested-butte", "a?b", "50%/off", "a?b/c%d", "plain", "a b&c=d#e"];
 
@@ -78,7 +79,11 @@ describe("routeHref", () => {
   });
 });
 
-describe("canonicalHash", () => {
+/** The hash `resolveRoute` rewrites to, or undefined when it's already canonical. */
+const canonicalHash = (hash: string, defaultModel: ModelName): string | undefined =>
+  resolveRoute(hash, defaultModel).rewrite;
+
+describe("resolveRoute's rewrite", () => {
   // It takes no store, so a shared link can't change the saved default; only `switchModel` writes it.
   it("adds the default model to a hash with none", () => {
     expect(canonicalHash("#/", "ecmwf")).toBe("#/?model=ecmwf");

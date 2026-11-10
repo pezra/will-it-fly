@@ -330,6 +330,19 @@ function gustFactorMph(hour: ModelHour, next: ModelHour | undefined): number | u
   return terms.length === 0 ? undefined : Math.max(0, ...terms);
 }
 
+/** The core fields an hour lacks: the launch wind (10 m speed and direction) and precipitation at h. */
+function missingCoreFields(hour: ModelHour, wind: Wind | undefined): string[] {
+  const missing: string[] = [];
+  if (wind === undefined) missing.push("wind");
+  if (hour.precipMm === undefined) missing.push("precipitation");
+  return missing;
+}
+
+/** True when the hour has the core fields, so `evaluateHour` won't call it no data. */
+export function hasCoreData(hour: ModelHour, launch: Launch): boolean {
+  return missingCoreFields(hour, launchWind(hour, elevationM(launch))).length === 0;
+}
+
 /** The per-hour call, score and reasons for one launch and one model. */
 export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORING_DEFAULTS): HourResult {
   const { hour, next, launch } = ctx;
@@ -347,10 +360,7 @@ export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORI
     conditions,
   });
 
-  // Core fields: the launch wind (10 m speed and direction) and precipitation at h.
-  const missing: string[] = [];
-  if (wind === undefined) missing.push("wind");
-  if (hour.precipMm === undefined) missing.push("precipitation");
+  const missing = missingCoreFields(hour, wind);
   if (wind === undefined || missing.length > 0) {
     return finish(fields(0), [reason("noData", `no data: ${missing.join(", ")}`)], defaults);
   }

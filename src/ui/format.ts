@@ -195,12 +195,23 @@ export function fallbackLine(
   const evaluated = shown.filter((rec) => rec.launches.length > 0);
   const fellBack = evaluated.filter((rec) => rec.launches.some((l) => l.fellBack)).length;
   if (fellBack === 0) return undefined;
-  if (fellBack === evaluated.length) return "RRFS doesn't reach this day, so it uses ECMWF.";
-  return `${fellBack} ${fellBack === 1 ? "site uses" : "sites use"} ECMWF (RRFS doesn't reach this day).`;
+  if (fellBack === evaluated.length) return "RRFS doesn't cover this day, so it uses ECMWF.";
+  return `${fellBack} ${fellBack === 1 ? "site uses" : "sites use"} ECMWF (RRFS doesn't cover this day).`;
+}
+
+/**
+ * The model behind a site's call: its best launch's, else the one model every launch used (all of
+ * them fell back, say), else the requested one.
+ */
+export function siteModel(rec: SiteRecommendation, requested: ModelName): ModelName {
+  if (rec.best !== undefined) return rec.best.model;
+  const models = new Set(rec.launches.map((l) => l.model));
+  const [only] = models;
+  return models.size === 1 && only !== undefined ? only : requested;
 }
 
 /** The site page's note on a launch that fell back from RRFS to ECMWF. */
-export const launchFallbackNote = "RRFS doesn't reach this day here, so this launch uses ECMWF.";
+export const launchFallbackNote = "RRFS doesn't cover this day here, so this launch uses ECMWF.";
 
 /** One column of the hourly table: what it shows, and which model's data it reads. */
 export interface HourlyColumn {

@@ -1,9 +1,8 @@
 import type { DaylightDay, LaunchForecast, ModelHour, NeighborWind } from "../forecast/models";
 import { SCORING_DEFAULTS } from "../scoring/defaults";
 import type { ScoringDefaults } from "../scoring/defaults";
-import { CHECK_MODEL, applyStormLookahead, evaluateHour } from "../scoring/hourEvaluator";
+import { CHECK_MODEL, applyStormLookahead, evaluateHour, hasCoreData } from "../scoring/hourEvaluator";
 import type { HourContext, HourResult, ModelName } from "../scoring/hourEvaluator";
-import { checkCovers } from "../scoring/modelAgreement";
 import { daylightDayFor, daylightHours, findBestWindow } from "../scoring/windowFinder";
 import type { Launch, Site } from "../sites/site";
 import { HOUR_MS, byTime } from "../time";
@@ -92,21 +91,21 @@ function evaluateForecastIndexed(
 
 /**
  * True when RRFS covers enough of the day's window hours to be the primary model. The window hours
- * are the times either model has inside `daylightHours`. RRFS covers one when it has a result there
- * that isn't no data. With no window hours left, RRFS stands.
+ * are the times either model has inside `daylightHours`. RRFS covers one when its hour there has the
+ * core fields, so it wouldn't be no data. With no window hours left, RRFS stands.
  */
 function rrfsCoversDay(
-  results: Record<ModelName, HourResult[]>,
+  launch: Launch,
+  forecast: LaunchForecast,
   day: DaylightDay,
   now: number,
   defaults: ScoringDefaults,
 ): boolean {
-  const windowHours = new Set(
-    daylightHours([...results.ecmwf, ...results.rrfs], day, now).map((r) => r.time),
-  );
+  const times = (hours: readonly ModelHour[]) => new Set(daylightHours(hours, day, now).map((h) => h.time));
+  const windowHours = times([...forecast.ecmwf, ...forecast.rrfs]);
   if (windowHours.size === 0) return true;
-  const covered = daylightHours(results.rrfs, day, now).filter(checkCovers).length;
-  return covered / windowHours.size >= defaults.rrfsPrimaryMinDaylightShare;
+  const covered = times(forecast.rrfs.filter((h) => hasCoreData(h, launch)));
+  return covered.size / windowHours.size >= defaults.rrfsPrimaryMinDaylightShare;
 }
 
 /** The daylight rows and best window, with `primary` deciding and the other model as the check. */
@@ -165,12 +164,8 @@ export function evaluateLaunch(
   if (daylightDay === undefined) {
     return { launch, model, fellBack: false, daylight: [], window: undefined };
   }
-  const evaluated = evaluateForecastIndexed(site, launch, forecast, model, defaults);
-  // The cross-check reason is only a caution, so it never makes an hour no data: the requested
-  // model's own run measures RRFS coverage exactly. The fallback runs again so that ECMWF sees RRFS.
-  if (model === "rrfs" && !rrfsCoversDay(evaluated.results, daylightDay, now, defaults)) {
-    const ecmwf = evaluateForecastIndexed(site, launch, forecast, "ecmwf", defaults);
-    return launchEvaluation(launch, "ecmwf", true, ecmwf, daylightDay, now, defaults);
-  }
-  return launchEvaluation(launch, model, false, evaluated, daylightDay, now, defaults);
+  const fellBack = model === "rrfs" && !rrfsCoversDay(launch, forecast, daylightDay, now, defaults);
+  const primary = fellBack ? "ecmwf" : model;
+  const evaluated = evaluateForecastIndexed(site, launch, forecast, primary, defaults);
+  return launchEvaluation(launch, primary, fellBack, evaluated, daylightDay, now, defaults);
 }

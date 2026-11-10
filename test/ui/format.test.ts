@@ -23,6 +23,7 @@ import {
   loadingMoreLine,
   miles,
   oneDecimal,
+  siteModel,
   stageMessage,
   travelSummary,
   whole,
@@ -186,43 +187,78 @@ describe("fallbackLine", () => {
     expect(fallbackLine("rrfs", [site(false), site(false, false)])).toBeUndefined();
     expect(fallbackLine("rrfs", [])).toBeUndefined();
   });
-  it("says RRFS doesn't reach the day when every evaluated site fell back", () => {
+  it("says RRFS doesn't cover the day when every evaluated site fell back", () => {
     expect(fallbackLine("rrfs", [site(true), site(true, true), site(true)])).toBe(
-      "RRFS doesn't reach this day, so it uses ECMWF.",
+      "RRFS doesn't cover this day, so it uses ECMWF.",
     );
   });
   it("counts the sites that fell back when only some did", () => {
     expect(fallbackLine("rrfs", [site(true), site(false), site(true)])).toBe(
-      "2 sites use ECMWF (RRFS doesn't reach this day).",
+      "2 sites use ECMWF (RRFS doesn't cover this day).",
     );
   });
   it("uses the singular for one site out of several", () => {
     expect(fallbackLine("rrfs", [site(true), site(false), site(false)])).toBe(
-      "1 site uses ECMWF (RRFS doesn't reach this day).",
+      "1 site uses ECMWF (RRFS doesn't cover this day).",
     );
   });
   it("gives the all-sites line for a single evaluated site that fell back", () => {
-    expect(fallbackLine("rrfs", [site(true)])).toBe("RRFS doesn't reach this day, so it uses ECMWF.");
+    expect(fallbackLine("rrfs", [site(true)])).toBe("RRFS doesn't cover this day, so it uses ECMWF.");
   });
   it("counts a site as fallen back when any of its launches did", () => {
     expect(fallbackLine("rrfs", [site(true, false), site(false)])).toBe(
-      "1 site uses ECMWF (RRFS doesn't reach this day).",
+      "1 site uses ECMWF (RRFS doesn't cover this day).",
     );
   });
   it("doesn't count a site with no launch evaluations", () => {
     expect(fallbackLine("rrfs", [site(), site(true), site(true)])).toBe(
-      "RRFS doesn't reach this day, so it uses ECMWF.",
+      "RRFS doesn't cover this day, so it uses ECMWF.",
     );
     expect(fallbackLine("rrfs", [site(), site(false), site(true)])).toBe(
-      "1 site uses ECMWF (RRFS doesn't reach this day).",
+      "1 site uses ECMWF (RRFS doesn't cover this day).",
     );
     expect(fallbackLine("rrfs", [site(), site()])).toBeUndefined();
   });
 });
 
+describe("siteModel", () => {
+  const evaluation = (model: ModelName, fellBack: boolean): LaunchEvaluation => ({
+    launch: testLaunch(),
+    model,
+    fellBack,
+    daylight: [],
+    window: undefined,
+  });
+  const rec = (launches: LaunchEvaluation[], best?: ModelName): SiteRecommendation => ({
+    site: testSite(),
+    call: best === undefined ? "noGo" : "flyable",
+    launches,
+    best:
+      best === undefined
+        ? undefined
+        : {
+            launch: testLaunch(),
+            model: best,
+            window: { start: 0, end: 0, hours: [], score: 0, confidence: "high", warnings: [], conditions: [], cautions: [] },
+          },
+  });
+
+  it("is the best launch's model", () => {
+    expect(siteModel(rec([evaluation("ecmwf", true), evaluation("rrfs", false)], "ecmwf"), "rrfs")).toBe("ecmwf");
+    expect(siteModel(rec([evaluation("ecmwf", true), evaluation("rrfs", false)], "rrfs"), "rrfs")).toBe("rrfs");
+  });
+  it("is ECMWF with no window when every launch fell back", () => {
+    expect(siteModel(rec([evaluation("ecmwf", true), evaluation("ecmwf", true)]), "rrfs")).toBe("ecmwf");
+  });
+  it("is the requested model with no window and mixed launches, or none", () => {
+    expect(siteModel(rec([evaluation("ecmwf", true), evaluation("rrfs", false)]), "rrfs")).toBe("rrfs");
+    expect(siteModel(rec([]), "rrfs")).toBe("rrfs");
+  });
+});
+
 describe("launchFallbackNote", () => {
   it("says the launch uses ECMWF", () => {
-    expect(launchFallbackNote).toBe("RRFS doesn't reach this day here, so this launch uses ECMWF.");
+    expect(launchFallbackNote).toBe("RRFS doesn't cover this day here, so this launch uses ECMWF.");
   });
 });
 

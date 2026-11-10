@@ -6,7 +6,7 @@ import { effectiveLimits } from "../core/sites/site";
 import type { Launch, Site } from "../core/sites/site";
 import { ResultBadge } from "./CallBadge";
 import { ForecastStatus } from "./ForecastStatus";
-import { arcsLabel, cautionLine, confidenceLabel, dayLabel, driveLabel, feet, idealLabel, launchFallbackNote, miles } from "./format";
+import { arcsLabel, cautionLine, confidenceLabel, dayLabel, driveLabel, feet, idealLabel, launchFallbackNote, miles, siteModel } from "./format";
 import { HourlyTable } from "./HourlyTable";
 import { listHref } from "./route";
 import type { DayKey } from "../core/time";
@@ -113,7 +113,7 @@ export function SiteDetail({
         <dt>Rating</dt>
         <dd>{site.rating}</dd>
         <dt>Forecast model</dt>
-        <dd>{MODEL_LABEL[state.result.model]}</dd>
+        <dd>{MODEL_LABEL[siteModel(rec, state.result.model)]}</dd>
         {rec.driveTime !== undefined && (
           <>
             <dt>Drive time</dt>
