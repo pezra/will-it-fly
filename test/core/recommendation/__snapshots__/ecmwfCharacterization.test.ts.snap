@@ -107,8 +107,8 @@ exports[`ECMWF-primary characterization > pins the recorded forecast for 2026-11
     "mainReason": null,
   },
   {
-    "best": null,
-    "call": "noGo",
+    "best": "rmhpa/glenwood-lookout-mtn/north",
+    "call": "good",
     "id": "rmhpa/glenwood-lookout-mtn",
     "launches": [
       {
@@ -225,12 +225,11 @@ exports[`ECMWF-primary characterization > pins the recorded forecast for 2026-11
           },
           {
             "ecmwf": {
-              "call": "noGo",
+              "call": "good",
               "kinds": [
-                "wrongDirection",
                 "sledder",
               ],
-              "score": 0,
+              "score": 50.75,
             },
             "rrfs": {
               "call": "flyable",
@@ -244,13 +243,16 @@ exports[`ECMWF-primary characterization > pins the recorded forecast for 2026-11
           },
         ],
         "id": "rmhpa/glenwood-lookout-mtn/north",
-        "window": null,
+        "window": {
+          "cautions": [],
+          "confidence": "high",
+          "end": 1794099600000,
+          "score": 30.45,
+          "start": 1794096000000,
+        },
       },
     ],
-    "mainReason": {
-      "kind": "wrongDirection",
-      "text": "wind from SSE, outside launch directions",
-    },
+    "mainReason": null,
   },
   {
     "best": null,
@@ -1138,8 +1140,8 @@ exports[`ECMWF-primary characterization > pins the variant (RRFS gap and RRFS st
     "mainReason": null,
   },
   {
-    "best": null,
-    "call": "noGo",
+    "best": "rmhpa/glenwood-lookout-mtn/north",
+    "call": "good",
     "id": "rmhpa/glenwood-lookout-mtn",
     "launches": [
       {
@@ -1256,12 +1258,11 @@ exports[`ECMWF-primary characterization > pins the variant (RRFS gap and RRFS st
           },
           {
             "ecmwf": {
-              "call": "noGo",
+              "call": "good",
               "kinds": [
-                "wrongDirection",
                 "sledder",
               ],
-              "score": 0,
+              "score": 50.75,
             },
             "rrfs": {
               "call": "flyable",
@@ -1275,13 +1276,16 @@ exports[`ECMWF-primary characterization > pins the variant (RRFS gap and RRFS st
           },
         ],
         "id": "rmhpa/glenwood-lookout-mtn/north",
-        "window": null,
+        "window": {
+          "cautions": [],
+          "confidence": "high",
+          "end": 1794099600000,
+          "score": 30.45,
+          "start": 1794096000000,
+        },
       },
     ],
-    "mainReason": {
-      "kind": "wrongDirection",
-      "text": "wind from SSE, outside launch directions",
-    },
+    "mainReason": null,
   },
   {
     "best": null,

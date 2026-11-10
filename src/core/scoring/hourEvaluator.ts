@@ -392,7 +392,7 @@ export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORI
     reasons.push(reason("windTooWeak", `wind ${mph(wind.speedMph)} under min ${mph(limits.minMph)}`));
   }
 
-  // Launch wind direction, unless the wind is 0 mph.
+  // Launch wind direction, unless the wind rounds to 0 mph.
   let inIdeal = false;
   if (!curated) {
     reasons.push(reason("notCurated", "launch direction not curated"));

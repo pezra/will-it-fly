@@ -436,15 +436,17 @@ describe("boundaries", () => {
     return evalWith({ siteLimits: limits, hour: hourWith((h) => ((h.windMph = mph), (h.windDir = dir))) });
   };
 
-  it("direction rule applies at light wind, but not at 0 mph", () => {
-    for (const mph of [3.9, 0.1]) {
+  it("direction rule applies at light wind, but not when it rounds to 0 mph", () => {
+    for (const mph of [3.9, 0.5]) {
       const r = windAt(mph, 90);
       expect(kinds(r), `${mph} mph`).toContain("wrongDirection");
       expect(r.call, `${mph} mph`).toBe("noGo");
     }
-    const calm = windAt(0, 90);
-    expect(kinds(calm)).not.toContain("wrongDirection");
-    expect(calm.call).not.toBe("noGo");
+    for (const mph of [0.49, 0]) {
+      const r = windAt(mph, 90);
+      expect(kinds(r), `${mph} mph`).not.toContain("wrongDirection");
+      expect(r.call, `${mph} mph`).not.toBe("noGo");
+    }
   });
 
   it("at light wind, ideal gets the bonus and not-ideal is a caution", () => {
@@ -455,9 +457,9 @@ describe("boundaries", () => {
     expect(inIdeal.unpenalizedScore - notIdeal.unpenalizedScore).toBe(d.idealDirectionBonus);
   });
 
-  it("at 0 mph direction gives no reason, bonus or caution", () => {
+  it("rounding to 0 mph, direction gives no reason, bonus or caution", () => {
     // Ideal, OK but not ideal, and outside OK.
-    const results = [270, 240, 90].map((dir) => windAt(0, dir));
+    const results = [270, 240, 90].map((dir) => windAt(0.4, dir));
     for (const r of results) {
       expect(kinds(r)).not.toContain("wrongDirection");
       expect(kinds(r)).not.toContain("directionNotIdeal");

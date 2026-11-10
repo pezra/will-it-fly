@@ -11,9 +11,12 @@ export interface Wind {
   dirDeg: number;
 }
 
-/** False for a 0 mph wind, whose direction means nothing. */
+/**
+ * False for a wind under 0.5 mph, which every display rounds to 0 mph. Its direction is model
+ * noise.
+ */
 export function hasDirection(wind: Wind): boolean {
-  return wind.speedMph > 0;
+  return wind.speedMph >= 0.5;
 }
 
 /** Eastward component: -s*sin(theta). */
