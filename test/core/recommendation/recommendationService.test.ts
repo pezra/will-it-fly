@@ -234,7 +234,8 @@ describe("getRecommendations", () => {
     const [boulder, butte, glenwood] = result.sites;
     expect(boulder?.best?.launch.id).toBe("rmhpa/boulder-wonderland/upper");
     expect(boulder?.best?.window.confidence).toBe("high");
-    expect(glenwood?.best?.window.confidence).toBe("medium");
+    // Low because Glenwood's light winds differ in direction between the models.
+    expect(glenwood?.best?.window.confidence).toBe("low");
     expect(windowLabel(boulder?.best?.window ?? never())).toBe("11:00\u201317:00");
     expect((boulder?.best?.window.score ?? 0) > (glenwood?.best?.window.score ?? 1)).toBe(true);
     expect(boulder?.mainReason).toBeUndefined();
@@ -462,7 +463,7 @@ describe("getRecommendations", () => {
     }
     // Not today, so the morning counts too (at 11:00 on the day itself, the window started at 11:00).
     const boulder = result.sites.find((r) => r.site.id === "rmhpa/boulder-wonderland");
-    expect(windowLabel(boulder?.best?.window ?? never())).toBe("09:00\u201317:00");
+    expect(windowLabel(boulder?.best?.window ?? never())).toBe("10:00\u201317:00");
 
     // The same day again is served from the day entries.
     await getRecommendations(later, deps(stub, cache, NOW_EARLIER + MIN_MS));

@@ -68,7 +68,7 @@ Each hour is **no-go** if any of these hold:
 | Precipitation (hour h or h+1) | ≥ 0.25 mm |
 | Launch wind over the site max | > max |
 | Launch wind under the site min | < min, when min > 0 |
-| Wind direction outside the launch's OK range | wind ≥ 4 mph (below that, direction is ignored) |
+| Wind direction outside the launch's OK range | any wind over 0 mph |
 | Over the back aloft | aloft wind ≥ 20 mph from outside the OK range |
 | Strong wind aloft | ≥ 35 mph from any direction |
 | Inconsistent wind 5 mi away | differs by > 90°, or by > 60° with the neighbor ≥ 10 mph (both ≥ 5 mph) |
@@ -101,6 +101,8 @@ Sites with `xc` or `soaring` get a bonus if those look likely to work.
 | XC potential | the site is marked XC and thermal index ≤ −3 °C, boundary layer ≥ 2000 m and wind aloft under 25 mph | +5 |
 
 Ridge lift doesn't raise the site's wind max, that's a safety limit.
+
+The direction rules (outside the OK range, not ideal, and the ideal-direction score) apply at any wind speed, even 1 mph, but not at 0 mph, which has no direction.
 
 If a launch has no ideal range, anywhere in its OK range counts as ideal. A single ideal heading (e.g. "Ideal 200") counts as ±15°.
 
@@ -141,7 +143,7 @@ A window is a run of consecutive daylight hours (from sunrise, or from the curre
 | 2 h | 0.8 |
 | 3 h or more | 1.0 |
 
-The check model **agrees** with the primary model for an hour when the check model isn't no-go, the launch wind directions are within 30° (or both are under 4 mph), and the speeds are within 5 mph.
+The check model **agrees** with the primary model for an hour when the check model isn't no-go, the launch wind directions are within 30° at any speed (unless either wind is 0 mph), and the speeds are within 5 mph.
 
 | Confidence | When | Weight |
 |---|---|---|

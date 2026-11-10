@@ -369,7 +369,8 @@ export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORI
   const limits = effectiveLimits(ctx.site, launch);
   const { ok } = launch.directions;
   const curated = ok.length > 0;
-  const directional = wind.speedMph >= defaults.variableDirectionBelowMph;
+  // A 0 mph wind has no meaningful direction.
+  const directional = wind.speedMph > 0;
 
   // Precipitation and gusts: the preceding-hour values, so max(h, h+1).
   const precip = precipNoGoMm(hour, next, defaults);
@@ -392,7 +393,7 @@ export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORI
     reasons.push(reason("windTooWeak", `wind ${mph(wind.speedMph)} under min ${mph(limits.minMph)}`));
   }
 
-  // Launch wind direction. Below the variable threshold, direction is ignored.
+  // Launch wind direction, at any speed but 0.
   let inIdeal = false;
   if (!curated) {
     reasons.push(reason("notCurated", "launch direction not curated"));

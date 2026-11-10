@@ -14,7 +14,7 @@ import { BOULDER, BUTTE, GLENWOOD, fixtureSites } from "../../support/fixtureWea
 
 // Pins the ECMWF-primary output (calls, scores, reasons, windows, ranking) of the recorded forecast
 // so a change to how the models' roles are chosen can't move it by accident. The snapshot must not
-// change except to follow a rename.
+// change except to follow a rename or a deliberate scoring change.
 
 /** 2026-11-07 11:00 MST. The fixture covers Nov 7 and Nov 8. */
 const NOW = Date.UTC(2026, 10, 7, 18, 0, 0);
@@ -23,6 +23,7 @@ const DAYS = ["2026-11-07", "2026-11-08"] as const;
 // Hourly index 0 is 2026-11-07 00:00 MST, so Nov 8 07:00 MST (14:00 UTC) is index 31.
 const NOV8_0700_MST = 31;
 const NOV8_1000_MST = 34;
+const NOV8_1500_MST = 39;
 const NOV8_1600_MST = 40;
 
 let sites: Site[] = [];
@@ -62,8 +63,8 @@ function blankRRFS(location: Locations[number] | undefined, from: number, to: nu
 /**
  * The variant, for Nov 8:
  * - Boulder's RRFS is missing for most of the daylight, so its window has no cross-check.
- * - Glenwood's RRFS has a rainy hour at 10:00 MST inside a stretch where ECMWF says good, so
- *   ECMWF's hour carries "RRFS sees storms".
+ * - Glenwood's RRFS has a rainy hour at 15:00 MST inside a stretch where ECMWF says go, so
+ *   ECMWF's 14:00 and 15:00 hours carry "RRFS sees storms".
  * - Crested Butte's ECMWF has rain all day (and its RRFS doesn't), so it has no window and
  *   a main reason that only ECMWF's reasons give.
  */
@@ -73,7 +74,7 @@ const VARIANT = editedLaunches((locations) => {
   const glenwood = locations[0];
   const precip = glenwood?.hourly["precipitation_ncep_rrfs_conus"];
   if (precip === undefined) throw new Error("no RRFS precipitation");
-  precip[NOV8_1000_MST] = 2;
+  precip[NOV8_1500_MST] = 2;
 });
 
 async function recommend(launchBody: string, day: string): Promise<RecommendationResult> {

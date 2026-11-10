@@ -12,9 +12,9 @@ export function checkCovers(check: HourResult | undefined): check is HourResult 
 
 /**
  * Whether the check model agrees with the primary model for one hour. The check must be covered and
- * not no-go, its launch wind direction within the limit of the primary's (or both winds calm), and
- * its speed within the limit. Calm waives only the direction check. Missing launch wind on either
- * side is a disagreement.
+ * not no-go, its launch wind direction within the limit of the primary's at any speed (unless
+ * either wind is 0 mph, which has no meaningful direction), and its speed within the limit. Missing
+ * launch wind on either side is a disagreement.
  */
 export function checkAgrees(
   primary: HourResult,
@@ -26,9 +26,8 @@ export function checkAgrees(
   const b = check.launchWind;
   if (a === undefined || b === undefined) return false;
   if (Math.abs(a.speedMph - b.speedMph) > defaults.agreementMaxSpeedDiffMph) return false;
-  const bothCalm =
-    a.speedMph < defaults.agreementCalmBelowMph && b.speedMph < defaults.agreementCalmBelowMph;
-  return bothCalm || angularDifference(a.dirDeg, b.dirDeg) <= defaults.agreementMaxDirDiffDeg;
+  const eitherCalm = a.speedMph === 0 || b.speedMph === 0;
+  return eitherCalm || angularDifference(a.dirDeg, b.dirDeg) <= defaults.agreementMaxDirDiffDeg;
 }
 
 /** Confidence from the share of check-covered hours where the check agrees (not the primaryOnly case). */
