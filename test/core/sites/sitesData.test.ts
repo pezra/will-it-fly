@@ -10,19 +10,26 @@ function allLimits(site: Site): WindLimits[] {
   return [site.limits, ...site.launches.flatMap((l) => (l.limits === undefined ? [] : [l.limits]))];
 }
 
+/** Each id prefix and the host its sites are curated from. */
+const SOURCE_HOSTS: Readonly<Record<string, string>> = {
+  rmhpa: "www.rmhpa.org",
+  pawnee: "pawneeparagliding.com",
+};
+
 function inRange(x: number, lo: number, hi: number): boolean {
   return x >= lo && x <= hi;
 }
 
 describe("sites.json", () => {
-  it("hasAll21SitesWithUniqueIds", () => {
-    expect(sites.length).toBe(21);
+  it("hasAll26SitesWithUniqueIds", () => {
+    expect(sites.length).toBe(26);
     expect(new Set(sites.map((s) => s.id)).size).toBe(sites.length);
     const launchIds = sites.flatMap((s) => s.launches.map((l) => l.id));
     expect(new Set(launchIds).size).toBe(launchIds.length);
     for (const site of sites) {
-      expect(site.id.startsWith("rmhpa/"), site.id).toBe(true);
-      expect(new URL(site.sourceURL).host, site.id).toBe("www.rmhpa.org");
+      const prefix = site.id.split("/")[0] ?? "";
+      expect(Object.keys(SOURCE_HOSTS), site.id).toContain(prefix);
+      expect(new URL(site.sourceURL).host, site.id).toBe(SOURCE_HOSTS[prefix]);
       for (const launch of site.launches) {
         expect(launch.id.startsWith(`${site.id}/`), launch.id).toBe(true);
       }
@@ -30,7 +37,7 @@ describe("sites.json", () => {
   });
 
   it("hasCleanIds", () => {
-    const re = /^rmhpa\/[a-z0-9]+(-[a-z0-9]+)*(\/[a-z0-9]+(-[a-z0-9]+)*)?$/;
+    const re = /^(rmhpa|pawnee)\/[a-z0-9]+(-[a-z0-9]+)*(\/[a-z0-9]+(-[a-z0-9]+)*)?$/;
     for (const site of sites) {
       expect(site.id).toMatch(re);
       for (const launch of site.launches) expect(launch.id).toMatch(re);
@@ -64,7 +71,13 @@ describe("sites.json", () => {
 
   it("idealSpeedMissingOnlyWherePageGivesNone", () => {
     const missing = sites.filter((s) => s.limits.idealMph === undefined).map((s) => s.id).sort();
-    expect(missing).toEqual(["rmhpa/aspen", "rmhpa/blodgett-open-space"]);
+    expect(missing).toEqual([
+      "pawnee/indian-caves",
+      "pawnee/pony-ridge",
+      "pawnee/the-buttes",
+      "rmhpa/aspen",
+      "rmhpa/blodgett-open-space",
+    ]);
   });
 
   it("arcBoundsAreNormalized", () => {
@@ -110,6 +123,12 @@ describe("sites.json", () => {
     const golden = launch("rmhpa/golden-lookout-mountain/north");
     expect(arcsContain(golden.directions.ok, 0)).toBe(true);
     expect(arcsContain(golden.directions.ok, 180)).toBe(false);
+    const ponySouth = launch("pawnee/pony-ridge/south");
+    expect(arcsContain(ponySouth.directions.ideal, 225)).toBe(true);
+    expect(arcsContain(ponySouth.directions.ideal, 45)).toBe(false);
+    const buttes = launch("pawnee/the-buttes/main");
+    expect(arcsContain(buttes.directions.ok, 90)).toBe(true);
+    expect(arcsContain(buttes.directions.ok, 270)).toBe(false);
   });
 
   // Judgment calls the author made on 2026-11-08 (see the notes in the JSON).
@@ -128,6 +147,15 @@ describe("sites.json", () => {
     const ruthies = launch("rmhpa/aspen/ruthies").directions.ok;
     expect(arcsContain(ruthies, 255)).toBe(true);
     expect(arcsContain(ruthies, 250)).toBe(false);
+    // Read from OpenTopoMap contours on 2026-11-09: the faces look about 245 and 130.
+    const pawneeWest = launch("pawnee/pawnee-west/main").directions;
+    expect(arcsContain(pawneeWest.ok, 200)).toBe(true);
+    expect(arcsContain(pawneeWest.ok, 300)).toBe(false);
+    expect(arcsContain(pawneeWest.ideal, 245)).toBe(true);
+    const section15 = launch("pawnee/section-15/main").directions;
+    expect(arcsContain(section15.ok, 90)).toBe(true);
+    expect(arcsContain(section15.ok, 270)).toBe(false);
+    expect(arcsContain(section15.ideal, 130)).toBe(true);
   });
 
   it("lists only real launches under soaring, and Boulder and Golden are not ridge sites", () => {

@@ -68,7 +68,8 @@ export function App({ debug }: { debug: DebugParams }) {
       <footer>
         Weather data by{" "}
         <a href="https://open-meteo.com/">Open-Meteo.com</a> (CC BY 4.0) · Site info from{" "}
-        <a href="https://www.rmhpa.org/">RMHPA</a>, verify before flying · Routing by{" "}
+        <a href="https://www.rmhpa.org/">RMHPA</a> and{" "}
+        <a href="https://pawneeparagliding.com/">pawneeparagliding.com</a>, verify before flying · Routing by{" "}
         <a href="https://project-osrm.org/">OSRM</a> and place search by{" "}
         <a href="https://nominatim.org/">Nominatim</a>, ©{" "}
         <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors · Drive times send your start point, rounded to about 1 km,

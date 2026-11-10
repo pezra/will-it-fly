@@ -35,7 +35,7 @@ export interface Launch {
   limits?: WindLimits;
 }
 
-/** RMHPA says the site offers ridge soaring. Its notes quote or summarize what the page says. */
+/** The source says the site offers ridge soaring. Its notes quote or summarize what it says. */
 export interface SiteSoaring {
   notes: string;
   /** Overrides `ridgeLiftMinMph` for this site. */
@@ -44,7 +44,7 @@ export interface SiteSoaring {
   launchIds?: string[];
 }
 
-/** RMHPA says the site has cross-country potential. */
+/** The source says the site has cross-country potential. */
 export interface SiteXC {
   notes: string;
 }
@@ -65,7 +65,7 @@ export interface Site {
 /** Limits with every default filled in. */
 export type EffectiveLimits = WindLimits & { gustFactorMph: number };
 
-/** Used when an RMHPA page lists no PG limits. */
+/** Used when a site's source lists no PG limits. */
 export const DEFAULT_WIND_LIMITS: Readonly<EffectiveLimits> = Object.freeze({
   minMph: 0,
   maxMph: 15,

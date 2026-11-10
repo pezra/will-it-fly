@@ -24,10 +24,18 @@ import {
   miles,
   oneDecimal,
   siteModel,
+  sourceLabel,
   stageMessage,
   travelSummary,
   whole,
 } from "../../src/ui/format";
+
+describe("sourceLabel", () => {
+  it("names the source by its host, without www", () => {
+    expect(sourceLabel("https://www.rmhpa.org/flying-sites/kenosha-pass")).toBe("rmhpa.org");
+    expect(sourceLabel("https://pawneeparagliding.com/")).toBe("pawneeparagliding.com");
+  });
+});
 
 describe("number formats", () => {
   it("rounds cloud base to 100 ft with a leading ≈", () => {
