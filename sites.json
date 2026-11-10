@@ -712,7 +712,7 @@
     },
     {
       "id": "pawnee/pony-ridge",
-      "name": "Pawnee - Pony Ridge",
+      "name": "Pony Ridge",
       "sourceURL": "https://pawneeparagliding.com/",
       "notes": "West Launch works best W-WNW. It's about the same difficulty as South Launch but has much higher consequences. South Launch works best WSW-S. It's an easy hike back up, with excellent kiting in the landing area, and the map calls it a great first stop in the Pawnee area. Both launches are an easy walk from the main parking area, and there's a southern parking area with its own walk up. Close the gate behind you at the entrance. Not all the land is public, so check the map's Public Land layer. The camping area by the entrance is good for camping and kiting. Curation notes: the map gives no rating or PG limits, so the rating is 'Unrated' and the limits are the default. The soaring note is the author's (2026-11-09). The map names the launches only in its hike lines ('South Launch', 'West Launch'). Not included: the Training hills next to the main parking (training hills aren't curated), the pay-in towing area at the entrance camping, and the map's Bird Tour Tow Area and 103 Tow Site (powerlines cross the 103 tow road about half way), since towing isn't scored. Elevations from Open-Meteo. Curated from the 'Pawnee Playground' Google My Map that pawneeparagliding.com redirects to.",
       "rating": "Unrated",
@@ -774,7 +774,7 @@
     },
     {
       "id": "pawnee/the-buttes",
-      "name": "Pawnee - The Buttes",
+      "name": "The Buttes",
       "sourceURL": "https://pawneeparagliding.com/",
       "notes": "Closed for peregrine nesting March 1 to June 30. The app has no seasonal closures, so it shows this site as open then: don't fly it. Works NE-E-SE. Mildly technical. Curation notes: the map gives no rating or PG limits. The P2 rating and the soaring note are the author's (2026-11-09), and the limits are the default. Elevation from Open-Meteo. Curated from the 'Pawnee Playground' Google My Map that pawneeparagliding.com redirects to.",
       "rating": "P2",
@@ -799,7 +799,7 @@
     },
     {
       "id": "pawnee/indian-caves",
-      "name": "Pawnee - Indian Caves",
+      "name": "Indian Caves",
       "sourceURL": "https://pawneeparagliding.com/",
       "notes": "Works best with a S wind. Launch anywhere along the ridge. There's a barbed wire fence near the base of the ridge. Only a small section of the ridge is public, so check the map's Public Land layer. Camping is more secluded: park near the trail and don't drive onto the ridge. Curation notes: the map gives no rating or PG limits, so the rating is 'Unrated' and the limits are the default. 'Works best with S wind' is used as a single-degree ideal of 180, with ok = 180 +/-45. Elevation from Open-Meteo. Curated from the 'Pawnee Playground' Google My Map that pawneeparagliding.com redirects to.",
       "rating": "Unrated",
@@ -824,7 +824,7 @@
     },
     {
       "id": "pawnee/section-15",
-      "name": "Pawnee - Section 15",
+      "name": "Section 15",
       "sourceURL": "https://pawneeparagliding.com/",
       "notes": "Launch on the SE face of a small knob at the ESE end of a low bluff line. The knob's steep side wraps from E round to S. The steep face is only about 115 ft, above open plain falling gently S and SE, so ridge lift likely needs 10+ mph, and wind can go round a knob. The launch is on State Land (see the map's layer). Curation notes: the map gives only a launch and an entrance, with no direction, rating or PG limits, so the rating is 'Unrated'. The soaring note is the author's (2026-11-09). The direction and ideal speed are estimated from OpenTopoMap contours (2026-11-09): the contours through the launch run about 40 degrees, so the face looks about 130. ok = 130 +/-45 and ideal = 130 +/-15. Open-Meteo's coarser (about 90 m) elevation data puts the downhill direction nearer 65, so the direction is less certain than it looks. The steep face runs from about 1,380 m down to 1,340 m, above plain at about 1,330 m. Ideal 12 mph, with the default 15 mph max kept. Elevation from Open-Meteo. Curated from the 'Pawnee Playground' Google My Map that pawneeparagliding.com redirects to.",
       "rating": "Unrated",
@@ -849,7 +849,7 @@
     },
     {
       "id": "bhgc/duck-hill",
-      "name": "Lake Tahoe-Reno - Duck Hill",
+      "name": "Duck Hill",
       "sourceURL": "https://www.bhgc.org/sites/laketahoe-renoarea/index.html#site_duck-hill-nv-usa",
       "notes": "The launch is the top of Duck Hill, above Washoe Lake, and the LZ is about 1.2 km west by Eastlake Boulevard. BHGC lists it as unregulated and recommends an H3 rating, or H2 with an instructor (hang gliding ratings; it gives none for paragliders). Curation notes: BHGC gives no wind direction. BHGC gives no rating or PG limits, so the rating is 'Unrated' and the limits are the default. The direction is estimated from the terrain (2026-11-09): the biggest drop is toward about 326, down the NW slope to the lake, so ok = 326 +/-45 and ideal = 326 +/-15. The LZ is west, at the edge of that arc. Elevation from BHGC. The XC call is the author's (2026-11-09). Curated from the BHGC Lake Tahoe-Reno Area site guide.",
       "rating": "Unrated",
@@ -875,7 +875,7 @@
     },
     {
       "id": "bhgc/hotsprings-mountain",
-      "name": "Lake Tahoe-Reno - Hotsprings Mountain",
+      "name": "Hotsprings Mountain",
       "sourceURL": "https://www.bhgc.org/sites/laketahoe-renoarea/index.html#site_hotsprings-mountain-nv-usa",
       "notes": "Works with SW, W and NW wind. LP1 is the north launch, nearer the LZ, and LP2 is about 1.4 km south. BHGC lists it as unregulated and recommends an H3 rating, or H2 with an instructor (hang gliding ratings; it gives none for paragliders). Curation notes: BHGC's site data file (content/sites/sites.dcf in its website repo, not shown on the page) gives the directions as 'SW, W, NW', used as ok 225-315 with no ideal for both launches. BHGC gives no rating or PG limits, so the rating is 'Unrated' and the limits are the default. The terrain agrees: LP1 faces about 281 and LP2 about 275. The launches share the LZ and stay one site, as BHGC lists them. Elevations from Open-Meteo. Curated from the BHGC Lake Tahoe-Reno Area site guide.",
       "rating": "Unrated",
@@ -912,7 +912,7 @@
     },
     {
       "id": "bhgc/mcclellan",
-      "name": "Lake Tahoe-Reno - McClellan",
+      "name": "McClellan",
       "sourceURL": "https://www.bhgc.org/sites/laketahoe-renoarea/index.html#site_mcclellan-nv-usa",
       "notes": "Very easy in the right conditions, and it can be scary in the wrong ones. BHGC lists it as unregulated and gives no LZ location, only an LZ elevation of 5,050 ft. Curation notes: BHGC gives no wind direction. BHGC gives no rating or PG limits, so the rating is 'Unrated' and the limits are the default. The direction is estimated from the terrain (2026-11-09): the launch is on a NNW-facing slope below a knob, with the biggest drop toward about 337, so ok = 337 +/-45 and ideal = 337 +/-15. BHGC's launch elevation, 7,200 ft, is about 300 ft above the terrain data at its pin (about 6,900 ft), and the knob just south is about 7,100 ft, so the launch may be nearer the knob than the pin shows. BHGC links a HangGliding.org page for McClellan, which couldn't be read (it blocks automated fetches). Elevation from BHGC. The XC call is the author's (2026-11-09). Curated from the BHGC Lake Tahoe-Reno Area site guide.",
       "rating": "Unrated",
@@ -937,7 +937,7 @@
     },
     {
       "id": "bhgc/palomino",
-      "name": "Lake Tahoe-Reno - Palomino",
+      "name": "Palomino",
       "sourceURL": "https://www.bhgc.org/sites/laketahoe-renoarea/index.html#site_palomino-nv-usa",
       "notes": "A shallow launch, often with high winds. Works with W, SW and NW wind. BHGC lists it as unregulated and recommends an H3 rating, or H2 with an instructor (hang gliding ratings; it gives none for paragliders). Curation notes: BHGC's site data file (content/sites/sites.dcf in its website repo, not shown on the page) gives the directions as 'W, SW, NW', used as ok 225-315 with no ideal for both launches. BHGC gives no rating or PG limits, so the rating is 'Unrated' and the limits are the default. The terrain agrees: Upper faces about 260 and Lower about 226. The launches are about 600 m apart and share the LZ, so they stay one site. Elevations from BHGC. Curated from the BHGC Lake Tahoe-Reno Area site guide.",
       "rating": "Unrated",
@@ -974,7 +974,7 @@
     },
     {
       "id": "bhgc/peavine-mt",
-      "name": "Lake Tahoe-Reno - Peavine Mt",
+      "name": "Peavine Mt",
       "sourceURL": "https://www.bhgc.org/sites/laketahoe-renoarea/index.html#site_peavine-mt-nv-usa",
       "notes": "BHGC lists it as unregulated and recommends an H3 rating (a hang gliding rating; it gives none for paragliders). BHGC gives no LZ, and points to paraglidingweatherreno.com for local weather. Curation notes: BHGC gives no wind direction. BHGC gives no rating or PG limits, so the rating is 'Unrated' and the limits are the default. The directions are estimated from the terrain (2026-11-09) and are uncertain. Bowl is on a flat spot at the top of the east-facing slope into the bowl NE of Peavine Peak, and its face looks about 67.5. Tower is just east of the summit towers, and its face looks about 90. ok = face +/-45 and ideal = face +/-15. The terrain script's own estimate was about 9 for both, from the longer drop to the north, but OpenTopoMap's contours at both pins run about N-S. The launches are about 1 km apart off the same summit road and stay one site, as BHGC lists them. Elevations from Open-Meteo. Curated from the BHGC Lake Tahoe-Reno Area site guide.",
       "rating": "Unrated",
@@ -1010,7 +1010,7 @@
     },
     {
       "id": "bhgc/petersen-mountain-rainbow-ridge",
-      "name": "Lake Tahoe-Reno - Petersen Mountain / Rainbow Ridge",
+      "name": "Petersen Mountain / Rainbow Ridge",
       "sourceURL": "https://www.bhgc.org/sites/laketahoe-renoarea/index.html#site_petersen-mountain-rainbow-ridge-nv-usa",
       "notes": "The LZ is a city park ESE of the lower launch. BHGC lists it as unregulated and recommends an H3 rating, or H2 with an instructor (hang gliding ratings; it gives none for paragliders). Curation notes: BHGC gives no wind direction. BHGC gives no rating or PG limits, so the rating is 'Unrated' and the limits are the default. The directions are estimated from the terrain (2026-11-09): Lower faces about 110, Middle about 131 and Upper about 153, so ok = face +/-45 and ideal = face +/-15. The three launches are on one ridge, about 1.9 km from Lower to Upper, and share the LZ, so they stay one site, as BHGC lists them. Elevations from BHGC. Curated from the BHGC Lake Tahoe-Reno Area site guide.",
       "rating": "Unrated",
@@ -1059,7 +1059,7 @@
     },
     {
       "id": "bhgc/slide-mountain",
-      "name": "Lake Tahoe-Reno - Slide Mountain",
+      "name": "Slide Mountain",
       "sourceURL": "https://www.bhgc.org/sites/laketahoe-renoarea/index.html#site_slide-mountain-nv-usa",
       "notes": "A good first mountain. Beware of wind over the back. Works with E and SE wind. BHGC lists it as unregulated and recommends an H3 rating, or H2 with an instructor (hang gliding ratings; it gives none for paragliders). BHGC points to paraglidingweatherreno.com for local weather. Curation notes: BHGC's site data file (content/sites/sites.dcf in its website repo, not shown on the page) gives the directions as 'E, SE', used as ok 90-135 with no ideal. BHGC gives no rating or PG limits, so the rating is 'Unrated' and the limits are the default. The terrain agrees, with the face about 108. BHGC links a HangGliding.org page for Slide Mountain, which couldn't be read (it blocks automated fetches). Elevation from BHGC. The XC call is the author's (2026-11-09). Curated from the BHGC Lake Tahoe-Reno Area site guide.",
       "rating": "Unrated",
@@ -1085,7 +1085,7 @@
     },
     {
       "id": "bhgc/spooner",
-      "name": "Lake Tahoe-Reno - Spooner",
+      "name": "Spooner",
       "sourceURL": "https://www.bhgc.org/sites/laketahoe-renoarea/index.html#site_spooner-nv-usa",
       "notes": "The bailout LZ is behind a locked gate. BHGC gives no LZ location. BHGC lists it as unregulated and recommends an H3 rating (a hang gliding rating; it gives none for paragliders). Curation notes: BHGC gives no wind direction. BHGC gives no rating or PG limits, so the rating is 'Unrated' and the limits are the default. The direction is estimated from the terrain (2026-11-09) and is uncertain: the launch is on a small summit knob with steep ground to the north and to the SE. The biggest drop is toward about 13, so ok = 13 +/-45 and ideal = 13 +/-15, but the SE side (about 112-135) drops almost as far. Elevation from Open-Meteo. Curated from the BHGC Lake Tahoe-Reno Area site guide.",
       "rating": "Unrated",

@@ -2,14 +2,17 @@
 
 Usage:
   python3 -I terrain.py <cache_dir> launch <lat> <lon> [facing]
-      One launch. Without a facing, it estimates one (the bearing with the biggest drop).
+      One launch. Without a facing, it estimates one (the bearing with the biggest drop within
+      200 m) and also prints the drop toward each of the 16 compass points.
   python3 -I terrain.py <cache_dir> sites <sites.json> [id_prefix]
       Every launch with a direction, optionally only ids starting with id_prefix.
 
 For each launch it prints the facing, the face's height (the biggest drop within 800 m downwind,
 starting up to 400 m ahead of the pin), its steepest 100 m, its length across the wind (where the
-face is at least half as high), the highest ground out to 5 km upwind relative to the top, and a
-soaring suggestion. Needs Pillow.
+face is at least half as high), the highest ground out to 5 km upwind relative to the top, the
+terrain's elevation at the pin (with the difference from elevationFt in sites mode, marked ! when
+it's over 150 ft), and a soaring suggestion. An estimated facing gets "also <bearing>" when another
+side drops nearly as far. Needs Pillow.
 """
 
 from __future__ import annotations
@@ -33,6 +36,19 @@ SOAR_MIN_HEIGHT_M = 40
 SOAR_MIN_STEEP_DEG = 15
 SOAR_MIN_LENGTH_M = 400
 MOUNTAIN_M = 150
+
+# Calibrated on the 44 launches with stated directions on 2026-11-09. The biggest drop within
+# NEAR_M of the pin lands within 45 degrees of the stated facing for 33 of them; the biggest drop
+# out to 800 m got 25, since a long slope farther off outweighed the ground at launch. It's still
+# wrong about one time in four, often because the pin is on the ridgetop, not the launch.
+NEAR_M = 200
+# Another side counts as nearly as steep when its near drop is this share of the facing's. At 0.7
+# it flags about half the misses and a third of the hits, so check every estimate on the contours.
+AMBIGUOUS_RATIO = 0.7
+AMBIGUOUS_APART_DEG = 67.5
+# A recorded launch elevation this far from the terrain data is worth a note.
+ELEVATION_MISMATCH_FT = 150
+COMPASS = "N NNE NE ENE E ESE SE SSE S SSW SW WSW W WNW NW NNW".split()
 
 _cache_dir = ""
 _tiles: dict = {}
@@ -100,13 +116,38 @@ def face_metrics(lat: float, lon: float, facing: float) -> tuple[float, float, i
     return height, steep, foot, top
 
 
+def near_drop(lat: float, lon: float, bearing: float) -> float:
+    """The biggest drop within NEAR_M of the pin along a bearing, in metres."""
+    top = elevation(lat, lon)
+    return max(top - elevation(*offset(lat, lon, bearing, d)) for d in range(20, NEAR_M + 1, 20))
+
+
 def estimate_facing(lat: float, lon: float) -> float:
-    """The bearing with the biggest drop, to the nearest degree."""
+    """The bearing with the biggest drop near the pin, to the nearest degree."""
     def drop(bearing: float) -> float:
-        return face_metrics(lat, lon, bearing)[0]
+        return near_drop(lat, lon, bearing)
 
     coarse = max(range(0, 360, 10), key=drop)
     return max(((coarse + d) % 360 for d in range(-9, 10)), key=drop)
+
+
+def other_facing(lat: float, lon: float, facing: float) -> float | None:
+    """A bearing at least AMBIGUOUS_APART_DEG from the facing whose near drop is nearly as big."""
+    best = near_drop(lat, lon, facing)
+    drops = {b: near_drop(lat, lon, b) for b in range(0, 360, 10) if angle(b, facing) >= AMBIGUOUS_APART_DEG}
+    other = max(drops, key=drops.get, default=None)
+    if other is None or best <= 0 or drops[other] < AMBIGUOUS_RATIO * best:
+        return None
+    return other
+
+
+def angle(a: float, b: float) -> float:
+    return abs((a - b + 180) % 360 - 180)
+
+
+def compass_drops(lat: float, lon: float) -> str:
+    """The near drop toward each of the 16 compass points."""
+    return " ".join(f"{name} {near_drop(lat, lon, i * 22.5):.0f}" for i, name in enumerate(COMPASS))
 
 
 def length(lat: float, lon: float, facing: float, height: float) -> int:
@@ -147,6 +188,8 @@ def measure(lat: float, lon: float, facing: float | None) -> dict:
     return {
         "facing": round(facing),
         "facingEstimated": estimated,
+        "otherFacing": other_facing(lat, lon, facing) if estimated else None,
+        "elevationFt": round(elevation(lat, lon) * 3.28084),
         "heightM": round(height),
         "heightFt": round(height * 3.28084),
         "steepestDeg": round(steep),
@@ -164,11 +207,16 @@ def arcs_facing(launch: dict) -> float | None:
     return (arc["from"] + ((arc["to"] - arc["from"]) % 360) / 2) % 360
 
 
-def print_row(name: str, m: dict, soaring: str = "") -> None:
+def print_row(name: str, m: dict, soaring: str = "", recorded_ft: float | None = None) -> None:
     facing = f"{m['facing']}{'*' if m['facingEstimated'] else ''}"
+    elev = f"{m['elevationFt']}"
+    if recorded_ft is not None:
+        diff = round(recorded_ft - m["elevationFt"])
+        elev += f" ({diff:+}{'!' if abs(diff) > ELEVATION_MISMATCH_FT else ''})"
+    also = f"  also {m['otherFacing']}" if m["otherFacing"] is not None else ""
     print(
         f"{name:44} {soaring:6} {facing:>5} {m['heightM']:4} m {m['steepestDeg']:3}° "
-        f"{m['lengthM']:5} m {m['upwindM']:+5} m  {m['suggestion']}"
+        f"{m['lengthM']:5} m {m['upwindM']:+5} m {elev:>14}  {m['suggestion']}{also}"
     )
 
 
@@ -176,11 +224,15 @@ def main() -> None:
     global _cache_dir
     _cache_dir, mode = sys.argv[1], sys.argv[2]
     os.makedirs(_cache_dir, exist_ok=True)
-    print(f"{'launch':44} {'soar':6} {'faces':>5} {'height':>6} {'steep':>4} {'length':>7} {'upwind':>7}  suggestion")
+    print(
+        f"{'launch':44} {'soar':6} {'faces':>5} {'height':>6} {'steep':>4} {'length':>7} {'upwind':>7} "
+        f"{'pin ft':>14}  suggestion"
+    )
     if mode == "launch":
         lat, lon = float(sys.argv[3]), float(sys.argv[4])
         facing = float(sys.argv[5]) if len(sys.argv) > 5 else None
         print_row(f"{lat},{lon}", measure(lat, lon, facing))
+        print(f"drop within {NEAR_M} m: {compass_drops(lat, lon)}")
     else:
         prefix = sys.argv[4] if len(sys.argv) > 4 else ""
         for site in json.load(open(sys.argv[3]))["sites"]:
@@ -191,8 +243,9 @@ def main() -> None:
                 marked = soar is not None and launch["id"] in soar.get("launchIds", [launch["id"]])
                 c = launch["coordinate"]
                 m = measure(c["latitude"], c["longitude"], arcs_facing(launch))
-                print_row(launch["id"], m, "yes" if marked else "-")
+                print_row(launch["id"], m, "yes" if marked else "-", launch.get("elevationFt"))
     print("* facing estimated from the terrain")
+    print("pin ft: the terrain's elevation at the pin; in sites mode, (elevationFt minus that), ! over 150 ft")
 
 
 if __name__ == "__main__":

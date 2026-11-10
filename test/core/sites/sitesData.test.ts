@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { arcsContain } from "../../../src/core/sites/degreeArc";
 import type { Launch, Site, WindLimits } from "../../../src/core/sites/site";
 import { bundledSiteProvider } from "../../../src/core/sites/siteProvider";
+import rawSites from "../../../sites.json";
 
 /** Sanity checks on the real curated sites.json. */
 const sites: Site[] = await bundledSiteProvider().sites();
@@ -49,8 +50,9 @@ describe("sites.json", () => {
     for (const site of sites) {
       expect(site.launches.length, site.id).toBeGreaterThan(0);
       for (const l of site.launches) {
-        expect(inRange(l.coordinate.latitude, 36, 42), l.id).toBe(true);
-        expect(inRange(l.coordinate.longitude, -121, -101), l.id).toBe(true);
+        // The contiguous US.
+        expect(inRange(l.coordinate.latitude, 24, 50), l.id).toBe(true);
+        expect(inRange(l.coordinate.longitude, -125, -66), l.id).toBe(true);
         expect(inRange(l.elevationFt, 4000, 14500), l.id).toBe(true);
       }
     }
@@ -70,23 +72,13 @@ describe("sites.json", () => {
     }
   });
 
+  // Curator-only fields (limitsSource) aren't parsed, so this reads the raw JSON.
   it("idealSpeedMissingOnlyWherePageGivesNone", () => {
-    const missing = sites.filter((s) => s.limits.idealMph === undefined).map((s) => s.id).sort();
-    expect(missing).toEqual([
-      "bhgc/duck-hill",
-      "bhgc/hotsprings-mountain",
-      "bhgc/mcclellan",
-      "bhgc/palomino",
-      "bhgc/peavine-mt",
-      "bhgc/petersen-mountain-rainbow-ridge",
-      "bhgc/slide-mountain",
-      "bhgc/spooner",
-      "pawnee/indian-caves",
-      "pawnee/pony-ridge",
-      "pawnee/the-buttes",
-      "rmhpa/aspen",
-      "rmhpa/blodgett-open-space",
-    ]);
+    for (const site of rawSites.sites) {
+      if (site.limits.idealMph === undefined) {
+        expect(["default", "page-prose"], site.id).toContain(site.limitsSource);
+      }
+    }
   });
 
   it("arcBoundsAreNormalized", () => {
