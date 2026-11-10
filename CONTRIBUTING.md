@@ -90,6 +90,8 @@ Each site has an `id` (`<source>/<slug>`, where the source is `rmhpa` or `pawnee
 
 The `*Source` fields (`elevationSource`, `limitsSource`, `directionsSource`) and `landingZones` are notes for curators, and the app ignores them.
 
+How to read a site guide and turn it into these fields is in the `add-sites` skill, `.agents/skills/add-sites/SKILL.md`.
+
 ## Open-Meteo fixtures
 
 `test/fixtures/openmeteo-launches.json` and `openmeteo-neighbors.json` are real responses for three launches: Glenwood Lookout North, Crested Butte and Boulder Wonderland Upper. Next to each one, the `.url.txt` file holds the exact URL it came from. `buildersMatchRecordedURLs` checks that the client still builds those URLs, so a change to the request fails until the fixtures are re-recorded:
