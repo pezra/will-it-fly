@@ -4,18 +4,22 @@ Architectural decisions that would be costly to reverse. Newest first.
 
 ## The primary model is a per-request choice, evaluated by role (2026-11-09, `primary-model-switch`)
 
-**Decision.** The request names a primary model (ECMWF or RRFS). Each launch is evaluated with that model deciding and the other as the cross-check, and every result past the hour evaluator (daylight rows, windows, agreement, confidence) is shaped by role, not by model name. With RRFS asked for, a launch falls back to ECMWF for the whole day when RRFS covers less than 75% of the day's window hours.
-**Motivation.** RRFS is better in some places but stops about 3½ days out. It is a straight swap of roles, so one set of rules serves both models. Role-named fields make the compiler find every reader that assumed ECMWF decides. A whole-day fallback keeps a window's hours and its agreement on one model. The threshold is 75% rather than half, because RRFS usually ends late morning on day +3, which is about half a November day, and keeping RRFS then hides afternoon windows.
-**Rejected.**
+The request names a primary model (ECMWF or RRFS). Each launch is evaluated with that model deciding and the other as the cross-check, and every result past the hour evaluator (daylight rows, windows, agreement, confidence) is shaped by role, not by model name. With RRFS asked for, a launch falls back to ECMWF for the whole day when RRFS covers less than 75% of the day's window hours.
+
+RRFS is better in some places but stops about 3½ days out. It is a straight swap of roles, so one set of rules serves both models. Role-named fields make the compiler find every reader that assumed ECMWF decides. A whole-day fallback keeps a window's hours and its agreement on one model. The threshold is 75% rather than half, because RRFS usually ends late morning on day +3, which is about half a November day, and keeping RRFS then hides afternoon windows.
+
+### Rejected
 - Model-named rows plus a "which is primary" key. Any reader that forgot the key would quietly keep showing ECMWF.
 - Falling back hour by hour. Windows and agreement would mix models.
 - One generic "other model sees storms" reason kind. A kind has fixed text and severity, and two kinds cost one line each.
 
 ## The model choice is in the URL, with a device default only the control writes (2026-11-09, `primary-model-switch`)
 
-**Decision.** Every app URL carries `?model=` in the hash, and a URL without one is rewritten in place to a default saved on the device (`willItFly.model.v1`). Only the model control writes that default. The model is part of the weather load key, so a switch re-evaluates from the cached forecast, which holds both models, and shows loading rather than the old model's result.
-**Motivation.** A shared link, Back and a reload must keep the model, and the home screen icon has no model in its URL. Unlike the start point, the model isn't private, so the URL is fine for it. Opening someone else's link shouldn't change what your app opens with.
-**Rejected.**
+Every app URL carries `?model=` in the hash, and a URL without one is rewritten in place to a default saved on the device (`willItFly.model.v1`). Only the model control writes that default. The model is part of the weather load key, so a switch re-evaluates from the cached forecast, which holds both models, and shows loading rather than the old model's result.
+
+A shared link, Back and a reload must keep the model, and the home screen icon has no model in its URL. Unlike the start point, the model isn't private, so the URL is fine for it. Opening someone else's link shouldn't change what your app opens with.
+
+### Rejected
 - Model only in the URL. The home screen icon would always open on ECMWF.
 - Model only on the device. Links couldn't share it and Back couldn't undo a switch.
 - Any URL with a model updating the default. A friend's link would change your default.
@@ -23,20 +27,22 @@ Architectural decisions that would be costly to reverse. Newest first.
 
 ## Condition labels are derived in the scorer, apart from the call and the score (2026-11-09, `condition-labels`)
 
-**Decision.** `evaluateHour` outputs the condition labels (Soar, XC, Sledder) as a field on each hour result, and windows summarize them. The labels don't change an hour's call, its score or the list order. The XC label uses the thermal test at any site, while the XC bonus and reason still need a site curated `xc`.
-**Motivation.** The UI is not allowed to re-derive scoring thresholds, and the labels needed facts (ungated XC) that no reason carries. Keeping the call and score untouched means a display change can't reorder sites.
-**Rejected.**
+`evaluateHour` outputs the condition labels (Soar, XC, Sledder) as a field on each hour result, and windows summarize them. The labels don't change an hour's call, its score or the list order. The XC label uses the thermal test at any site, while the XC bonus and reason still need a site curated `xc`.
+
+The UI is not allowed to re-derive scoring thresholds, and the labels needed facts (ungated XC) that no reason carries. Keeping the call and score untouched means a display change can't reorder sites.
+
+### Rejected
 - Emitting a new reason kind for the labels. Reasons drive caution counts and the no-window reason, and the severity would be new.
 - Applying the XC bonus to every site. It would reorder lists and ignore RMHPA's own site descriptions.
 - Deriving labels in the UI from reason kinds. It can't see the ungated XC fact and would duplicate rules across layers.
 
 ## Weather is fetched only for sites in drive range
 
-**Decision.** The page works out which sites are in range before it asks Open-Meteo for anything: find the start point, drop sites farther than 80 mph × the chosen hours in a straight line, route the rest with OSRM, then fetch weather for the sites within the drive time. With no start point nothing is fetched. A link to a site's page fetches just that site and doesn't wait for the location.
+The page works out which sites are in range before it asks Open-Meteo for anything: find the start point, drop sites farther than 80 mph × the chosen hours in a straight line, route the rest with OSRM, then fetch weather for the sites within the drive time. With no start point nothing is fetched. A link to a site's page fetches just that site and doesn't wait for the location.
 
-**Motivation.** The first version fetched every site's weather and hid the far ones afterwards. That is wasted traffic and it grows with the catalog, which is expected to get much bigger. The 80 mph prefilter is a bound, not an estimate (no road trip is faster), so it can't drop a site that is really in range. The 40 mph estimate is only the displayed time and the fallback when OSRM is down.
+The first version fetched every site's weather and hid the far ones afterwards. That is wasted traffic and it grows with the catalog, which is expected to get much bigger. The 80 mph prefilter is a bound, not an estimate (no road trip is faster), so it can't drop a site that is really in range. The 40 mph estimate is only the displayed time and the fallback when OSRM is down.
 
-**Rejected.**
+### Rejected
 - Filter after the forecast. Changing the radius never refetched, but every site was fetched on every visit.
 - Prefilter at the 40 mph estimate. It would drop sites that highways make reachable.
 - Showing every site when there is no start point. Doesn't scale with the catalog.
@@ -69,3 +75,15 @@ Architectural decisions that would be costly to reverse. Newest first.
 **Motivation.** A shareable URL would leak someone's home location into every link they send.
 
 **Rejected.** Putting them in the URL hash.
+
+## Get weather forecasts from Open-Meteo
+
+Use Open-Meteo for all weather forecast data and RRFS for cross checks.
+
+### Motivation
+
+Windy's point forecast API doesn't include ECMWF because of licensing, and ECMWF is the default model. Open-Meteo is free for non-commercial use and has the models we need. HRRR on Open-Meteo is discontinued at the end of November 2026, and RRFS is NOAA's replacement, so use RRFS forcross checks.
+
+### Rejected
+- Using Windy.com with HRRR as primary and some other weak model for cross checks.
+- using different APIs for different models.

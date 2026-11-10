@@ -109,6 +109,6 @@ curl -s "$(cat test/fixtures/openmeteo-neighbors.url.txt)" > test/fixtures/openm
 
 Sites come through the `SiteProvider` interface in `src/core/sites/siteProvider.ts`, which is a single `sites(): Promise<Site[]>`. A new source, e.g. ParaglidingEarth, maps its data into the same `Site` type, and scoring and the UI need no changes. Merging two providers (and deduplicating sites that appear in both) would take a small composite provider that doesn't exist yet.
 
-## Why not HRRR or Windy
+## README.md
 
-HRRR on Open-Meteo is discontinued at the end of November 2026, and RRFS is NOAA's replacement. Windy's point forecast API doesn't include ECMWF because of licensing, and ECMWF is the default model.
+Only discuss the current state of the applicaiton in README.md. No history lessons or future wishes (execpt potentially safely related caveats). Focus on usage and confidence building information about how the app decides which sites are flyable.
