@@ -488,6 +488,11 @@ describe("SCORING_DEFAULTS", () => {
       neighborCautionDiffDeg: 60,
       neighborNoGoDiffDeg: 90,
       neighborNoGoMinNeighborMph: 10,
+      // Web-only: a neighbor wind from outside the launch's ok arcs (approved 2026-11-10). Not in
+      // Swift.
+      neighborOffDirectionMinMph: 5,
+      neighborOffDirectionNoGoMinMph: 10,
+      neighborOffDirectionNoGoMarginDeg: 30,
       nearMaxMarginMph: 2,
       capeCautionJkg: 500,
       aloftCautionMph: 25,

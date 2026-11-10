@@ -25,6 +25,12 @@ export interface ScoringDefaults {
   neighborNoGoDiffDeg: number;
   /** A difference > `neighborCautionDiffDeg` with the neighbor at or above this is no-go. */
   neighborNoGoMinNeighborMph: number;
+  /** A neighbor 10 m wind at or above this from outside every `ok` arc is a caution. */
+  neighborOffDirectionMinMph: number;
+  /** ... and at or above this, more than `neighborOffDirectionNoGoMarginDeg` outside, is no-go. */
+  neighborOffDirectionNoGoMinMph: number;
+  /** How far outside every `ok` arc (degrees) a neighbor wind must be for the no-go. */
+  neighborOffDirectionNoGoMarginDeg: number;
   // Caution
   /** Launch wind within this of the site's max is a caution. */
   nearMaxMarginMph: number;
@@ -88,7 +94,10 @@ export interface ScoringDefaults {
   /** Cloud base at or above this many feet above launch earns `cloudBaseBonus`. */
   cloudBaseBonusMinFt: number;
   cloudBaseBonus: number;
-  /** Subtracted once per caution or penalty reason. */
+  /**
+   * Subtracted once per caution or penalty reason. The two nearby-wind cautions (inconsistent and
+   * off-direction) cost it once together.
+   */
   cautionReasonPenalty: number;
   minScore: number;
   maxScore: number;
@@ -146,6 +155,9 @@ export const SCORING_DEFAULTS: Readonly<ScoringDefaults> = Object.freeze({
   neighborCautionDiffDeg: 60,
   neighborNoGoDiffDeg: 90,
   neighborNoGoMinNeighborMph: 10,
+  neighborOffDirectionMinMph: 5,
+  neighborOffDirectionNoGoMinMph: 10,
+  neighborOffDirectionNoGoMarginDeg: 30,
   // Caution
   nearMaxMarginMph: 2,
   capeCautionJkg: 500,

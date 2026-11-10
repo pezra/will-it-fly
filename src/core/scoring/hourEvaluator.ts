@@ -1,6 +1,6 @@
 import type { ModelHour, NeighborWind } from "../forecast/models";
 import { NEIGHBOR_DISTANCE_M } from "../forecast/openMeteoClient";
-import { angularDifference, arcsContain } from "../sites/degreeArc";
+import { angularDifference, arcsContain, degreesOutsideArcs } from "../sites/degreeArc";
 import type { DegreeArc, Launch, Site, WindLimits } from "../sites/site";
 import { effectiveLimits, elevationM } from "../sites/site";
 import { HOUR_MS, byTime, formatDenverTime } from "../time";
@@ -48,6 +48,7 @@ export const REASON_KIND_ORDER = [
   "overTheBack",
   "strongAloft",
   "neighborWindStrong",
+  "neighborOffDirectionStrong",
   // Caution
   "stormsComing",
   "rrfsSeesStorms",
@@ -57,6 +58,7 @@ export const REASON_KIND_ORDER = [
   "nearMaxWind",
   "lowCloud",
   "neighborWind",
+  "neighborOffDirection",
   "directionNotIdeal",
   "notCurated",
   // Penalty: scored, never changes the call
@@ -97,6 +99,7 @@ export const REASON_SEVERITY: Readonly<Record<ReasonKind, Severity>> = Object.fr
   overTheBack: "noGo",
   strongAloft: "noGo",
   neighborWindStrong: "noGo",
+  neighborOffDirectionStrong: "noGo",
   stormsComing: "caution",
   rrfsSeesStorms: "caution",
   ecmwfSeesStorms: "caution",
@@ -105,6 +108,7 @@ export const REASON_SEVERITY: Readonly<Record<ReasonKind, Severity>> = Object.fr
   nearMaxWind: "caution",
   lowCloud: "caution",
   neighborWind: "caution",
+  neighborOffDirection: "caution",
   directionNotIdeal: "caution",
   notCurated: "caution",
   sledder: "penalty",
@@ -224,9 +228,13 @@ function finish(fields: HourFields, reasons: Reason[], defaults: ScoringDefaults
   let score = defaults.minScore;
   if (call === "good" || call === "flyable") {
     // Warnings and info reasons cost nothing.
-    const penalties =
-      sorted.filter((r) => r.severity === "caution" || r.severity === "penalty").length *
-      defaults.cautionReasonPenalty;
+    const penalized = sorted.filter((r) => r.severity === "caution" || r.severity === "penalty");
+    let count = penalized.length;
+    // The two nearby-wind cautions cost one penalty together.
+    if (penalized.some((r) => r.kind === "neighborWind") && penalized.some((r) => r.kind === "neighborOffDirection")) {
+      count -= 1;
+    }
+    const penalties = count * defaults.cautionReasonPenalty;
     score = Math.min(defaults.maxScore, Math.max(defaults.minScore, unpenalizedScore - penalties));
   }
   return {
@@ -268,12 +276,21 @@ function toWind(w: NeighborWind | undefined): Wind | undefined {
   return { speedMph: w.windMph, dirDeg: w.windDir };
 }
 
+/** The neighbor points' distance from the launch, in whole miles, as the reasons show it. */
+const NEIGHBOR_MILES = Math.round(NEIGHBOR_DISTANCE_M / METERS_PER_MILE);
+
+/** The model both neighbor checks read, with its center wind and the neighbors that have wind. */
+interface NeighborModelWinds {
+  model: ModelName;
+  center: Wind;
+  points: { bearingDeg: number; wind: Wind }[];
+}
+
 /**
- * The neighbor check: one model on both sides (center 10 m vs neighbor 10 m). RRFS when its
- * center and at least one neighbor are present, else ECMWF on the same test, else "n/a".
- * Returns at most one reason, naming the worst neighbor.
+ * The model both neighbor checks read: RRFS when its center and at least one neighbor have wind,
+ * else ECMWF on the same test, else undefined. Its center and the neighbors that have wind.
  */
-function neighborReason(ctx: HourContext, defaults: ScoringDefaults): Reason | undefined {
+function neighborModelWinds(ctx: HourContext): NeighborModelWinds | undefined {
   for (const model of ["rrfs", "ecmwf"] as const) {
     const center = toWind(ctx.neighborCenter[model]);
     if (center === undefined) continue;
@@ -281,32 +298,69 @@ function neighborReason(ctx: HourContext, defaults: ScoringDefaults): Reason | u
       const wind = toWind(p[model]);
       return wind === undefined ? [] : [{ bearingDeg: p.bearingDeg, wind }];
     });
-    if (points.length === 0) continue;
-
-    let worst: { kind: ReasonKind; diff: number; bearingDeg: number; wind: Wind } | undefined;
-    for (const { bearingDeg, wind } of points) {
-      if (center.speedMph < defaults.neighborMinWindMph || wind.speedMph < defaults.neighborMinWindMph) {
-        continue;
-      }
-      const diff = angularDifference(center.dirDeg, wind.dirDeg);
-      if (diff <= defaults.neighborCautionDiffDeg) continue;
-      const noGo =
-        diff > defaults.neighborNoGoDiffDeg || wind.speedMph >= defaults.neighborNoGoMinNeighborMph;
-      const kind: ReasonKind = noGo ? "neighborWindStrong" : "neighborWind";
-      const better =
-        worst === undefined ||
-        (noGo && worst.kind !== "neighborWindStrong") ||
-        (noGo === (worst.kind === "neighborWindStrong") && diff > worst.diff);
-      if (better) worst = { kind, diff, bearingDeg, wind };
-    }
-    if (worst === undefined) return undefined;
-    const miles = Math.round(NEIGHBOR_DISTANCE_M / METERS_PER_MILE);
-    return reason(
-      worst.kind,
-      `inconsistent wind nearby: ${miles} mi ${compass(worst.bearingDeg)}: ${windText(worst.wind)} (${MODEL_LABEL[model]})`,
-    );
+    if (points.length > 0) return { model, center, points };
   }
-  return reason("neighborUnavailable", "wind nearby: n/a");
+  return undefined;
+}
+
+/**
+ * The neighbor check: one model on both sides (center 10 m vs neighbor 10 m), from
+ * `neighborModelWinds`, else "n/a". Returns at most one reason, naming the worst neighbor.
+ */
+function neighborReason(winds: NeighborModelWinds | undefined, defaults: ScoringDefaults): Reason | undefined {
+  if (winds === undefined) return reason("neighborUnavailable", "wind nearby: n/a");
+  const { model, center, points } = winds;
+
+  let worst: { kind: ReasonKind; diff: number; bearingDeg: number; wind: Wind } | undefined;
+  for (const { bearingDeg, wind } of points) {
+    if (center.speedMph < defaults.neighborMinWindMph || wind.speedMph < defaults.neighborMinWindMph) {
+      continue;
+    }
+    const diff = angularDifference(center.dirDeg, wind.dirDeg);
+    if (diff <= defaults.neighborCautionDiffDeg) continue;
+    const noGo =
+      diff > defaults.neighborNoGoDiffDeg || wind.speedMph >= defaults.neighborNoGoMinNeighborMph;
+    const kind: ReasonKind = noGo ? "neighborWindStrong" : "neighborWind";
+    const better =
+      worst === undefined ||
+      (noGo && worst.kind !== "neighborWindStrong") ||
+      (noGo === (worst.kind === "neighborWindStrong") && diff > worst.diff);
+    if (better) worst = { kind, diff, bearingDeg, wind };
+  }
+  if (worst === undefined) return undefined;
+  return reason(
+    worst.kind,
+    `inconsistent wind nearby: ${NEIGHBOR_MILES} mi ${compass(worst.bearingDeg)}: ${windText(worst.wind)} (${MODEL_LABEL[model]})`,
+  );
+}
+
+/**
+ * The off-direction check: a neighbor 10 m wind from outside every `ok` arc, from the same model
+ * as the neighbor check (`winds`). Only the neighbor's own wind counts, not the center's or the
+ * launch's. `ok` must be non-empty (a curated launch). Returns at most one reason, naming the worst
+ * neighbor: any no-go first, then the farthest outside.
+ */
+function offDirectionNeighborReason(
+  ok: readonly DegreeArc[],
+  winds: NeighborModelWinds,
+  defaults: ScoringDefaults,
+): Reason | undefined {
+  let worst: { noGo: boolean; out: number; bearingDeg: number; wind: Wind } | undefined;
+  for (const { bearingDeg, wind } of winds.points) {
+    if (wind.speedMph < defaults.neighborOffDirectionMinMph) continue;
+    const out = degreesOutsideArcs(ok, wind.dirDeg);
+    if (out === 0) continue;
+    const noGo =
+      out > defaults.neighborOffDirectionNoGoMarginDeg && wind.speedMph >= defaults.neighborOffDirectionNoGoMinMph;
+    if (worst === undefined || (noGo && !worst.noGo) || (noGo === worst.noGo && out > worst.out)) {
+      worst = { noGo, out, bearingDeg, wind };
+    }
+  }
+  if (worst === undefined) return undefined;
+  return reason(
+    worst.noGo ? "neighborOffDirectionStrong" : "neighborOffDirection",
+    `off-direction wind ${NEIGHBOR_MILES} mi ${compass(worst.bearingDeg)}: ${windText(worst.wind)}`,
+  );
 }
 
 /** Precipitation for the flying hour: the preceding-hour values, so max(h, h+1). */
@@ -443,8 +497,14 @@ export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORI
   if (lowCloud.length > 0) reasons.push(reason("lowCloud", `low cloud: ${lowCloud.join(", ")}`));
 
   // Wind nearby.
-  const neighbor = neighborReason(ctx, defaults);
+  const neighborWinds = neighborModelWinds(ctx);
+  const neighbor = neighborReason(neighborWinds, defaults);
   if (neighbor !== undefined) reasons.push(neighbor);
+  const offDirection =
+    curated && neighborWinds !== undefined
+      ? offDirectionNeighborReason(ok, neighborWinds, defaults)
+      : undefined;
+  if (offDirection !== undefined) reasons.push(offDirection);
 
   // Ridge lift: the wind is on the ridge, in an ideal arc and fast enough to soar.
   const soaring = ctx.site.soaring;
