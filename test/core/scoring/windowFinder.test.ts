@@ -163,7 +163,7 @@ describe("findBestWindow", () => {
 
   it("a 1-hour run gets weight 0.6", () => {
     const w = find([hr(11, "good", 80)]);
-    expect(w?.score).toBeCloseTo(80 * 0.6 * SCORING_DEFAULTS.ecmwfOnlyConfidenceWeight, 9);
+    expect(w?.score).toBeCloseTo(80 * 0.6 * SCORING_DEFAULTS.primaryOnlyConfidenceWeight, 9);
   });
 
   it("a 2-hour run gets weight 0.8 and a 3-hour run 1.0", () => {
@@ -249,9 +249,9 @@ describe("findBestWindow", () => {
       return find(ecmwf, rrfs)?.confidence;
     };
 
-    it("is ecmwfOnly with no RRFS at all, weight 0.85", () => {
+    it("is primaryOnly with no RRFS at all, weight 0.85", () => {
       const w = find(run(4), []);
-      expect(w?.confidence).toBe("ecmwfOnly");
+      expect(w?.confidence).toBe("primaryOnly");
       expect(w?.score).toBeCloseTo(80 * 0.85, 9);
     });
 
@@ -278,9 +278,9 @@ describe("findBestWindow", () => {
       expect(confidenceOf([true, true, true, true], [1, 3])).toBe("high");
     });
 
-    it("RRFS under 50% present gives ecmwfOnly", () => {
+    it("RRFS under 50% present gives primaryOnly", () => {
       // 1 of 3 covered (33%).
-      expect(confidenceOf([true, true, true], [1, 2])).toBe("ecmwfOnly");
+      expect(confidenceOf([true, true, true], [1, 2])).toBe("primaryOnly");
     });
 
     it("exactly 50% coverage is enough", () => {
@@ -296,7 +296,7 @@ describe("findBestWindow", () => {
         hr(13, "noData"),
       ];
       expect(find(ecmwf, rrfs)?.confidence).toBe("high");
-      expect(find(ecmwf, rrfs.slice(0, 1))?.confidence).toBe("ecmwfOnly");
+      expect(find(ecmwf, rrfs.slice(0, 1))?.confidence).toBe("primaryOnly");
     });
 
     it("a covered RRFS noGo hour counts as a disagreement", () => {
@@ -315,7 +315,7 @@ describe("findBestWindow", () => {
     it("RRFS hours outside the run don't count toward coverage", () => {
       const ecmwf = [...run(2), hr(13, "noGo")];
       const rrfs = [rrfsHr(13, true)];
-      expect(find(ecmwf, rrfs)?.confidence).toBe("ecmwfOnly");
+      expect(find(ecmwf, rrfs)?.confidence).toBe("primaryOnly");
     });
   });
 
@@ -330,7 +330,7 @@ describe("findBestWindow", () => {
     const daylight = [hr(10, "good"), hr(11, "good")];
     const agreeing = byTime([rrfsHr(10, true), rrfsHr(11, true)]);
     expect(findBestWindow(daylight, agreeing)?.confidence).toBe("high");
-    expect(findBestWindow(daylight, new Map())?.confidence).toBe("ecmwfOnly");
+    expect(findBestWindow(daylight, new Map())?.confidence).toBe("primaryOnly");
   });
 
   describe("warnings", () => {
@@ -421,7 +421,7 @@ describe("findBestWindow", () => {
   });
 
   it("uses the supplied defaults", () => {
-    const d = { ...SCORING_DEFAULTS, oneHourRunWeight: 0.5, ecmwfOnlyConfidenceWeight: 1 };
+    const d = { ...SCORING_DEFAULTS, oneHourRunWeight: 0.5, primaryOnlyConfidenceWeight: 1 };
     const w = findBestWindow([hr(11, "good", 80)], new Map(), d);
     expect(w?.score).toBeCloseTo(40, 9);
   });

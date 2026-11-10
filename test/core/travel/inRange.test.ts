@@ -170,18 +170,25 @@ describe("wantedSiteIds", () => {
 
 describe("weatherLoadKey", () => {
   it("isTheSameInAnyIdOrder", () => {
-    expect(weatherLoadKey(undefined, ["b", "a", "c"])).toBe(weatherLoadKey(undefined, ["c", "b", "a"]));
+    expect(weatherLoadKey(undefined, "ecmwf", ["b", "a", "c"])).toBe(
+      weatherLoadKey(undefined, "ecmwf", ["c", "b", "a"]),
+    );
   });
 
   it("differsByDayAndBySet", () => {
-    expect(weatherLoadKey(undefined, ["a"])).not.toBe(weatherLoadKey("2026-11-09", ["a"]));
-    expect(weatherLoadKey(undefined, ["a"])).not.toBe(weatherLoadKey(undefined, ["a", "b"]));
-    expect(weatherLoadKey(undefined, ["a,b"])).not.toBe(weatherLoadKey(undefined, ["a", "b"]));
+    expect(weatherLoadKey(undefined, "ecmwf", ["a"])).not.toBe(weatherLoadKey("2026-11-09", "ecmwf", ["a"]));
+    expect(weatherLoadKey(undefined, "ecmwf", ["a"])).not.toBe(weatherLoadKey(undefined, "ecmwf", ["a", "b"]));
+    expect(weatherLoadKey(undefined, "ecmwf", ["a,b"])).not.toBe(weatherLoadKey(undefined, "ecmwf", ["a", "b"]));
+  });
+
+  it("differsByModel", () => {
+    expect(weatherLoadKey(undefined, "ecmwf", ["a"])).not.toBe(weatherLoadKey(undefined, "rrfs", ["a"]));
+    expect(weatherLoadKey("2026-11-09", "rrfs", ["b", "a"])).toBe(weatherLoadKey("2026-11-09", "rrfs", ["a", "b"]));
   });
 
   it("doesNotReorderItsInput", () => {
     const input = ["b", "a"];
-    weatherLoadKey(undefined, input);
+    weatherLoadKey(undefined, "ecmwf", input);
     expect(input).toEqual(["b", "a"]);
   });
 });
@@ -231,6 +238,7 @@ describe("missingDestinations and mergeTimes", () => {
 
 describe("containsSites", () => {
   const result = (...sites: Site[]): RecommendationResult => ({
+    model: "ecmwf",
     day: "2026-11-07",
     today: "2026-11-07",
     dayOver: false,

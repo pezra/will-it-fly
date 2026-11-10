@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { SCORING_DEFAULTS } from "../../../src/core/scoring/defaults";
 import {
+  checkAgrees,
+  checkCovers,
   confidenceForShare,
-  rrfsAgrees,
-  rrfsCovers,
 } from "../../../src/core/scoring/modelAgreement";
 import type { HourCall, HourResult } from "../../../src/core/scoring/hourEvaluator";
 
@@ -21,82 +21,82 @@ function result(call: HourCall, speedMph?: number, dirDeg?: number): HourResult 
 
 const ECMWF = result("good", 10, 270);
 
-describe("rrfsCovers", () => {
+describe("checkCovers", () => {
   it("is false for a missing result and for noData", () => {
-    expect(rrfsCovers(undefined)).toBe(false);
-    expect(rrfsCovers(result("noData"))).toBe(false);
+    expect(checkCovers(undefined)).toBe(false);
+    expect(checkCovers(result("noData"))).toBe(false);
   });
 
   it("is true for good, flyable and noGo results", () => {
-    expect(rrfsCovers(result("good", 10))).toBe(true);
-    expect(rrfsCovers(result("flyable", 10))).toBe(true);
-    expect(rrfsCovers(result("noGo", 10))).toBe(true);
+    expect(checkCovers(result("good", 10))).toBe(true);
+    expect(checkCovers(result("flyable", 10))).toBe(true);
+    expect(checkCovers(result("noGo", 10))).toBe(true);
   });
 });
 
-describe("rrfsAgrees", () => {
+describe("checkAgrees", () => {
   it("agrees for similar wind", () => {
-    expect(rrfsAgrees(ECMWF, result("good", 11, 280))).toBe(true);
+    expect(checkAgrees(ECMWF, result("good", 11, 280))).toBe(true);
   });
 
   it("agrees when RRFS is flyable", () => {
-    expect(rrfsAgrees(ECMWF, result("flyable", 11, 280))).toBe(true);
+    expect(checkAgrees(ECMWF, result("flyable", 11, 280))).toBe(true);
   });
 
   it("direction: 30 degrees agrees, 31 does not", () => {
-    expect(rrfsAgrees(ECMWF, result("good", 10, 300))).toBe(true);
-    expect(rrfsAgrees(ECMWF, result("good", 10, 301))).toBe(false);
+    expect(checkAgrees(ECMWF, result("good", 10, 300))).toBe(true);
+    expect(checkAgrees(ECMWF, result("good", 10, 301))).toBe(false);
   });
 
   it("direction wraps through north: 350 vs 10 is 20 degrees", () => {
     const e = result("good", 10, 350);
-    expect(rrfsAgrees(e, result("good", 10, 10))).toBe(true);
-    expect(rrfsAgrees(e, result("good", 10, 21))).toBe(false);
+    expect(checkAgrees(e, result("good", 10, 10))).toBe(true);
+    expect(checkAgrees(e, result("good", 10, 21))).toBe(false);
   });
 
   it("both winds under 4 mph agree regardless of direction", () => {
-    expect(rrfsAgrees(result("good", 3.9, 0), result("good", 3.9, 180))).toBe(true);
+    expect(checkAgrees(result("good", 3.9, 0), result("good", 3.9, 180))).toBe(true);
   });
 
   it("4 mph is not calm, so direction still matters", () => {
-    expect(rrfsAgrees(result("good", 4, 0), result("good", 4, 180))).toBe(false);
+    expect(checkAgrees(result("good", 4, 0), result("good", 4, 180))).toBe(false);
   });
 
   it("one calm wind and one not is judged on direction", () => {
-    expect(rrfsAgrees(result("good", 3, 0), result("good", 6, 180))).toBe(false);
+    expect(checkAgrees(result("good", 3, 0), result("good", 6, 180))).toBe(false);
   });
 
   it("calm waives direction but not the speed check", () => {
     // Under the calm threshold the speeds can never differ by more than 5, so this holds
     // with the default numbers; with a tighter speed limit the speed check still bites.
     const tight = { ...SCORING_DEFAULTS, agreementMaxSpeedDiffMph: 0.5 };
-    expect(rrfsAgrees(result("good", 1, 0), result("good", 3, 180), tight)).toBe(false);
+    expect(checkAgrees(result("good", 1, 0), result("good", 3, 180), tight)).toBe(false);
   });
 
   it("speed: 5 mph apart agrees, 5.1 apart does not", () => {
-    expect(rrfsAgrees(ECMWF, result("good", 15, 270))).toBe(true);
-    expect(rrfsAgrees(ECMWF, result("good", 5, 270))).toBe(true);
-    expect(rrfsAgrees(ECMWF, result("good", 15.1, 270))).toBe(false);
-    expect(rrfsAgrees(ECMWF, result("good", 4.9, 270))).toBe(false);
+    expect(checkAgrees(ECMWF, result("good", 15, 270))).toBe(true);
+    expect(checkAgrees(ECMWF, result("good", 5, 270))).toBe(true);
+    expect(checkAgrees(ECMWF, result("good", 15.1, 270))).toBe(false);
+    expect(checkAgrees(ECMWF, result("good", 4.9, 270))).toBe(false);
   });
 
   it("disagrees when RRFS is noGo, even with matching wind", () => {
-    expect(rrfsAgrees(ECMWF, result("noGo", 10, 270))).toBe(false);
+    expect(checkAgrees(ECMWF, result("noGo", 10, 270))).toBe(false);
   });
 
   it("disagrees when RRFS is missing or noData", () => {
-    expect(rrfsAgrees(ECMWF, undefined)).toBe(false);
-    expect(rrfsAgrees(ECMWF, result("noData"))).toBe(false);
+    expect(checkAgrees(ECMWF, undefined)).toBe(false);
+    expect(checkAgrees(ECMWF, result("noData"))).toBe(false);
   });
 
   it("disagrees when either launch wind is missing", () => {
-    expect(rrfsAgrees(ECMWF, result("good"))).toBe(false);
-    expect(rrfsAgrees(result("good"), result("good", 10, 270))).toBe(false);
+    expect(checkAgrees(ECMWF, result("good"))).toBe(false);
+    expect(checkAgrees(result("good"), result("good", 10, 270))).toBe(false);
   });
 
   it("uses the supplied defaults", () => {
     const loose = { ...SCORING_DEFAULTS, agreementMaxDirDiffDeg: 90 };
-    expect(rrfsAgrees(ECMWF, result("good", 10, 350), loose)).toBe(true);
+    expect(checkAgrees(ECMWF, result("good", 10, 350), loose)).toBe(true);
   });
 });
 

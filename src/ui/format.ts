@@ -2,9 +2,10 @@ import { METERS_PER_FOOT, METERS_PER_MILE, compass } from "../core/units";
 import type { DriveTime } from "../core/travel/driveTime";
 import type { TravelStage } from "../core/travel/inRange";
 import type { Confidence } from "../core/scoring/modelAgreement";
-import type { HourCall, HourCondition, Reason } from "../core/scoring/hourEvaluator";
+import type { SiteRecommendation } from "../core/recommendation/types";
+import type { HourCall, HourCondition, ModelName, Reason } from "../core/scoring/hourEvaluator";
 import { SCORING_DEFAULTS } from "../core/scoring/defaults";
-import { effectiveIdealArcs } from "../core/scoring/hourEvaluator";
+import { CHECK_MODEL, MODEL_LABEL, effectiveIdealArcs } from "../core/scoring/hourEvaluator";
 import type { Coordinate, DegreeArc, Launch } from "../core/sites/site";
 import { addDays, formatDayKey } from "../core/time";
 import type { DayKey } from "../core/time";
@@ -121,7 +122,8 @@ export function cautionLine(cautions: readonly Reason[], max = 2): string | unde
   return more > 0 ? `⚠ ${shown} +${more} more` : `⚠ ${shown}`;
 }
 
-export function confidenceLabel(confidence: Confidence): string {
+/** How sure a window is. `model` is the launch's primary model, named when it had no cross-check. */
+export function confidenceLabel(confidence: Confidence, model: ModelName): string {
   switch (confidence) {
     case "high":
       return "high confidence";
@@ -129,8 +131,8 @@ export function confidenceLabel(confidence: Confidence): string {
       return "medium confidence";
     case "low":
       return "low confidence";
-    case "ecmwfOnly":
-      return "ECMWF only";
+    case "primaryOnly":
+      return `${MODEL_LABEL[model]} only`;
   }
 }
 
@@ -161,13 +163,15 @@ export function driveLabel(driveTime: DriveTime): string {
 }
 
 /**
- * The travel bar's collapsed line: "Within 2 h of Boulder", or a prompt when there is no start.
- * While the location is still pending and nothing else is chosen, it says so instead.
+ * The travel bar's collapsed line: "Within 2 h of Boulder · RRFS" (the route's model), or a prompt
+ * when there is no start. While the location is still pending and nothing else is chosen, it says
+ * so instead.
  */
 export function travelSummary(
   settings: TravelSettings,
   effectiveStart: Coordinate | undefined,
   location: LocationStatus,
+  model: ModelName,
 ): string {
   if (effectiveStart === undefined) {
     return settings.start.kind === "geolocation" && location === "pending"
@@ -175,7 +179,67 @@ export function travelSummary(
       : "Set a starting point";
   }
   const where = settings.start.kind === "place" ? settings.start.name : "your location";
-  return `Within ${settings.maxHours} h of ${where}`;
+  return `Within ${settings.maxHours} h of ${where} · ${MODEL_LABEL[model]}`;
+}
+
+/**
+ * The list's note when RRFS was asked for and some of the shown sites used ECMWF instead. A site
+ * counts when any of its launches fell back; sites with no launch evaluations (closed ones) aren't
+ * counted at all. Undefined for ECMWF and when nothing fell back.
+ */
+export function fallbackLine(
+  model: ModelName,
+  shown: readonly SiteRecommendation[],
+): string | undefined {
+  if (model !== "rrfs") return undefined;
+  const evaluated = shown.filter((rec) => rec.launches.length > 0);
+  const fellBack = evaluated.filter((rec) => rec.launches.some((l) => l.fellBack)).length;
+  if (fellBack === 0) return undefined;
+  if (fellBack === evaluated.length) return "RRFS doesn't cover this day, so it uses ECMWF.";
+  return `${fellBack} ${fellBack === 1 ? "site uses" : "sites use"} ECMWF (RRFS doesn't cover this day).`;
+}
+
+/**
+ * The model behind a site's call: its best launch's, else the one model every launch used (all of
+ * them fell back, say), else the requested one.
+ */
+export function siteModel(rec: SiteRecommendation, requested: ModelName): ModelName {
+  if (rec.best !== undefined) return rec.best.model;
+  const models = new Set(rec.launches.map((l) => l.model));
+  const [only] = models;
+  return models.size === 1 && only !== undefined ? only : requested;
+}
+
+/** The site page's note on a launch that fell back from RRFS to ECMWF. */
+export const launchFallbackNote = "RRFS doesn't cover this day here, so this launch uses ECMWF.";
+
+/** One column of the hourly table: what it shows, and which model's data it reads. */
+export interface HourlyColumn {
+  header: string;
+  value: "time" | "call" | "wind" | "cape" | "cloudBase" | "thermalIndex";
+  /** Whose hour the column reads. Undefined for the time column. */
+  side?: "primary" | "check";
+  /** True for the wind column that also shows the hour's gust. */
+  withGust?: boolean;
+}
+
+/**
+ * The hourly table's columns, in order, for a launch whose primary model is `model`: the primary
+ * model first, then the check model. CAPE, cloud base and TI come from the primary model.
+ */
+export function hourlyColumns(model: ModelName): readonly HourlyColumn[] {
+  const primary = MODEL_LABEL[model];
+  const check = MODEL_LABEL[CHECK_MODEL[model]];
+  return [
+    { header: "Time", value: "time" },
+    { header: primary, value: "call", side: "primary" },
+    { header: "Wind / gust / dir", value: "wind", side: "primary", withGust: true },
+    { header: check, value: "call", side: "check" },
+    { header: `${check} wind / dir`, value: "wind", side: "check" },
+    { header: "CAPE J/kg", value: "cape", side: "primary" },
+    { header: "Cloud base", value: "cloudBase", side: "primary" },
+    { header: "TI °C", value: "thermalIndex", side: "primary" },
+  ];
 }
 
 /**

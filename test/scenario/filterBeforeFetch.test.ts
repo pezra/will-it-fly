@@ -7,12 +7,12 @@ import type { SiteForecastCache } from "../../src/core/forecast/siteForecastCach
 import { firstLaunchCoordinate } from "../../src/core/recommendation/ranker";
 import { getRecommendations } from "../../src/core/recommendation/recommendationService";
 import type { RecommendationResult } from "../../src/core/recommendation/types";
+import type { ModelName } from "../../src/core/scoring/hourEvaluator";
 import type { Coordinate, Site } from "../../src/core/sites/site";
 import { applyTravel } from "../../src/core/travel/applyTravel";
 import type { TravelTimes } from "../../src/core/travel/applyTravel";
 import { driveTimesFor, estimateDriveSeconds, startKey, withinReach } from "../../src/core/travel/driveTime";
 import {
-  containsSites,
   inRangeIds,
   mergeTimes,
   missingDestinations,
@@ -22,6 +22,8 @@ import {
 import type { TravelStage } from "../../src/core/travel/inRange";
 import type { DayKey } from "../../src/core/time";
 import { SECONDS_PER_HOUR } from "../../src/core/units";
+import { loadDecision } from "../../src/ui/useRecommendations";
+import type { RecommendationsState } from "../../src/ui/useRecommendations";
 import { mapStore, testLaunch, testSite } from "../support/builders";
 import { BOULDER, BUTTE, COPPER, GLENWOOD, fixtureResponse, fixtureSites } from "../support/fixtureWeather";
 
@@ -148,6 +150,8 @@ class Pipeline {
   readonly driveCache: KeyValueStore;
   readonly forecastCache: SiteForecastCache = createSiteForecastCache(mapStore());
   now = NOW;
+  /** The route's model, as `App` passes it to `useRecommendations`. */
+  model: ModelName = "ecmwf";
   /** `useTravel`'s merged drive times. */
   times: TravelTimes | undefined;
   /** `useRecommendations`' loaded result and the day it was asked for. */
@@ -182,18 +186,24 @@ class Pipeline {
     return { stage, inRange };
   }
 
-  /** `useRecommendations`: reloads unless the loaded result already has every id for the day. */
+  /**
+   * `useRecommendations`: reloads when the hook's `loadDecision` says so (another day or model, or
+   * a missing id), with no load in flight. Refresh always loads.
+   */
   async load(ids: readonly string[] | undefined, day?: DayKey, forceRefresh = false): Promise<void> {
     this.wanted = ids;
     this.day = day;
     if (ids === undefined) return;
+    const model = this.model;
     const loaded = this.loaded;
-    if (!forceRefresh && loaded !== undefined && loaded.day === day && containsSites(loaded.result, ids)) {
-      return;
-    }
+    const state: RecommendationsState =
+      loaded === undefined
+        ? { status: "loading" }
+        : { status: "loaded", requested: loaded.day, result: loaded.result, refreshing: false };
+    if (!forceRefresh && loadDecision(state, day, model, ids, undefined) !== "load") return;
     this.loads++;
     const result = await getRecommendations(
-      { forceRefresh, day, siteIds: ids },
+      { forceRefresh, day, siteIds: ids, model },
       {
         siteProvider: { sites: async () => catalog },
         transport: this.weather.transport,
@@ -297,6 +307,35 @@ describe("filter before fetch", () => {
     p.now = NOW + 6 * MIN_MS;
     await p.refresh();
     expect(p.weather.fetched.at(-1)).toEqual([BUTTE, BOULDER]);
+    expect(p.osrm.asked).toHaveLength(osrmCalls);
+  });
+
+  it("switchingModelsReevaluatesFromTheCacheWithoutARequest", async () => {
+    const p = new Pipeline();
+    await p.list(START, 2);
+    expect(p.loaded?.result.model).toBe("ecmwf");
+    const loads = p.loads;
+    const osrmCalls = p.osrm.asked.length;
+    const weatherCalls = p.weather.urls.length;
+
+    p.model = "rrfs";
+    await p.list(START, 2);
+    expect(p.loads).toBe(loads + 1);
+    expect(p.loaded?.result.model).toBe("rrfs");
+    const launches = p.loaded?.result.sites.flatMap((r) => r.launches) ?? [];
+    expect(launches.length).toBeGreaterThan(0);
+    expect(launches.every((l) => l.model === "rrfs" && !l.fellBack)).toBe(true);
+    expect(p.weather.urls).toHaveLength(weatherCalls);
+    expect(p.osrm.asked).toHaveLength(osrmCalls);
+
+    // The same model again loads nothing; switching back loads ECMWF, still from the cache.
+    await p.list(START, 2);
+    expect(p.loads).toBe(loads + 1);
+    p.model = "ecmwf";
+    await p.list(START, 2);
+    expect(p.loads).toBe(loads + 2);
+    expect(p.loaded?.result.model).toBe("ecmwf");
+    expect(p.weather.urls).toHaveLength(weatherCalls);
     expect(p.osrm.asked).toHaveLength(osrmCalls);
   });
 

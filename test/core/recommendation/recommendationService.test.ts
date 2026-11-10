@@ -9,6 +9,7 @@ import type { RawSlice, Transport } from "../../../src/core/forecast/openMeteoCl
 import { createSiteForecastCache, dayKey, mainKey } from "../../../src/core/forecast/siteForecastCache";
 import type { SiteForecastCache } from "../../../src/core/forecast/siteForecastCache";
 import type { RemovableStore } from "../../../src/core/keyValueStore";
+import { evaluateForecast } from "../../../src/core/recommendation/evaluateLaunch";
 import { withDistances } from "../../../src/core/recommendation/ranker";
 import {
   DayOutOfRangeError,
@@ -20,7 +21,7 @@ import type {
   RecommendationRequest,
 } from "../../../src/core/recommendation/recommendationService";
 import { SCORING_DEFAULTS } from "../../../src/core/scoring/defaults";
-import { denverDayKey } from "../../../src/core/time";
+import { byTime, denverDayKey } from "../../../src/core/time";
 import type { DayKey } from "../../../src/core/time";
 import { windowLabel } from "../../../src/core/scoring/windowFinder";
 import type { Launch, Site } from "../../../src/core/sites/site";
@@ -72,7 +73,7 @@ function site(id: string): Site {
 
 /** A request for every site, plus overrides. */
 function request(overrides: Partial<RecommendationRequest> = {}): RecommendationRequest {
-  return { forceRefresh: false, siteIds: allIds(), ...overrides };
+  return { forceRefresh: false, siteIds: allIds(), model: "ecmwf", ...overrides };
 }
 
 interface Stub {
@@ -80,12 +81,15 @@ interface Stub {
   urls: string[];
 }
 
-/** Serves the recorded bodies only for the recorded URLs, so a wrong request fails loudly. */
-function fixtureTransport(): Stub {
+/**
+ * Serves the recorded bodies (or `launchBody` for the launch request) only for the recorded URLs, so
+ * a wrong request fails loudly.
+ */
+function fixtureTransport(launchBody = launchesJSON): Stub {
   const urls: string[] = [];
   const transport: Transport = async (url) => {
     urls.push(url);
-    if (url === launchesURL.trim()) return { status: 200, body: launchesJSON };
+    if (url === launchesURL.trim()) return { status: 200, body: launchBody };
     if (url === neighborsURL.trim()) return { status: 200, body: neighborsJSON };
     throw new Error(`unexpected request: ${url}`);
   };
@@ -193,7 +197,7 @@ describe("getRecommendations", () => {
       const daylight = r.launches[0]?.daylight ?? [];
       expect(daylight.length).toBeGreaterThan(0);
       // Both models are evaluated for every daylight hour.
-      expect(daylight.every((row) => row.rrfs !== undefined && row.rrfsHour !== undefined)).toBe(true);
+      expect(daylight.every((row) => row.check !== undefined)).toBe(true);
       expect(r.best === undefined).toBe(r.mainReason !== undefined);
     }
     // Windows come first, ordered by score.
@@ -716,6 +720,7 @@ describe("getRecommendations per site", () => {
     for (const day of [undefined, "2026-11-08"]) {
       const result = await getRecommendations(request({ siteIds: [], day }), deps(stub, cache));
       expect(result).toEqual({
+        model: "ecmwf",
         day: day ?? "2026-11-07",
         today: "2026-11-07",
         dayOver: false,
@@ -727,6 +732,93 @@ describe("getRecommendations per site", () => {
     expect(stub.urls).toEqual([]);
     expect(store.gets).toBe(0);
     expect(store.sets).toBe(0);
+  });
+});
+
+describe("getRecommendations with RRFS primary", () => {
+  /** The recorded launch response with every RRFS field nulled from Nov 8 00:00 MST (index 24). */
+  function noRRFSOnNov8(): string {
+    const locations = JSON.parse(launchesJSON) as { hourly: Record<string, unknown[]> }[];
+    for (const { hourly } of locations) {
+      for (const [key, values] of Object.entries(hourly)) {
+        if (!key.endsWith("_ncep_rrfs_conus")) continue;
+        for (let i = 24; i < values.length; i++) values[i] = null;
+      }
+    }
+    return JSON.stringify(locations);
+  }
+
+  it("evaluatesEveryLaunchWithRRFSOnTheRecordedForecast", async () => {
+    const forecasts = parseForecasts(launchesJSON, neighborsJSON, openLaunches());
+    let windows = 0;
+    let differsFromECMWF = false;
+    for (const day of ["2026-11-07", "2026-11-08"]) {
+      const result = await getRecommendations(request({ day, model: "rrfs" }), deps(fixtureTransport(), newCache()));
+      expect(result.model).toBe("rrfs");
+      const launches = result.sites.flatMap((rec) => rec.launches.map((l) => ({ site: rec.site, l })));
+      expect(launches).toHaveLength(3);
+      for (const { site: s, l } of launches) {
+        expect(l.model).toBe("rrfs");
+        expect(l.fellBack).toBe(false);
+        const f = forecasts.find((x) => x.launchID === l.launch.id) ?? never();
+        const evaluated = evaluateForecast(s, l.launch, f, "rrfs");
+        const rrfs = byTime(evaluated.rrfs);
+        const ecmwf = byTime(evaluated.ecmwf);
+        expect(l.daylight.length).toBeGreaterThan(0);
+        expect(l.daylight.map((row) => row.primary.result)).toEqual(l.daylight.map((row) => rrfs.get(row.time)));
+        expect(l.daylight.map((row) => row.check?.result)).toEqual(l.daylight.map((row) => ecmwf.get(row.time)));
+        const hours = l.window?.hours ?? [];
+        expect(hours).toEqual(hours.map((h) => rrfs.get(h.time)));
+        if (l.window !== undefined) windows += 1;
+        if (hours.some((h) => h.score !== ecmwf.get(h.time)?.score)) differsFromECMWF = true;
+      }
+    }
+    // The test can tell the models apart.
+    expect(windows).toBeGreaterThan(0);
+    expect(differsFromECMWF).toBe(true);
+  });
+
+  it("aDayRRFSDoesNotCoverFallsBackToECMWF", async () => {
+    const body = noRRFSOnNov8();
+    const day = "2026-11-08";
+    const rrfs = await getRecommendations(request({ day, model: "rrfs" }), deps(fixtureTransport(body), newCache()));
+    const ecmwf = await getRecommendations(request({ day, model: "ecmwf" }), deps(fixtureTransport(body), newCache()));
+    expect(rrfs.model).toBe("rrfs");
+    const launches = rrfs.sites.flatMap((rec) => rec.launches);
+    expect(launches).toHaveLength(3);
+    expect(launches.every((l) => l.model === "ecmwf" && l.fellBack)).toBe(true);
+    // Apart from the flag, exactly the ECMWF choice.
+    const unflagged = rrfs.sites.map((rec) => ({
+      ...rec,
+      launches: rec.launches.map((l) => ({ ...l, fellBack: false })),
+    }));
+    expect(unflagged).toEqual(ecmwf.sites);
+
+    // Nov 7 still has RRFS, so it stays primary there.
+    const nov7 = await getRecommendations(
+      request({ day: "2026-11-07", model: "rrfs" }),
+      deps(fixtureTransport(body), newCache()),
+    );
+    const nov7Launches = nov7.sites.flatMap((rec) => rec.launches);
+    expect(nov7Launches).toHaveLength(3);
+    expect(nov7Launches.every((l) => l.model === "rrfs" && !l.fellBack)).toBe(true);
+  });
+
+  it("aFreshCacheMeansNoFetchAndTheResultEchoesTheModel", async () => {
+    const cache = newCache();
+    seed(cache, NOW - 59 * MIN_MS);
+    const stub = fixtureTransport();
+    const result = await getRecommendations(request({ model: "rrfs" }), deps(stub, cache));
+    expect(stub.urls).toEqual([]);
+    expect(result.model).toBe("rrfs");
+    expect(result.sites.flatMap((rec) => rec.launches).every((l) => l.model === "rrfs")).toBe(true);
+  });
+
+  it("echoesTheModelWithNoOpenSites", async () => {
+    const stub = fixtureTransport();
+    const result = await getRecommendations(request({ siteIds: [COPPER], model: "rrfs" }), deps(stub, newCache()));
+    expect(stub.urls).toEqual([]);
+    expect(result.model).toBe("rrfs");
   });
 });
 

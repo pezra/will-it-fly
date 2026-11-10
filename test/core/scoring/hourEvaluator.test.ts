@@ -135,6 +135,11 @@ describe("ReasonKind", () => {
     expect([...ranks].sort((a, b) => a - b)).toEqual(ranks);
   });
 
+  it("puts ECMWF sees storms right after RRFS sees storms", () => {
+    expect(REASON_KIND_ORDER.indexOf("ecmwfSeesStorms")).toBe(REASON_KIND_ORDER.indexOf("rrfsSeesStorms") + 1);
+    expect(REASON_SEVERITY.ecmwfSeesStorms).toBe("caution");
+  });
+
   it("each reason carries its kind's severity and comes out in declaration order", () => {
     const r = evalWith({
       hour: hourWith((h) => {
@@ -211,6 +216,11 @@ describe("caution rules", () => {
       "RRFS sees storms",
       { other: { hour: hourWith((h) => (h.precipMm = 2)).build(), next: undefined } },
       "rrfsSeesStorms",
+    ],
+    [
+      "ECMWF sees storms",
+      { model: "rrfs", other: { hour: hourWith((h) => (h.precipMm = 2)).build(), next: undefined } },
+      "ecmwfSeesStorms",
     ],
   ];
   for (const [name, o, kind] of cases) {
@@ -947,7 +957,7 @@ describe("neighbor check, mixed cases", () => {
   });
 });
 
-describe("RRFS sees storms", () => {
+describe("the other model sees storms", () => {
   const stormy = hourWith((h) => (h.precipMm = 1)).build();
 
   it("caps the ECMWF hour at flyable, not no-go", () => {
@@ -974,10 +984,27 @@ describe("RRFS sees storms", () => {
     expect(evalWith({ other: { hour: undefined, next: undefined } }).call).toBe("good");
   });
 
-  it("is not applied when evaluating RRFS", () => {
+  it("is ECMWF sees storms when RRFS is evaluated against ECMWF", () => {
     const r = evalWith({ model: "rrfs", other: { hour: stormy, next: undefined } });
     expect(kinds(r)).not.toContain("rrfsSeesStorms");
-    expect(r.call).toBe("good");
+    expect(kinds(r)).toContain("ecmwfSeesStorms");
+    expect(r.reasons.find((x) => x.kind === "ecmwfSeesStorms")?.text).toBe("ECMWF sees storms");
+    expect(r.call).toBe("flyable");
+  });
+
+  it("is never ECMWF sees storms when evaluating ECMWF", () => {
+    const r = evalWith({ other: { hour: stormy, next: undefined } });
+    expect(kinds(r)).not.toContain("ecmwfSeesStorms");
+    expect(r.reasons.find((x) => x.kind === "rrfsSeesStorms")?.text).toBe("RRFS sees storms");
+  });
+
+  it("is not applied without the other model", () => {
+    for (const model of ["ecmwf", "rrfs"] as const) {
+      const r = evalWith({ model });
+      expect(kinds(r)).not.toContain("rrfsSeesStorms");
+      expect(kinds(r)).not.toContain("ecmwfSeesStorms");
+      expect(r.call).toBe("good");
+    }
   });
 });
 

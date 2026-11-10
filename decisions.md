@@ -2,6 +2,29 @@
 
 Architectural decisions that would be costly to reverse. Newest first.
 
+## The primary model is a per-request choice, evaluated by role (2026-11-09, `primary-model-switch`)
+
+The request names a primary model (ECMWF or RRFS). Each launch is evaluated with that model deciding and the other as the cross-check, and every result past the hour evaluator (daylight rows, windows, agreement, confidence) is shaped by role, not by model name. With RRFS asked for, a launch falls back to ECMWF for the whole day when RRFS covers less than 75% of the day's window hours.
+
+RRFS is better in some places but stops about 3½ days out. It is a straight swap of roles, so one set of rules serves both models. Role-named fields make the compiler find every reader that assumed ECMWF decides. A whole-day fallback keeps a window's hours and its agreement on one model. The threshold is 75% rather than half, because RRFS usually ends late morning on day +3, which is about half a November day, and keeping RRFS then hides afternoon windows.
+
+### Rejected
+- Model-named rows plus a "which is primary" key. Any reader that forgot the key would quietly keep showing ECMWF.
+- Falling back hour by hour. Windows and agreement would mix models.
+- One generic "other model sees storms" reason kind. A kind has fixed text and severity, and two kinds cost one line each.
+
+## The model choice is in the URL, with a device default only the control writes (2026-11-09, `primary-model-switch`)
+
+Every app URL carries `?model=` in the hash, and a URL without one is rewritten in place to a default saved on the device (`willItFly.model.v1`). Only the model control writes that default. The model is part of the weather load key, so a switch re-evaluates from the cached forecast, which holds both models, and shows loading rather than the old model's result.
+
+A shared link, Back and a reload must keep the model, and the home screen icon has no model in its URL. Unlike the start point, the model isn't private, so the URL is fine for it. Opening someone else's link shouldn't change what your app opens with.
+
+### Rejected
+- Model only in the URL. The home screen icon would always open on ECMWF.
+- Model only on the device. Links couldn't share it and Back couldn't undo a switch.
+- Any URL with a model updating the default. A friend's link would change your default.
+- Keeping the previous result on screen during a switch. It would briefly label one model's calls as the other's.
+
 ## Condition labels are derived in the scorer, apart from the call and the score (2026-11-09, `condition-labels`)
 
 `evaluateHour` outputs the condition labels (Soar, XC, Sledder) as a field on each hour result, and windows summarize them. The labels don't change an hour's call, its score or the list order. The XC label uses the thermal test at any site, while the XC bonus and reason still need a site curated `xc`.

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks"
 import { createSiteForecastCache } from "../core/forecast/siteForecastCache";
 import { getRecommendations } from "../core/recommendation/recommendationService";
 import type { RecommendationResult } from "../core/recommendation/types";
+import type { ModelName } from "../core/scoring/hourEvaluator";
 import { bundledSiteProvider } from "../core/sites/siteProvider";
 import { containsSites, weatherLoadKey } from "../core/travel/inRange";
 import type { DayKey } from "../core/time";
@@ -51,22 +52,98 @@ export interface Recommendations extends ForecastLoad {
 const TICK_MS = 60_000;
 
 /** The latest load, while it is in flight. */
-interface PendingLoad {
+export interface PendingLoad {
   day: DayKey | undefined;
+  model: ModelName;
   ids: readonly string[];
 }
 
+/** `state` when it is a result loaded for `day` with `model` as the primary model. */
+function loadedFor(
+  state: RecommendationsState,
+  day: DayKey | undefined,
+  model: ModelName,
+): Extract<RecommendationsState, { status: "loaded" }> | undefined {
+  return state.status === "loaded" && state.requested === day && state.result.model === model
+    ? state
+    : undefined;
+}
+
 /**
- * Loads the forecast for `siteIds` on `day` (undefined for the default day). `state` is the
- * unfiltered result with no distances: `useTravelView` adds those from the start point. Undefined
- * `siteIds` means "not yet": nothing loads and the state stays as it is (loading until something
- * has loaded for this day). A new set of ids reloads with the previous result still shown
- * (`refreshing`), unless that result already has every one of them for this day. Another day
- * shows loading until it arrives.
+ * What the reload effect does for `ids` on `day` with `model`, given the state `prev` and the load
+ * in flight `pending`:
+ * - `"load"` when there are ids and `prev` has no result for this day and model, or one without
+ *   some of the ids.
+ * - `"keep"` when nothing needs loading and the load in flight is for this day and model and
+ *   covers the ids, so it may still land.
+ * - `"drop"` otherwise (undefined ids included): any load in flight is dropped, so it can't
+ *   replace what is on screen later (a site page's single site over the list, say).
+ */
+export function loadDecision(
+  prev: RecommendationsState,
+  day: DayKey | undefined,
+  model: ModelName,
+  ids: readonly string[] | undefined,
+  pending: PendingLoad | undefined,
+): "load" | "keep" | "drop" {
+  if (ids === undefined) return "drop";
+  const loaded = loadedFor(prev, day, model);
+  if (loaded === undefined || !containsSites(loaded.result, ids)) return "load";
+  const covering =
+    pending !== undefined &&
+    pending.day === day &&
+    pending.model === model &&
+    ids.every((id) => pending.ids.includes(id));
+  return covering ? "keep" : "drop";
+}
+
+/**
+ * The state after a load is dropped. A failure from the dropped load must not sit over the next
+ * stage, and a result for another day or model must not stay on screen (as during `routing`,
+ * when the ids are undefined), so both give loading. The result for this day and model stays,
+ * with no refresh in flight.
+ */
+export function droppedState(
+  prev: RecommendationsState,
+  day: DayKey | undefined,
+  model: ModelName,
+): RecommendationsState {
+  if (prev.status === "failed") return { status: "loading" };
+  if (prev.status !== "loaded") return prev;
+  const loaded = loadedFor(prev, day, model);
+  if (loaded === undefined) return { status: "loading" };
+  const { refreshError: _dropped, ...rest } = loaded;
+  return { ...rest, refreshing: false };
+}
+
+/**
+ * The state shown while a load for `day` with `model` is in flight: the result for this day and
+ * model, refreshing, or loading. Another day's or model's result is never shown as this one's.
+ */
+export function pendingState(
+  prev: RecommendationsState,
+  day: DayKey | undefined,
+  model: ModelName,
+): RecommendationsState {
+  const loaded = loadedFor(prev, day, model);
+  return loaded === undefined
+    ? { status: "loading" }
+    : { status: "loaded", requested: day, result: loaded.result, refreshing: true };
+}
+
+/**
+ * Loads the forecast for `siteIds` on `day` (undefined for the default day), with `model` as the
+ * primary model. `state` is the unfiltered result with no distances: `useTravelView` adds those
+ * from the start point. Undefined `siteIds` means "not yet": nothing loads and the state stays as
+ * it is (loading until something has loaded for this day and model). A new set of ids reloads with
+ * the previous result still shown (`refreshing`), unless that result already has every one of them
+ * for this day and model. Another day or model shows loading until it arrives (from the cache, for
+ * a model switch: both models are in every cached response).
  */
 export function useRecommendations(
   debug: DebugParams,
   day: DayKey | undefined,
+  model: ModelName,
   siteIds: readonly string[] | undefined,
 ): ForecastLoad {
   const [base, setBase] = useState<RecommendationsState>({ status: "loading" });
@@ -76,7 +153,7 @@ export function useRecommendations(
 
   // Keyed on the string, so a new array with the same ids (every render of `App`) changes nothing.
   // Refresh, retry and resume load these same ids.
-  const key = siteIds === undefined ? undefined : weatherLoadKey(day, siteIds);
+  const key = siteIds === undefined ? undefined : weatherLoadKey(day, model, siteIds);
   const ids = useMemo(() => siteIds, [key]);
 
   const now = useCallback(() => debug.now ?? Date.now(), [debug.now]);
@@ -102,15 +179,10 @@ export function useRecommendations(
     (forceRefresh: boolean) => {
       if (ids === undefined) return;
       const id = ++requestId.current;
-      pending.current = { day, ids };
+      pending.current = { day, model, ids };
       inFlight.current++;
-      // Another day's result is never shown as this day's while it loads.
-      setBase((prev) =>
-        prev.status === "loaded" && prev.requested === day
-          ? { status: "loaded", requested: day, result: prev.result, refreshing: true }
-          : { status: "loading" },
-      );
-      getRecommendations({ forceRefresh, day, siteIds: ids }, deps).then(
+      setBase((prev) => pendingState(prev, day, model));
+      getRecommendations({ forceRefresh, day, siteIds: ids, model }, deps).then(
         (result) => {
           inFlight.current--;
           if (id !== requestId.current) return;
@@ -130,36 +202,24 @@ export function useRecommendations(
         },
       );
     },
-    [deps, day, ids],
+    // `model` is here for the switch while the ids are undefined (the list during `routing`): the
+    // `ids` memo key doesn't change then, so this dep is what re-runs the effect below, which
+    // drops the other model's result. With ids, the key has the model and changes `ids` too.
+    [deps, day, model, ids],
   );
 
-  // `load` changes exactly when the day, the ids or the deps do, so this runs once per new key.
+  // `load` changes exactly when the day, the model, the ids or the deps do, so this runs once per
+  // new key.
   useEffect(() => {
-    const prev = current.current;
-    const loaded = prev.status === "loaded" && prev.requested === day ? prev : undefined;
-    if (ids !== undefined && (loaded === undefined || !containsSites(loaded.result, ids))) {
+    const decision = loadDecision(current.current, day, model, ids, pending.current);
+    if (decision === "load") {
       load(false);
       return;
     }
-    // Nothing to load. A load in flight that covers these ids may land; any other is dropped, so
-    // it can't replace what is on screen later (a site page's single site over the list, say).
-    const inFlightLoad = pending.current;
-    const covering =
-      ids !== undefined &&
-      inFlightLoad !== undefined &&
-      inFlightLoad.day === day &&
-      ids.every((id) => inFlightLoad.ids.includes(id));
-    if (covering) return;
+    if (decision === "keep") return;
     ++requestId.current;
     pending.current = undefined;
-    setBase((p) => {
-      // A failure from the load that was just dropped must not sit over the next stage.
-      if (p.status === "failed") return { status: "loading" };
-      if (p.status !== "loaded") return p;
-      if (p.requested !== day) return { status: "loading" };
-      const { refreshError: _dropped, ...rest } = p;
-      return { ...rest, refreshing: false };
-    });
+    setBase((p) => droppedState(p, day, model));
   }, [load]);
 
   // Coming back to the page re-runs a non-forced load (the core cache rules decide whether to

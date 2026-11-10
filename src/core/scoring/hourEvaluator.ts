@@ -16,7 +16,13 @@ import {
 } from "./derived";
 import type { Wind } from "./derived";
 
-export type ModelName = "ecmwf" | "rrfs";
+/** The forecast models, the single definition: the route, the saved default and the UI read it. */
+export const MODEL_NAMES = ["ecmwf", "rrfs"] as const;
+export type ModelName = (typeof MODEL_NAMES)[number];
+
+export function isModelName(value: unknown): value is ModelName {
+  return (MODEL_NAMES as readonly unknown[]).includes(value);
+}
 
 export type HourCall = "good" | "flyable" | "noGo" | "noData";
 
@@ -44,6 +50,7 @@ export const REASON_KIND_ORDER = [
   // Caution
   "stormsComing",
   "rrfsSeesStorms",
+  "ecmwfSeesStorms",
   "overdevelopment",
   "aloftWind",
   "nearMaxWind",
@@ -91,6 +98,7 @@ export const REASON_SEVERITY: Readonly<Record<ReasonKind, Severity>> = Object.fr
   neighborWindStrong: "noGo",
   stormsComing: "caution",
   rrfsSeesStorms: "caution",
+  ecmwfSeesStorms: "caution",
   overdevelopment: "caution",
   aloftWind: "caution",
   nearMaxWind: "caution",
@@ -169,7 +177,7 @@ export interface HourContext {
   hour: ModelHour;
   /** The following hour of the same model. Undefined at the last hour: hour h is used alone. */
   next?: ModelHour | undefined;
-  /** For ECMWF evaluation, the RRFS hour and its next hour. Undefined for RRFS evaluation. */
+  /** The other model's hour and its next hour, for the primary model's evaluation only. */
   other?: { hour: ModelHour | undefined; next: ModelHour | undefined } | undefined;
   /** The neighbor request's center 10 m wind at h, per model (not the launch request's wind). */
   neighborCenter: NeighborSample;
@@ -179,7 +187,16 @@ export interface HourContext {
   site: Site;
 }
 
-const MODEL_LABEL: Readonly<Record<ModelName, string>> = { ecmwf: "ECMWF", rrfs: "RRFS" };
+/** The model's name as shown to the pilot. */
+export const MODEL_LABEL: Readonly<Record<ModelName, string>> = { ecmwf: "ECMWF", rrfs: "RRFS" };
+/** The model that cross-checks each primary model. */
+export const CHECK_MODEL: Readonly<Record<ModelName, ModelName>> = { ecmwf: "rrfs", rrfs: "ecmwf" };
+/** The reason a primary model's hour gets when its check model has a precipitation no-go. */
+const SEES_STORMS: Readonly<Record<ModelName, ReasonKind>> = {
+  ecmwf: "rrfsSeesStorms",
+  rrfs: "ecmwfSeesStorms",
+};
+
 function windText(w: Wind): string {
   return `${compass(w.dirDeg)} ${mph(w.speedMph)}`;
 }
@@ -313,6 +330,19 @@ function gustFactorMph(hour: ModelHour, next: ModelHour | undefined): number | u
   return terms.length === 0 ? undefined : Math.max(0, ...terms);
 }
 
+/** The core fields an hour lacks: the launch wind (10 m speed and direction) and precipitation at h. */
+function missingCoreFields(hour: ModelHour, wind: Wind | undefined): string[] {
+  const missing: string[] = [];
+  if (wind === undefined) missing.push("wind");
+  if (hour.precipMm === undefined) missing.push("precipitation");
+  return missing;
+}
+
+/** True when the hour has the core fields, so `evaluateHour` won't call it no data. */
+export function hasCoreData(hour: ModelHour, launch: Launch): boolean {
+  return missingCoreFields(hour, launchWind(hour, elevationM(launch))).length === 0;
+}
+
 /** The per-hour call, score and reasons for one launch and one model. */
 export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORING_DEFAULTS): HourResult {
   const { hour, next, launch } = ctx;
@@ -330,10 +360,7 @@ export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORI
     conditions,
   });
 
-  // Core fields: the launch wind (10 m speed and direction) and precipitation at h.
-  const missing: string[] = [];
-  if (wind === undefined) missing.push("wind");
-  if (hour.precipMm === undefined) missing.push("precipitation");
+  const missing = missingCoreFields(hour, wind);
   if (wind === undefined || missing.length > 0) {
     return finish(fields(0), [reason("noData", `no data: ${missing.join(", ")}`)], defaults);
   }
@@ -453,10 +480,10 @@ export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORI
     reasons.push(reason("xcPotential", `XC potential (thermal index ${ti.toFixed(1)} °C, BLH ${Math.round(blh)} m)`));
   }
 
-  // RRFS sees storms (ECMWF evaluation only).
-  if (ctx.model === "ecmwf" && ctx.other?.hour !== undefined) {
+  // The other model sees storms (primary model evaluation only).
+  if (ctx.other?.hour !== undefined) {
     if (precipNoGoMm(ctx.other.hour, ctx.other.next, defaults) !== undefined) {
-      reasons.push(reason("rrfsSeesStorms", "RRFS sees storms"));
+      reasons.push(reason(SEES_STORMS[ctx.model], `${MODEL_LABEL[CHECK_MODEL[ctx.model]]} sees storms`));
     }
   }
 

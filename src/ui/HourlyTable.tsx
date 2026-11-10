@@ -1,10 +1,11 @@
 import type { ModelHour } from "../core/forecast/models";
-import type { LaunchEvaluation } from "../core/recommendation/types";
+import type { DaylightRow, LaunchEvaluation } from "../core/recommendation/types";
 import type { HourResult } from "../core/scoring/hourEvaluator";
 import { formatDenverTime } from "../core/time";
 import { compass } from "../core/units";
 import { ResultBadge } from "./CallBadge";
-import { approxFeet, oneDecimal, whole } from "./format";
+import { approxFeet, hourlyColumns, oneDecimal, whole } from "./format";
+import type { HourlyColumn } from "./format";
 
 /** Launch-height wind this far from the model's 10 m wind (mph) gets a marker. */
 const LAUNCH_WIND_MARK_MPH = 1;
@@ -61,12 +62,45 @@ function ReasonList({ result, label }: { result: HourResult; label: string }) {
   );
 }
 
+/** One body cell: the column's value from the primary or check side of the row. */
+function Cell({ column, row }: { column: HourlyColumn; row: DaylightRow }) {
+  const side = column.side === "check" ? row.check : row.primary;
+  switch (column.value) {
+    case "time":
+      return <th scope="row">{formatDenverTime(row.time)}</th>;
+    case "call":
+      return (
+        <td>
+          {side === undefined ? "n/a" : <ResultBadge call={side.result.call} conditions={side.result.conditions} />}
+        </td>
+      );
+    case "wind":
+      return (
+        <td>
+          {column.side === "primary" && side?.result.call === "noData" ? (
+            "no data"
+          ) : (
+            <WindCell result={side?.result} hour={side?.hour} withGust={column.withGust === true} />
+          )}
+        </td>
+      );
+    case "cape":
+      return <td>{whole(side?.hour.capeJkg)}</td>;
+    case "cloudBase":
+      return <td>{approxFeet(side?.result.cloudBaseM)}</td>;
+    case "thermalIndex":
+      return <td>{oneDecimal(side?.result.thermalIndexC)}</td>;
+  }
+}
+
 /**
- * One launch's daylight hours, ECMWF and RRFS side by side. Scrolls sideways on a phone with the
- * time column pinned. Reasons for each hour follow the table.
+ * One launch's daylight hours, the primary model's columns first and the check model's after
+ * them, both named from the launch's model. Scrolls sideways on a phone with the time column
+ * pinned. Reasons for each hour follow the table.
  */
 export function HourlyTable({ evaluation }: { evaluation: LaunchEvaluation }) {
-  const { launch, daylight } = evaluation;
+  const { launch, daylight, model } = evaluation;
+  const columns = hourlyColumns(model);
   if (daylight.length === 0) return <p class="note">No daylight hours left in this forecast.</p>;
 
   return (
@@ -75,42 +109,32 @@ export function HourlyTable({ evaluation }: { evaluation: LaunchEvaluation }) {
         <table class="hourly">
           <thead>
             <tr>
-              <th scope="col">Time</th>
-              <th scope="col">ECMWF</th>
-              <th scope="col">Wind / gust / dir</th>
-              <th scope="col">RRFS</th>
-              <th scope="col">RRFS wind / dir</th>
-              <th scope="col">CAPE J/kg</th>
-              <th scope="col">Cloud base</th>
-              <th scope="col">TI °C</th>
+              {columns.map((column) => (
+                <th key={column.header} scope="col">{column.header}</th>
+              ))}
             </tr>
           </thead>
           <tbody>
-            {daylight.map(({ time, ecmwf, ecmwfHour, rrfs, rrfsHour }) => (
-              <tr key={time} class={ecmwf.call === "noData" ? "no-data" : undefined}>
-                <th scope="row">{formatDenverTime(time)}</th>
-                <td><ResultBadge call={ecmwf.call} conditions={ecmwf.conditions} /></td>
-                <td>{ecmwf.call === "noData" ? "no data" : <WindCell result={ecmwf} hour={ecmwfHour} withGust={true} />}</td>
-                <td>{rrfs === undefined ? "n/a" : <ResultBadge call={rrfs.call} conditions={rrfs.conditions} />}</td>
-                <td><WindCell result={rrfs} hour={rrfsHour} withGust={false} /></td>
-                <td>{whole(ecmwfHour.capeJkg)}</td>
-                <td>{approxFeet(ecmwf.cloudBaseM)}</td>
-                <td>{oneDecimal(ecmwf.thermalIndexC)}</td>
+            {daylight.map((row) => (
+              <tr key={row.time} class={row.primary.result.call === "noData" ? "no-data" : undefined}>
+                {columns.map((column) => (
+                  <Cell key={column.header} column={column} row={row} />
+                ))}
               </tr>
             ))}
           </tbody>
         </table>
       </div>
       {daylight.some((row) =>
-          (row.ecmwf.call !== "noData" && isMarked(row.ecmwf, row.ecmwfHour)) ||
-          isMarked(row.rrfs, row.rrfsHour)) && (
+          (row.primary.result.call !== "noData" && isMarked(row.primary.result, row.primary.hour)) ||
+          isMarked(row.check?.result, row.check?.hour)) && (
         <p class="note">† launch-height wind (interpolated from pressure levels)</p>
       )}
       <p class="note">Cloud base is above launch, from temperature minus dewpoint. It runs high at launches well above model terrain.</p>
       <h4>Why, hour by hour</h4>
       <ul class="reasons">
-        {daylight.map(({ time, ecmwf }) => (
-          <ReasonList key={time} result={ecmwf} label={formatDenverTime(time)} />
+        {daylight.map(({ time, primary }) => (
+          <ReasonList key={time} result={primary.result} label={formatDenverTime(time)} />
         ))}
       </ul>
     </>

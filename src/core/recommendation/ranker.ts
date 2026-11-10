@@ -16,7 +16,7 @@ export function bestWindow(launches: readonly LaunchEvaluation[]): BestWindow | 
   let best: BestWindow | undefined;
   for (const l of launches) {
     if (l.window !== undefined && (best === undefined || l.window.score > best.window.score)) {
-      best = { launch: l.launch, window: l.window };
+      best = { launch: l.launch, model: l.model, window: l.window };
     }
   }
   return best;
@@ -30,7 +30,7 @@ function mostFrequent(
   const counts = new Map<ReasonKind, { count: number; text: string }>();
   for (const l of launches) {
     for (const row of l.daylight) {
-      for (const r of row.ecmwf.reasons) {
+      for (const r of row.primary.result.reasons) {
         if (r.severity !== severity) continue;
         const entry = counts.get(r.kind);
         if (entry === undefined) counts.set(r.kind, { count: 1, text: r.text });
@@ -50,8 +50,9 @@ function mostFrequent(
 }
 
 /**
- * Why a site has no window: the most frequent no-go kind across every launch's daylight hours, else
- * the most frequent caution kind, else "no flyable hour". Count ties go to `REASON_KIND_ORDER`.
+ * Why a site has no window: the most frequent no-go kind across every launch's daylight hours (the
+ * primary model's results), else the most frequent caution kind, else "no flyable hour". Count
+ * ties go to `REASON_KIND_ORDER`.
  * The text is the first occurrence's.
  */
 export function mainReason(launches: readonly LaunchEvaluation[]): MainReason {

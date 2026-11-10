@@ -1,7 +1,7 @@
-import type { LaunchForecast, ModelHour, NeighborWind } from "../forecast/models";
+import type { DaylightDay, LaunchForecast, ModelHour, NeighborWind } from "../forecast/models";
 import { SCORING_DEFAULTS } from "../scoring/defaults";
 import type { ScoringDefaults } from "../scoring/defaults";
-import { applyStormLookahead, evaluateHour } from "../scoring/hourEvaluator";
+import { CHECK_MODEL, applyStormLookahead, evaluateHour, hasCoreData } from "../scoring/hourEvaluator";
 import type { HourContext, HourResult, ModelName } from "../scoring/hourEvaluator";
 import { daylightDayFor, daylightHours, findBestWindow } from "../scoring/windowFinder";
 import type { Launch, Site } from "../sites/site";
@@ -21,33 +21,38 @@ function evaluateSeries(
 
 /**
  * Evaluates every hour of both models for one launch. Every series is aligned by `time`, never by
- * index, so an RRFS gap leaves ECMWF hour h paired with the RRFS hour that has the same time (or
- * none). The storm look-ahead runs per model, by time.
+ * index, so a gap in one model leaves the other's hour h paired with the hour that has the same
+ * time (or none). Only the primary model sees the other model's hours. The storm look-ahead runs
+ * per model, by time.
  */
 export function evaluateForecast(
   site: Site,
   launch: Launch,
   forecast: LaunchForecast,
+  primary: ModelName = "ecmwf",
   defaults: ScoringDefaults = SCORING_DEFAULTS,
-): { ecmwf: HourResult[]; rrfs: HourResult[] } {
-  const { ecmwf, rrfs } = evaluateForecastIndexed(site, launch, forecast, defaults);
-  return { ecmwf, rrfs };
+): Record<ModelName, HourResult[]> {
+  return evaluateForecastIndexed(site, launch, forecast, primary, defaults).results;
 }
 
-/** `evaluateForecast` plus the by-time maps of both models' input hours, for the caller to reuse. */
+interface Evaluated {
+  results: Record<ModelName, HourResult[]>;
+  /** Both models' input hours by time, for the caller to reuse. */
+  hours: Record<ModelName, Map<number, ModelHour>>;
+}
+
+/** `evaluateForecast` plus the by-time maps of both models' input hours. */
 function evaluateForecastIndexed(
   site: Site,
   launch: Launch,
   forecast: LaunchForecast,
+  primary: ModelName,
   defaults: ScoringDefaults,
-): {
-  ecmwf: HourResult[];
-  rrfs: HourResult[];
-  ecmwfByTime: Map<number, ModelHour>;
-  rrfsByTime: Map<number, ModelHour>;
-} {
-  const ecmwfByTime = byTime(forecast.ecmwf);
-  const rrfsByTime = byTime(forecast.rrfs);
+): Evaluated {
+  const hours: Record<ModelName, Map<number, ModelHour>> = {
+    ecmwf: byTime(forecast.ecmwf),
+    rrfs: byTime(forecast.rrfs),
+  };
   const centers: Record<ModelName, Map<number, NeighborWind>> = {
     ecmwf: byTime(forecast.neighborCenter.ecmwf),
     rrfs: byTime(forecast.neighborCenter.rrfs),
@@ -59,16 +64,13 @@ function evaluateForecastIndexed(
   }));
 
   function context(model: ModelName, hour: ModelHour): HourContext {
-    const own = model === "ecmwf" ? ecmwfByTime : rrfsByTime;
     const t = hour.time;
+    const other = hours[CHECK_MODEL[model]];
     return {
       model,
       hour,
-      next: own.get(t + HOUR_MS),
-      other:
-        model === "ecmwf"
-          ? { hour: rrfsByTime.get(t), next: rrfsByTime.get(t + HOUR_MS) }
-          : undefined,
+      next: hours[model].get(t + HOUR_MS),
+      other: model === primary ? { hour: other.get(t), next: other.get(t + HOUR_MS) } : undefined,
       neighborCenter: { ecmwf: centers.ecmwf.get(t), rrfs: centers.rrfs.get(t) },
       neighbors: neighbors.map((n) => ({
         bearingDeg: n.bearingDeg,
@@ -80,49 +82,90 @@ function evaluateForecastIndexed(
     };
   }
 
-  function run(model: ModelName, hours: readonly ModelHour[]): HourResult[] {
-    return evaluateSeries(hours, (h) => evaluateHour(context(model, h), defaults), defaults);
+  function run(model: ModelName, series: readonly ModelHour[]): HourResult[] {
+    return evaluateSeries(series, (h) => evaluateHour(context(model, h), defaults), defaults);
   }
 
+  return { results: { ecmwf: run("ecmwf", forecast.ecmwf), rrfs: run("rrfs", forecast.rrfs) }, hours };
+}
+
+/**
+ * True when RRFS covers enough of the day's window hours to be the primary model. The window hours
+ * are the times either model has inside `daylightHours`. RRFS covers one when its hour there has the
+ * core fields, so it wouldn't be no data. With no window hours left, RRFS stands.
+ */
+function rrfsCoversDay(
+  launch: Launch,
+  forecast: LaunchForecast,
+  day: DaylightDay,
+  now: number,
+  defaults: ScoringDefaults,
+): boolean {
+  const times = (hours: readonly ModelHour[]) => new Set(daylightHours(hours, day, now).map((h) => h.time));
+  const windowHours = times([...forecast.ecmwf, ...forecast.rrfs]);
+  if (windowHours.size === 0) return true;
+  const covered = times(forecast.rrfs.filter((h) => hasCoreData(h, launch)));
+  return covered.size / windowHours.size >= defaults.rrfsPrimaryMinDaylightShare;
+}
+
+/** The daylight rows and best window, with `primary` deciding and the other model as the check. */
+function launchEvaluation(
+  launch: Launch,
+  primary: ModelName,
+  fellBack: boolean,
+  { results, hours }: Evaluated,
+  day: DaylightDay,
+  now: number,
+  defaults: ScoringDefaults,
+): LaunchEvaluation {
+  const check = CHECK_MODEL[primary];
+  const primaryResults = daylightHours(results[primary], day, now);
+  const checkByTime = byTime(results[check]);
+  const daylight = primaryResults.flatMap((result): DaylightRow[] => {
+    const hour = hours[primary].get(result.time);
+    if (hour === undefined) return [];
+    const checkResult = checkByTime.get(result.time);
+    const checkHour = hours[check].get(result.time);
+    return [
+      {
+        time: result.time,
+        primary: { result, hour },
+        check:
+          checkResult === undefined || checkHour === undefined
+            ? undefined
+            : { result: checkResult, hour: checkHour },
+      },
+    ];
+  });
   return {
-    ecmwf: run("ecmwf", forecast.ecmwf),
-    rrfs: run("rrfs", forecast.rrfs),
-    ecmwfByTime,
-    rrfsByTime,
+    launch,
+    model: primary,
+    fellBack,
+    daylight,
+    window: findBestWindow(primaryResults, checkByTime, defaults),
   };
 }
 
-/** Evaluates one launch and finds its best window for the day. */
+/**
+ * Evaluates one launch with `model` as the primary model and finds its best window for the day.
+ * With RRFS asked for, a launch whose RRFS covers less than `rrfsPrimaryMinDaylightShare` of the
+ * day's window hours uses ECMWF instead, and is marked `fellBack`.
+ */
 export function evaluateLaunch(
   site: Site,
   launch: Launch,
   forecast: LaunchForecast,
   day: DayKey,
   now: number,
+  model: ModelName,
   defaults: ScoringDefaults = SCORING_DEFAULTS,
 ): LaunchEvaluation {
   const daylightDay = daylightDayFor(forecast.days, day);
-  if (daylightDay === undefined) return { launch, daylight: [], window: undefined };
-  const { ecmwf, rrfs, ecmwfByTime: ecmwfHours, rrfsByTime: rrfsHours } = evaluateForecastIndexed(
-    site,
-    launch,
-    forecast,
-    defaults,
-  );
-  const results = daylightHours(ecmwf, daylightDay, now);
-  const rrfsResults = byTime(rrfs);
-  const daylight = results.flatMap((result): DaylightRow[] => {
-    const ecmwfHour = ecmwfHours.get(result.time);
-    if (ecmwfHour === undefined) return [];
-    return [
-      {
-        time: result.time,
-        ecmwf: result,
-        ecmwfHour,
-        rrfs: rrfsResults.get(result.time),
-        rrfsHour: rrfsHours.get(result.time),
-      },
-    ];
-  });
-  return { launch, daylight, window: findBestWindow(results, rrfsResults, defaults) };
+  if (daylightDay === undefined) {
+    return { launch, model, fellBack: false, daylight: [], window: undefined };
+  }
+  const fellBack = model === "rrfs" && !rrfsCoversDay(launch, forecast, daylightDay, now, defaults);
+  const primary = fellBack ? "ecmwf" : model;
+  const evaluated = evaluateForecastIndexed(site, launch, forecast, primary, defaults);
+  return launchEvaluation(launch, primary, fellBack, evaluated, daylightDay, now, defaults);
 }

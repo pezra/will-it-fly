@@ -1,0 +1,2021 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`ECMWF-primary characterization > pins the recorded forecast for 2026-11-07 1`] = `
+[
+  {
+    "best": "rmhpa/boulder-wonderland/upper",
+    "call": "good",
+    "id": "rmhpa/boulder-wonderland",
+    "launches": [
+      {
+        "hours": [
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [],
+              "score": 75,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 71.75,
+            },
+            "time": 1794074400000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 74.75,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [],
+              "score": 76.75,
+            },
+            "time": 1794078000000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [],
+              "score": 79.5,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [],
+              "score": 77.75,
+            },
+            "time": 1794081600000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [],
+              "score": 78.25,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [],
+              "score": 76.75,
+            },
+            "time": 1794085200000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [],
+              "score": 75.75,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [],
+              "score": 63.5,
+            },
+            "time": 1794088800000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 52.75,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [],
+              "score": 60.5,
+            },
+            "time": 1794092400000,
+          },
+        ],
+        "id": "rmhpa/boulder-wonderland/upper",
+        "window": {
+          "cautions": [],
+          "confidence": "high",
+          "end": 1794096000000,
+          "score": 72.66666666666667,
+          "start": 1794074400000,
+        },
+      },
+    ],
+    "mainReason": null,
+  },
+  {
+    "best": "rmhpa/glenwood-lookout-mtn/north",
+    "call": "good",
+    "id": "rmhpa/glenwood-lookout-mtn",
+    "launches": [
+      {
+        "hours": [
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 57.75,
+            },
+            "rrfs": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "time": 1794074400000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [],
+              "score": 58.75,
+            },
+            "rrfs": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+              ],
+              "score": 0,
+            },
+            "time": 1794078000000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [],
+              "score": 61.75,
+            },
+            "rrfs": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+              ],
+              "score": 0,
+            },
+            "time": 1794081600000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [],
+              "score": 63,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [],
+              "score": 64.5,
+            },
+            "time": 1794085200000,
+          },
+          {
+            "ecmwf": {
+              "call": "flyable",
+              "kinds": [
+                "neighborWind",
+                "sledder",
+              ],
+              "score": 53.75,
+            },
+            "rrfs": {
+              "call": "flyable",
+              "kinds": [
+                "neighborWind",
+                "directionNotIdeal",
+              ],
+              "score": 56.25,
+            },
+            "time": 1794088800000,
+          },
+          {
+            "ecmwf": {
+              "call": "flyable",
+              "kinds": [
+                "neighborWind",
+                "sledder",
+              ],
+              "score": 49.5,
+            },
+            "rrfs": {
+              "call": "flyable",
+              "kinds": [
+                "neighborWind",
+                "sledder",
+              ],
+              "score": 51.75,
+            },
+            "time": 1794092400000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 50.75,
+            },
+            "rrfs": {
+              "call": "flyable",
+              "kinds": [
+                "lowCloud",
+                "sledder",
+              ],
+              "score": 48.5,
+            },
+            "time": 1794096000000,
+          },
+        ],
+        "id": "rmhpa/glenwood-lookout-mtn/north",
+        "window": {
+          "cautions": [
+            "neighborWind",
+          ],
+          "confidence": "medium",
+          "end": 1794099600000,
+          "score": 47.99464285714286,
+          "start": 1794074400000,
+        },
+      },
+    ],
+    "mainReason": null,
+  },
+  {
+    "best": "rmhpa/crested-butte/browns",
+    "call": "good",
+    "id": "rmhpa/crested-butte",
+    "launches": [
+      {
+        "hours": [
+          {
+            "ecmwf": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 54.99708914174306,
+            },
+            "time": 1794074400000,
+          },
+          {
+            "ecmwf": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [],
+              "score": 62.17716276862387,
+            },
+            "time": 1794078000000,
+          },
+          {
+            "ecmwf": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "rrfs": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+              ],
+              "score": 0,
+            },
+            "time": 1794081600000,
+          },
+          {
+            "ecmwf": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "rrfs": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+              ],
+              "score": 0,
+            },
+            "time": 1794085200000,
+          },
+          {
+            "ecmwf": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "rrfs": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "time": 1794088800000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 56.720327894682924,
+            },
+            "rrfs": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "time": 1794092400000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 55.11423267003138,
+            },
+            "rrfs": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "time": 1794096000000,
+          },
+        ],
+        "id": "rmhpa/crested-butte/browns",
+        "window": {
+          "cautions": [],
+          "confidence": "low",
+          "end": 1794099600000,
+          "score": 31.313676958120006,
+          "start": 1794092400000,
+        },
+      },
+    ],
+    "mainReason": null,
+  },
+  {
+    "best": null,
+    "call": "closed",
+    "id": "rmhpa/copper-mountain",
+    "launches": [],
+    "mainReason": null,
+  },
+]
+`;
+
+exports[`ECMWF-primary characterization > pins the recorded forecast for 2026-11-08 1`] = `
+[
+  {
+    "best": "rmhpa/glenwood-lookout-mtn/north",
+    "call": "good",
+    "id": "rmhpa/glenwood-lookout-mtn",
+    "launches": [
+      {
+        "hours": [
+          {
+            "ecmwf": {
+              "call": "flyable",
+              "kinds": [
+                "neighborWind",
+                "sledder",
+              ],
+              "score": 47,
+            },
+            "rrfs": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+                "neighborWind",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "time": 1794146400000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 54.5,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 56.75,
+            },
+            "time": 1794150000000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 57,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 54.5,
+            },
+            "time": 1794153600000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 55.25,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 55.5,
+            },
+            "time": 1794157200000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 54,
+            },
+            "rrfs": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "time": 1794160800000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 57.5,
+            },
+            "rrfs": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "time": 1794164400000,
+          },
+          {
+            "ecmwf": {
+              "call": "noGo",
+              "kinds": [
+                "neighborWindStrong",
+              ],
+              "score": 0,
+            },
+            "rrfs": {
+              "call": "noGo",
+              "kinds": [
+                "neighborWindStrong",
+                "directionNotIdeal",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "time": 1794168000000,
+          },
+          {
+            "ecmwf": {
+              "call": "flyable",
+              "kinds": [
+                "neighborWind",
+              ],
+              "score": 73.5,
+            },
+            "rrfs": {
+              "call": "flyable",
+              "kinds": [
+                "neighborWind",
+                "directionNotIdeal",
+                "sledder",
+              ],
+              "score": 59.71428571428572,
+            },
+            "time": 1794171600000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 73.5,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 79,
+            },
+            "time": 1794175200000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 57.75,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 76.75,
+            },
+            "time": 1794178800000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 57.5,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 52.25,
+            },
+            "time": 1794182400000,
+          },
+        ],
+        "id": "rmhpa/glenwood-lookout-mtn/north",
+        "window": {
+          "cautions": [
+            "neighborWind",
+          ],
+          "confidence": "high",
+          "end": 1794186000000,
+          "score": 65.5625,
+          "start": 1794171600000,
+        },
+      },
+    ],
+    "mainReason": null,
+  },
+  {
+    "best": "rmhpa/boulder-wonderland/upper",
+    "call": "good",
+    "id": "rmhpa/boulder-wonderland",
+    "launches": [
+      {
+        "hours": [
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 51,
+            },
+            "rrfs": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "time": 1794146400000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 53,
+            },
+            "rrfs": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "time": 1794150000000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 53.75,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 55,
+            },
+            "time": 1794153600000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 70,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 70.75,
+            },
+            "time": 1794157200000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 72.5,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 70,
+            },
+            "time": 1794160800000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 73.25,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [],
+              "score": 76.75,
+            },
+            "time": 1794164400000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 73.25,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [],
+              "score": 75.75,
+            },
+            "time": 1794168000000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 72,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [],
+              "score": 76.25,
+            },
+            "time": 1794171600000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 59.25,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [],
+              "score": 75,
+            },
+            "time": 1794175200000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 55,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [],
+              "score": 61.75,
+            },
+            "time": 1794178800000,
+          },
+        ],
+        "id": "rmhpa/boulder-wonderland/upper",
+        "window": {
+          "cautions": [],
+          "confidence": "high",
+          "end": 1794182400000,
+          "score": 63.3,
+          "start": 1794146400000,
+        },
+      },
+    ],
+    "mainReason": null,
+  },
+  {
+    "best": "rmhpa/crested-butte/browns",
+    "call": "good",
+    "id": "rmhpa/crested-butte",
+    "launches": [
+      {
+        "hours": [
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 49.53909462776053,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 55.92842379226994,
+            },
+            "time": 1794146400000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 55.1059438291873,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 55.231401413124395,
+            },
+            "time": 1794150000000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 55.035029645383695,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 53.2,
+            },
+            "time": 1794153600000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 55.20671529739997,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 56.8,
+            },
+            "time": 1794157200000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [],
+              "score": 61.494440777524815,
+            },
+            "rrfs": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "time": 1794160800000,
+          },
+          {
+            "ecmwf": {
+              "call": "flyable",
+              "kinds": [
+                "directionNotIdeal",
+              ],
+              "score": 58.01054740033929,
+            },
+            "rrfs": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+              ],
+              "score": 0,
+            },
+            "time": 1794164400000,
+          },
+          {
+            "ecmwf": {
+              "call": "flyable",
+              "kinds": [
+                "directionNotIdeal",
+              ],
+              "score": 59.22869194195273,
+            },
+            "rrfs": {
+              "call": "flyable",
+              "kinds": [
+                "directionNotIdeal",
+              ],
+              "score": 67,
+            },
+            "time": 1794168000000,
+          },
+          {
+            "ecmwf": {
+              "call": "flyable",
+              "kinds": [
+                "directionNotIdeal",
+              ],
+              "score": 59.59876542435593,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [],
+              "score": 83.4,
+            },
+            "time": 1794171600000,
+          },
+          {
+            "ecmwf": {
+              "call": "flyable",
+              "kinds": [
+                "directionNotIdeal",
+              ],
+              "score": 59.35324714698709,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [],
+              "score": 78.4,
+            },
+            "time": 1794175200000,
+          },
+          {
+            "ecmwf": {
+              "call": "flyable",
+              "kinds": [
+                "directionNotIdeal",
+                "sledder",
+              ],
+              "score": 53.42734078513264,
+            },
+            "rrfs": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+              ],
+              "score": 0,
+            },
+            "time": 1794178800000,
+          },
+        ],
+        "id": "rmhpa/crested-butte/browns",
+        "window": {
+          "cautions": [
+            "directionNotIdeal",
+          ],
+          "confidence": "medium",
+          "end": 1794182400000,
+          "score": 48.109984434462035,
+          "start": 1794146400000,
+        },
+      },
+    ],
+    "mainReason": null,
+  },
+  {
+    "best": null,
+    "call": "closed",
+    "id": "rmhpa/copper-mountain",
+    "launches": [],
+    "mainReason": null,
+  },
+]
+`;
+
+exports[`ECMWF-primary characterization > pins the variant (RRFS gap and RRFS storm) for 2026-11-07 1`] = `
+[
+  {
+    "best": "rmhpa/boulder-wonderland/upper",
+    "call": "good",
+    "id": "rmhpa/boulder-wonderland",
+    "launches": [
+      {
+        "hours": [
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [],
+              "score": 75,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 71.75,
+            },
+            "time": 1794074400000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 74.75,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [],
+              "score": 76.75,
+            },
+            "time": 1794078000000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [],
+              "score": 79.5,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [],
+              "score": 77.75,
+            },
+            "time": 1794081600000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [],
+              "score": 78.25,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [],
+              "score": 76.75,
+            },
+            "time": 1794085200000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [],
+              "score": 75.75,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [],
+              "score": 63.5,
+            },
+            "time": 1794088800000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 52.75,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [],
+              "score": 60.5,
+            },
+            "time": 1794092400000,
+          },
+        ],
+        "id": "rmhpa/boulder-wonderland/upper",
+        "window": {
+          "cautions": [],
+          "confidence": "high",
+          "end": 1794096000000,
+          "score": 72.66666666666667,
+          "start": 1794074400000,
+        },
+      },
+    ],
+    "mainReason": null,
+  },
+  {
+    "best": "rmhpa/glenwood-lookout-mtn/north",
+    "call": "good",
+    "id": "rmhpa/glenwood-lookout-mtn",
+    "launches": [
+      {
+        "hours": [
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 57.75,
+            },
+            "rrfs": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "time": 1794074400000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [],
+              "score": 58.75,
+            },
+            "rrfs": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+              ],
+              "score": 0,
+            },
+            "time": 1794078000000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [],
+              "score": 61.75,
+            },
+            "rrfs": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+              ],
+              "score": 0,
+            },
+            "time": 1794081600000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [],
+              "score": 63,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [],
+              "score": 64.5,
+            },
+            "time": 1794085200000,
+          },
+          {
+            "ecmwf": {
+              "call": "flyable",
+              "kinds": [
+                "neighborWind",
+                "sledder",
+              ],
+              "score": 53.75,
+            },
+            "rrfs": {
+              "call": "flyable",
+              "kinds": [
+                "neighborWind",
+                "directionNotIdeal",
+              ],
+              "score": 56.25,
+            },
+            "time": 1794088800000,
+          },
+          {
+            "ecmwf": {
+              "call": "flyable",
+              "kinds": [
+                "neighborWind",
+                "sledder",
+              ],
+              "score": 49.5,
+            },
+            "rrfs": {
+              "call": "flyable",
+              "kinds": [
+                "neighborWind",
+                "sledder",
+              ],
+              "score": 51.75,
+            },
+            "time": 1794092400000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 50.75,
+            },
+            "rrfs": {
+              "call": "flyable",
+              "kinds": [
+                "lowCloud",
+                "sledder",
+              ],
+              "score": 48.5,
+            },
+            "time": 1794096000000,
+          },
+        ],
+        "id": "rmhpa/glenwood-lookout-mtn/north",
+        "window": {
+          "cautions": [
+            "neighborWind",
+          ],
+          "confidence": "medium",
+          "end": 1794099600000,
+          "score": 47.99464285714286,
+          "start": 1794074400000,
+        },
+      },
+    ],
+    "mainReason": null,
+  },
+  {
+    "best": "rmhpa/crested-butte/browns",
+    "call": "good",
+    "id": "rmhpa/crested-butte",
+    "launches": [
+      {
+        "hours": [
+          {
+            "ecmwf": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 54.99708914174306,
+            },
+            "time": 1794074400000,
+          },
+          {
+            "ecmwf": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [],
+              "score": 62.17716276862387,
+            },
+            "time": 1794078000000,
+          },
+          {
+            "ecmwf": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "rrfs": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+              ],
+              "score": 0,
+            },
+            "time": 1794081600000,
+          },
+          {
+            "ecmwf": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "rrfs": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+              ],
+              "score": 0,
+            },
+            "time": 1794085200000,
+          },
+          {
+            "ecmwf": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "rrfs": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "time": 1794088800000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 56.720327894682924,
+            },
+            "rrfs": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "time": 1794092400000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 55.11423267003138,
+            },
+            "rrfs": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "time": 1794096000000,
+          },
+        ],
+        "id": "rmhpa/crested-butte/browns",
+        "window": {
+          "cautions": [],
+          "confidence": "low",
+          "end": 1794099600000,
+          "score": 31.313676958120006,
+          "start": 1794092400000,
+        },
+      },
+    ],
+    "mainReason": null,
+  },
+  {
+    "best": null,
+    "call": "closed",
+    "id": "rmhpa/copper-mountain",
+    "launches": [],
+    "mainReason": null,
+  },
+]
+`;
+
+exports[`ECMWF-primary characterization > pins the variant (RRFS gap and RRFS storm) for 2026-11-08 1`] = `
+[
+  {
+    "best": "rmhpa/glenwood-lookout-mtn/north",
+    "call": "good",
+    "id": "rmhpa/glenwood-lookout-mtn",
+    "launches": [
+      {
+        "hours": [
+          {
+            "ecmwf": {
+              "call": "flyable",
+              "kinds": [
+                "neighborWind",
+                "sledder",
+              ],
+              "score": 47,
+            },
+            "rrfs": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+                "neighborWind",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "time": 1794146400000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 54.5,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 56.75,
+            },
+            "time": 1794150000000,
+          },
+          {
+            "ecmwf": {
+              "call": "flyable",
+              "kinds": [
+                "rrfsSeesStorms",
+                "sledder",
+              ],
+              "score": 52,
+            },
+            "rrfs": {
+              "call": "noGo",
+              "kinds": [
+                "precipitation",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "time": 1794153600000,
+          },
+          {
+            "ecmwf": {
+              "call": "flyable",
+              "kinds": [
+                "rrfsSeesStorms",
+                "sledder",
+              ],
+              "score": 50.25,
+            },
+            "rrfs": {
+              "call": "noGo",
+              "kinds": [
+                "precipitation",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "time": 1794157200000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 54,
+            },
+            "rrfs": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "time": 1794160800000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 57.5,
+            },
+            "rrfs": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "time": 1794164400000,
+          },
+          {
+            "ecmwf": {
+              "call": "noGo",
+              "kinds": [
+                "neighborWindStrong",
+              ],
+              "score": 0,
+            },
+            "rrfs": {
+              "call": "noGo",
+              "kinds": [
+                "neighborWindStrong",
+                "directionNotIdeal",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "time": 1794168000000,
+          },
+          {
+            "ecmwf": {
+              "call": "flyable",
+              "kinds": [
+                "neighborWind",
+              ],
+              "score": 73.5,
+            },
+            "rrfs": {
+              "call": "flyable",
+              "kinds": [
+                "neighborWind",
+                "directionNotIdeal",
+                "sledder",
+              ],
+              "score": 59.71428571428572,
+            },
+            "time": 1794171600000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 73.5,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 79,
+            },
+            "time": 1794175200000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 57.75,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 76.75,
+            },
+            "time": 1794178800000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 57.5,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 52.25,
+            },
+            "time": 1794182400000,
+          },
+        ],
+        "id": "rmhpa/glenwood-lookout-mtn/north",
+        "window": {
+          "cautions": [
+            "neighborWind",
+          ],
+          "confidence": "high",
+          "end": 1794186000000,
+          "score": 65.5625,
+          "start": 1794171600000,
+        },
+      },
+    ],
+    "mainReason": null,
+  },
+  {
+    "best": "rmhpa/boulder-wonderland/upper",
+    "call": "good",
+    "id": "rmhpa/boulder-wonderland",
+    "launches": [
+      {
+        "hours": [
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 51,
+            },
+            "rrfs": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "time": 1794146400000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 53,
+            },
+            "rrfs": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "time": 1794150000000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 53.75,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 55,
+            },
+            "time": 1794153600000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 70,
+            },
+            "rrfs": {
+              "call": "noData",
+              "kinds": [
+                "noData",
+              ],
+              "score": 0,
+            },
+            "time": 1794157200000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 72.5,
+            },
+            "rrfs": {
+              "call": "noData",
+              "kinds": [
+                "noData",
+              ],
+              "score": 0,
+            },
+            "time": 1794160800000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 73.25,
+            },
+            "rrfs": {
+              "call": "noData",
+              "kinds": [
+                "noData",
+              ],
+              "score": 0,
+            },
+            "time": 1794164400000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 73.25,
+            },
+            "rrfs": {
+              "call": "noData",
+              "kinds": [
+                "noData",
+              ],
+              "score": 0,
+            },
+            "time": 1794168000000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 72,
+            },
+            "rrfs": {
+              "call": "noData",
+              "kinds": [
+                "noData",
+              ],
+              "score": 0,
+            },
+            "time": 1794171600000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 59.25,
+            },
+            "rrfs": {
+              "call": "noData",
+              "kinds": [
+                "noData",
+              ],
+              "score": 0,
+            },
+            "time": 1794175200000,
+          },
+          {
+            "ecmwf": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 55,
+            },
+            "rrfs": {
+              "call": "noData",
+              "kinds": [
+                "noData",
+              ],
+              "score": 0,
+            },
+            "time": 1794178800000,
+          },
+        ],
+        "id": "rmhpa/boulder-wonderland/upper",
+        "window": {
+          "cautions": [],
+          "confidence": "primaryOnly",
+          "end": 1794182400000,
+          "score": 53.805,
+          "start": 1794146400000,
+        },
+      },
+    ],
+    "mainReason": null,
+  },
+  {
+    "best": null,
+    "call": "noGo",
+    "id": "rmhpa/crested-butte",
+    "launches": [
+      {
+        "hours": [
+          {
+            "ecmwf": {
+              "call": "noGo",
+              "kinds": [
+                "precipitation",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 55.92842379226994,
+            },
+            "time": 1794146400000,
+          },
+          {
+            "ecmwf": {
+              "call": "noGo",
+              "kinds": [
+                "precipitation",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 55.231401413124395,
+            },
+            "time": 1794150000000,
+          },
+          {
+            "ecmwf": {
+              "call": "noGo",
+              "kinds": [
+                "precipitation",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 53.2,
+            },
+            "time": 1794153600000,
+          },
+          {
+            "ecmwf": {
+              "call": "noGo",
+              "kinds": [
+                "precipitation",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [
+                "sledder",
+              ],
+              "score": 56.8,
+            },
+            "time": 1794157200000,
+          },
+          {
+            "ecmwf": {
+              "call": "noGo",
+              "kinds": [
+                "precipitation",
+              ],
+              "score": 0,
+            },
+            "rrfs": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "time": 1794160800000,
+          },
+          {
+            "ecmwf": {
+              "call": "noGo",
+              "kinds": [
+                "precipitation",
+                "directionNotIdeal",
+              ],
+              "score": 0,
+            },
+            "rrfs": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+              ],
+              "score": 0,
+            },
+            "time": 1794164400000,
+          },
+          {
+            "ecmwf": {
+              "call": "noGo",
+              "kinds": [
+                "precipitation",
+                "directionNotIdeal",
+              ],
+              "score": 0,
+            },
+            "rrfs": {
+              "call": "flyable",
+              "kinds": [
+                "directionNotIdeal",
+              ],
+              "score": 67,
+            },
+            "time": 1794168000000,
+          },
+          {
+            "ecmwf": {
+              "call": "noGo",
+              "kinds": [
+                "precipitation",
+                "directionNotIdeal",
+              ],
+              "score": 0,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [],
+              "score": 83.4,
+            },
+            "time": 1794171600000,
+          },
+          {
+            "ecmwf": {
+              "call": "noGo",
+              "kinds": [
+                "precipitation",
+                "directionNotIdeal",
+              ],
+              "score": 0,
+            },
+            "rrfs": {
+              "call": "good",
+              "kinds": [],
+              "score": 78.4,
+            },
+            "time": 1794175200000,
+          },
+          {
+            "ecmwf": {
+              "call": "noGo",
+              "kinds": [
+                "precipitation",
+                "directionNotIdeal",
+                "sledder",
+              ],
+              "score": 0,
+            },
+            "rrfs": {
+              "call": "noGo",
+              "kinds": [
+                "wrongDirection",
+              ],
+              "score": 0,
+            },
+            "time": 1794178800000,
+          },
+        ],
+        "id": "rmhpa/crested-butte/browns",
+        "window": null,
+      },
+    ],
+    "mainReason": {
+      "kind": "precipitation",
+      "text": "rain 2.0 mm",
+    },
+  },
+  {
+    "best": null,
+    "call": "closed",
+    "id": "rmhpa/copper-mountain",
+    "launches": [],
+    "mainReason": null,
+  },
+]
+`;

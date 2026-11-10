@@ -36,13 +36,14 @@ function rec(
       ? undefined
       : {
           launch: launches[0],
+          model: "ecmwf" as const,
           window: { start: 0, end: 1, hours: [], score: o.score, confidence: "high" as const, warnings: [], conditions: [], cautions: [] },
         };
   return { site, call: best === undefined ? "noGo" : "flyable", best, launches: [] };
 }
 
 function resultOf(...sites: SiteRecommendation[]): RecommendationResult {
-  return { day: "2026-07-15", today: "2026-07-15", dayOver: false, fetchedAt: 0, isOffline: false, sites };
+  return { model: "ecmwf", day: "2026-07-15", today: "2026-07-15", dayOver: false, fetchedAt: 0, isOffline: false, sites };
 }
 
 function times(start: Coordinate, entries: Record<string, number>): TravelTimes {

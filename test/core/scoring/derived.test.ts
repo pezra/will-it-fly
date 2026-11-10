@@ -530,14 +530,16 @@ describe("SCORING_DEFAULTS", () => {
       agreementMaxSpeedDiffMph: 5,
       highConfidenceMinShare: 0.75,
       mediumConfidenceMinShare: 0.4,
-      rrfsMinCoverageShare: 0.5,
+      checkMinCoverageShare: 0.5,
+      // Web-only: RRFS can be the primary model (approved 2026-11-09). Not in Swift.
+      rrfsPrimaryMinDaylightShare: 0.75,
       oneHourRunWeight: 0.6,
       twoHourRunWeight: 0.8,
       longRunWeight: 1,
       highConfidenceWeight: 1,
       mediumConfidenceWeight: 0.85,
       lowConfidenceWeight: 0.7,
-      ecmwfOnlyConfidenceWeight: 0.85,
+      primaryOnlyConfidenceWeight: 0.85,
       cacheMaxAgeMs: 3_600_000,
       forcedRefreshMinIntervalMs: 300_000,
     });

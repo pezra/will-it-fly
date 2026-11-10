@@ -1,12 +1,21 @@
 import type { SiteRecommendation } from "../core/recommendation/types";
+import type { ModelName } from "../core/scoring/hourEvaluator";
 import { windowLabel } from "../core/scoring/windowFinder";
 import type { DayKey } from "../core/time";
 import { ResultBadge } from "./CallBadge";
 import { siteHref } from "./route";
 import { cautionLine, confidenceLabel, driveLabel, miles } from "./format";
 
-/** `day` is the route's day (undefined for the default), so the detail link keeps it. */
-export function SiteRow({ rec, day }: { rec: SiteRecommendation; day: DayKey | undefined }) {
+/** `day` is the route's day (undefined for the default) and `model` its model, so the detail link keeps both. */
+export function SiteRow({
+  rec,
+  day,
+  model,
+}: {
+  rec: SiteRecommendation;
+  day: DayKey | undefined;
+  model: ModelName;
+}) {
   const { site, best } = rec;
   const miLabel = miles(rec.distanceM);
   const distance =
@@ -27,7 +36,7 @@ export function SiteRow({ rec, day }: { rec: SiteRecommendation; day: DayKey | u
 
   return (
     <li>
-      <a class="row" href={siteHref(site.id, day)}>
+      <a class="row" href={siteHref(site.id, model, day)}>
         <div class="row-top">
           <span class="row-name">{site.name}</span>
           <ResultBadge call={rec.call} conditions={best?.window.conditions} />
@@ -38,7 +47,7 @@ export function SiteRow({ rec, day }: { rec: SiteRecommendation; day: DayKey | u
           {best !== undefined && (
             <>
               <strong class="window">{windowLabel(best.window)}</strong>
-              <span>{confidenceLabel(best.window.confidence)}</span>
+              <span>{confidenceLabel(best.window.confidence, best.model)}</span>
               {site.launches.length > 1 && <span>{best.launch.name}</span>}
             </>
           )}
