@@ -57,6 +57,9 @@ function makeLaunch(o: LaunchOptions = {}): Launch {
   return launch;
 }
 
+/** A launch that takes every direction, so only the rule under test can set the call. */
+const ANY_DIRECTION_LAUNCH = makeLaunch({ ok: ANY_DIRECTION });
+
 function makeSite(launch: Launch, limits: WindLimits = TEST_LIMITS): Site {
   return testSite({ launches: [launch], limits });
 }
@@ -129,9 +132,24 @@ function nextWith(change: (h: ModelHour) => void): HourBuilder {
   return perfectHour(REFERENCE_TIME + HOUR_MS).with(change);
 }
 
+/** RRFS neighbors all calm except those given, by bearing (a bearing given with an undefined wind has none). */
+function rrfsNeighbors(winds: Record<number, NeighborWind | undefined>): NeighborPointSample[] {
+  return calmNeighbors().points.map((p) => (p.bearingDeg in winds ? { ...p, rrfs: winds[p.bearingDeg] } : p));
+}
+
 /** RRFS neighbors all calm except the one at `bearing`. */
 function rrfsNeighborAt(bearing: number, wind: NeighborWind | undefined): NeighborPointSample[] {
-  return calmNeighbors().points.map((p) => (p.bearingDeg === bearing ? { ...p, rrfs: wind } : p));
+  return rrfsNeighbors({ [bearing]: wind });
+}
+
+/** ECMWF neighbors all calm except those given, by bearing (a bearing given with an undefined wind has none). */
+function ecmwfNeighbors(winds: Record<number, NeighborWind | undefined>): NeighborPointSample[] {
+  return calmNeighbors().points.map((p) => (p.bearingDeg in winds ? { ...p, ecmwf: winds[p.bearingDeg] } : p));
+}
+
+/** ECMWF neighbors all calm except the one at `bearing`. */
+function ecmwfNeighborAt(bearing: number, wind: NeighborWind | undefined): NeighborPointSample[] {
+  return ecmwfNeighbors({ [bearing]: wind });
 }
 
 /** A 3 mph center on both models, under the inconsistency rule's minimum, so only the off-direction rule applies. */
@@ -212,7 +230,7 @@ describe("no-go rules", () => {
     ["strong aloft", { hour: perfectHour().level(700, (l) => (l.windMph = 40)) }, "strongAloft"],
     [
       "neighbor strong",
-      { launch: makeLaunch({ ok: ANY_DIRECTION }), neighbors: rrfsNeighborAt(180, nw(12, 0)) },
+      { launch: ANY_DIRECTION_LAUNCH, neighbors: rrfsNeighborAt(180, nw(12, 0)) },
       "neighborWindStrong",
     ],
     [
@@ -242,7 +260,7 @@ describe("caution rules", () => {
     ["low cloud cover", { hour: hourWith((h) => (h.lowCloudPct = 80)) }, "lowCloud"],
     [
       "neighbor",
-      { launch: makeLaunch({ ok: ANY_DIRECTION }), neighbors: rrfsNeighborAt(180, nw(8, 350)) },
+      { launch: ANY_DIRECTION_LAUNCH, neighbors: rrfsNeighborAt(180, nw(8, 350)) },
       "neighborWind",
     ],
     [
@@ -556,44 +574,43 @@ describe("boundaries", () => {
 
   // The neighbor boundaries below are for the inconsistency rule alone, so the launch takes every
   // direction and the off-direction rule never fires.
-  const anyDirection = makeLaunch({ ok: ANY_DIRECTION });
 
   it("neighbor 60 / 61 degrees (neighbor < 10 mph)", () => {
-    expect(evalWith({ launch: anyDirection, neighbors: rrfsNeighborAt(180, nw(9.9, 330)) }).call).toBe("good");
-    const r = evalWith({ launch: anyDirection, neighbors: rrfsNeighborAt(180, nw(9.9, 331)) });
+    expect(evalWith({ launch: ANY_DIRECTION_LAUNCH, neighbors: rrfsNeighborAt(180, nw(9.9, 330)) }).call).toBe("good");
+    const r = evalWith({ launch: ANY_DIRECTION_LAUNCH, neighbors: rrfsNeighborAt(180, nw(9.9, 331)) });
     expect(r.call).toBe("flyable");
     expect(kinds(r)).toContain("neighborWind");
   });
 
   it("neighbor 90 / 91 degrees (neighbor < 10 mph)", () => {
-    const at90 = evalWith({ launch: anyDirection, neighbors: rrfsNeighborAt(180, nw(9.9, 0)) });
+    const at90 = evalWith({ launch: ANY_DIRECTION_LAUNCH, neighbors: rrfsNeighborAt(180, nw(9.9, 0)) });
     expect(at90.call).toBe("flyable");
     expect(kinds(at90)).toContain("neighborWind");
-    const at91 = evalWith({ launch: anyDirection, neighbors: rrfsNeighborAt(180, nw(9.9, 1)) });
+    const at91 = evalWith({ launch: ANY_DIRECTION_LAUNCH, neighbors: rrfsNeighborAt(180, nw(9.9, 1)) });
     expect(at91.call).toBe("noGo");
     expect(kinds(at91)).toContain("neighborWindStrong");
     expect(kinds(at91)).not.toContain("neighborWind");
   });
 
   it("neighbor 9.9 / 10 mph at 61 degrees", () => {
-    expect(kinds(evalWith({ launch: anyDirection, neighbors: rrfsNeighborAt(180, nw(9.9, 331)) }))).toContain(
+    expect(kinds(evalWith({ launch: ANY_DIRECTION_LAUNCH, neighbors: rrfsNeighborAt(180, nw(9.9, 331)) }))).toContain(
       "neighborWind",
     );
-    const r = evalWith({ launch: anyDirection, neighbors: rrfsNeighborAt(180, nw(10, 331)) });
+    const r = evalWith({ launch: ANY_DIRECTION_LAUNCH, neighbors: rrfsNeighborAt(180, nw(10, 331)) });
     expect(r.call).toBe("noGo");
     expect(kinds(r)).toContain("neighborWindStrong");
   });
 
   it("neighbor 4.9 / 5 mph minimum, on both sides", () => {
-    expect(evalWith({ launch: anyDirection, neighbors: rrfsNeighborAt(180, nw(4.9, 90)) }).call).toBe("good");
-    expect(evalWith({ launch: anyDirection, neighbors: rrfsNeighborAt(180, nw(5, 90)) }).call).toBe("noGo");
+    expect(evalWith({ launch: ANY_DIRECTION_LAUNCH, neighbors: rrfsNeighborAt(180, nw(4.9, 90)) }).call).toBe("good");
+    expect(evalWith({ launch: ANY_DIRECTION_LAUNCH, neighbors: rrfsNeighborAt(180, nw(5, 90)) }).call).toBe("noGo");
     const weakCenter: NeighborSample = { ecmwf: nw(10, 270), rrfs: nw(4.9, 270) };
     expect(
-      evalWith({ launch: anyDirection, neighborCenter: weakCenter, neighbors: rrfsNeighborAt(180, nw(12, 90)) }).call,
+      evalWith({ launch: ANY_DIRECTION_LAUNCH, neighborCenter: weakCenter, neighbors: rrfsNeighborAt(180, nw(12, 90)) }).call,
     ).toBe("good");
     const minCenter: NeighborSample = { ecmwf: nw(10, 270), rrfs: nw(5, 270) };
     expect(
-      evalWith({ launch: anyDirection, neighborCenter: minCenter, neighbors: rrfsNeighborAt(180, nw(12, 90)) }).call,
+      evalWith({ launch: ANY_DIRECTION_LAUNCH, neighborCenter: minCenter, neighbors: rrfsNeighborAt(180, nw(12, 90)) }).call,
     ).toBe("noGo");
   });
 
@@ -910,14 +927,12 @@ describe("high gusts warning", () => {
 });
 
 describe("neighbor check, mixed cases", () => {
-  // Where a call is asserted, the launch takes every direction so only the inconsistency rule can set it.
-  const anyDirection = makeLaunch({ ok: ANY_DIRECTION });
 
   it("uses RRFS when its center and a neighbor are present", () => {
     const neighbors = calmNeighbors().points.map((p) =>
       p.bearingDeg === 180 ? { ...p, rrfs: nw(12, 0), ecmwf: nw(10, 270) } : p,
     );
-    const r = evalWith({ launch: anyDirection, neighbors });
+    const r = evalWith({ launch: ANY_DIRECTION_LAUNCH, neighbors });
     expect(r.call).toBe("noGo");
     const reason = r.reasons.find((x) => x.kind === "neighborWindStrong");
     expect(reason?.text).toContain("5 mi S: N 12 mph (RRFS)");
@@ -957,7 +972,7 @@ describe("neighbor check, mixed cases", () => {
       if (p.bearingDeg === 270) return { ...p, rrfs: nw(15, 90) };
       return p;
     });
-    const r = evalWith({ launch: anyDirection, neighbors });
+    const r = evalWith({ launch: ANY_DIRECTION_LAUNCH, neighbors });
     expect(r.call).toBe("noGo");
     expect(r.reasons.find((x) => x.kind === "neighborWindStrong")?.text).toContain("5 mi W: E 15 mph (RRFS)");
   });
@@ -1023,12 +1038,6 @@ describe("off-direction wind nearby", () => {
     evalWith({ neighborCenter: QUIET_CENTER, neighbors: rrfsNeighborAt(180, wind), ...o });
   const offReasons = (r: HourResult) =>
     r.reasons.filter((x) => x.kind === "neighborOffDirection" || x.kind === "neighborOffDirectionStrong");
-  /** RRFS neighbors all calm except the ones given, by bearing. */
-  const rrfsNeighbors = (winds: Record<number, NeighborWind>): NeighborPointSample[] =>
-    calmNeighbors().points.map((p) => {
-      const wind = winds[p.bearingDeg];
-      return wind === undefined ? p : { ...p, rrfs: wind };
-    });
 
   it("a neighbor outside the ok arcs is a caution costing one penalty", () => {
     const r = off(nw(8, 320));
@@ -1116,24 +1125,22 @@ describe("off-direction wind nearby", () => {
   });
 
   describe("model choice, the same as the inconsistency rule", () => {
+    const center: NeighborSample = { ecmwf: nw(3, 270), rrfs: nw(undefined, undefined) };
+
     it("uses RRFS when its center and a neighbor are present, even when only ECMWF is off", () => {
-      const neighbors = calmNeighbors().points.map((p) => (p.bearingDeg === 180 ? { ...p, ecmwf: nw(12, 0) } : p));
-      const r = evalWith({ neighborCenter: QUIET_CENTER, neighbors });
+      const r = evalWith({ neighborCenter: QUIET_CENTER, neighbors: ecmwfNeighborAt(180, nw(12, 0)) });
       expect(r.call).toBe("good");
       expect(offReasons(r)).toEqual([]);
     });
 
     it("falls back to ECMWF when the RRFS center is missing, ignoring an off RRFS neighbor", () => {
-      const center: NeighborSample = { ecmwf: nw(3, 270), rrfs: nw(undefined, undefined) };
       const r = evalWith({ neighborCenter: center, neighbors: rrfsNeighborAt(180, nw(12, 0)) });
       expect(r.call).toBe("good");
       expect(offReasons(r)).toEqual([]);
     });
 
     it("falls back to ECMWF when the RRFS center is missing, flagging an off ECMWF neighbor", () => {
-      const center: NeighborSample = { ecmwf: nw(3, 270), rrfs: nw(undefined, undefined) };
-      const neighbors = calmNeighbors().points.map((p) => (p.bearingDeg === 180 ? { ...p, ecmwf: nw(12, 0) } : p));
-      const r = evalWith({ neighborCenter: center, neighbors });
+      const r = evalWith({ neighborCenter: center, neighbors: ecmwfNeighborAt(180, nw(12, 0)) });
       expect(r.call).toBe("noGo");
       expect(offReasons(r).map((x) => x.text)).toEqual(["off-direction wind 5 mi S: N 12 mph"]);
     });
@@ -1181,7 +1188,7 @@ describe("off-direction wind nearby", () => {
     });
 
     it("costs the same as the inconsistency caution alone", () => {
-      const r = evalWith({ launch: makeLaunch({ ok: ANY_DIRECTION }), neighbors: both });
+      const r = evalWith({ launch: ANY_DIRECTION_LAUNCH, neighbors: both });
       expect(kinds(r)).toContain("neighborWind");
       expect(kinds(r)).not.toContain("neighborOffDirection");
       expect(r.score).toBe(r.unpenalizedScore - d.cautionReasonPenalty);

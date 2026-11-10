@@ -278,13 +278,18 @@ function toWind(w: NeighborWind | undefined): Wind | undefined {
 /** The neighbor points' distance from the launch, in whole miles, as the reasons show it. */
 const NEIGHBOR_MILES = Math.round(NEIGHBOR_DISTANCE_M / METERS_PER_MILE);
 
+/** The model both neighbor checks read, with its center wind and the neighbors that have wind. */
+interface NeighborModelWinds {
+  model: ModelName;
+  center: Wind;
+  points: { bearingDeg: number; wind: Wind }[];
+}
+
 /**
  * The model both neighbor checks read: RRFS when its center and at least one neighbor have wind,
  * else ECMWF on the same test, else undefined. Its center and the neighbors that have wind.
  */
-function neighborModelWinds(
-  ctx: HourContext,
-): { model: ModelName; center: Wind; points: { bearingDeg: number; wind: Wind }[] } | undefined {
+function neighborModelWinds(ctx: HourContext): NeighborModelWinds | undefined {
   for (const model of ["rrfs", "ecmwf"] as const) {
     const center = toWind(ctx.neighborCenter[model]);
     if (center === undefined) continue;
@@ -301,8 +306,7 @@ function neighborModelWinds(
  * The neighbor check: one model on both sides (center 10 m vs neighbor 10 m), from
  * `neighborModelWinds`, else "n/a". Returns at most one reason, naming the worst neighbor.
  */
-function neighborReason(ctx: HourContext, defaults: ScoringDefaults): Reason | undefined {
-  const winds = neighborModelWinds(ctx);
+function neighborReason(winds: NeighborModelWinds | undefined, defaults: ScoringDefaults): Reason | undefined {
   if (winds === undefined) return reason("neighborUnavailable", "wind nearby: n/a");
   const { model, center, points } = winds;
 
@@ -331,15 +335,15 @@ function neighborReason(ctx: HourContext, defaults: ScoringDefaults): Reason | u
 
 /**
  * The off-direction check: a neighbor 10 m wind from outside every `ok` arc, from the same model
- * as the neighbor check. Only the neighbor's own wind counts, not the center's or the launch's.
- * Returns at most one reason, naming the worst neighbor: any no-go first, then the farthest outside.
+ * as the neighbor check (`winds`). Only the neighbor's own wind counts, not the center's or the
+ * launch's. `ok` must be non-empty (a curated launch). Returns at most one reason, naming the worst
+ * neighbor: any no-go first, then the farthest outside.
  */
-function offDirectionNeighborReason(ctx: HourContext, defaults: ScoringDefaults): Reason | undefined {
-  const { ok } = ctx.launch.directions;
-  if (ok.length === 0) return undefined;
-  const winds = neighborModelWinds(ctx);
-  if (winds === undefined) return undefined;
-
+function offDirectionNeighborReason(
+  ok: readonly DegreeArc[],
+  winds: NeighborModelWinds,
+  defaults: ScoringDefaults,
+): Reason | undefined {
   let worst: { noGo: boolean; out: number; bearingDeg: number; wind: Wind } | undefined;
   for (const { bearingDeg, wind } of winds.points) {
     if (wind.speedMph < defaults.neighborOffDirectionMinMph) continue;
@@ -492,9 +496,13 @@ export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORI
   if (lowCloud.length > 0) reasons.push(reason("lowCloud", `low cloud: ${lowCloud.join(", ")}`));
 
   // Wind nearby.
-  const neighbor = neighborReason(ctx, defaults);
+  const neighborWinds = neighborModelWinds(ctx);
+  const neighbor = neighborReason(neighborWinds, defaults);
   if (neighbor !== undefined) reasons.push(neighbor);
-  const offDirection = offDirectionNeighborReason(ctx, defaults);
+  const offDirection =
+    curated && neighborWinds !== undefined
+      ? offDirectionNeighborReason(ok, neighborWinds, defaults)
+      : undefined;
   if (offDirection !== undefined) reasons.push(offDirection);
 
   // Ridge lift: the wind is on the ridge, in an ideal arc and fast enough to soar.
