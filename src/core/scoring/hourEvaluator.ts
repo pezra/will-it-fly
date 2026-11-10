@@ -191,6 +191,11 @@ export interface HourContext {
 export const MODEL_LABEL: Readonly<Record<ModelName, string>> = { ecmwf: "ECMWF", rrfs: "RRFS" };
 /** The model that cross-checks each primary model. */
 export const CHECK_MODEL: Readonly<Record<ModelName, ModelName>> = { ecmwf: "rrfs", rrfs: "ecmwf" };
+/** The reason a primary model's hour gets when its check model has a precipitation no-go. */
+const SEES_STORMS: Readonly<Record<ModelName, ReasonKind>> = {
+  ecmwf: "rrfsSeesStorms",
+  rrfs: "ecmwfSeesStorms",
+};
 
 function windText(w: Wind): string {
   return `${compass(w.dirDeg)} ${mph(w.speedMph)}`;
@@ -468,11 +473,7 @@ export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORI
   // The other model sees storms (primary model evaluation only).
   if (ctx.other?.hour !== undefined) {
     if (precipNoGoMm(ctx.other.hour, ctx.other.next, defaults) !== undefined) {
-      reasons.push(
-        ctx.model === "ecmwf"
-          ? reason("rrfsSeesStorms", "RRFS sees storms")
-          : reason("ecmwfSeesStorms", "ECMWF sees storms"),
-      );
+      reasons.push(reason(SEES_STORMS[ctx.model], `${MODEL_LABEL[CHECK_MODEL[ctx.model]]} sees storms`));
     }
   }
 

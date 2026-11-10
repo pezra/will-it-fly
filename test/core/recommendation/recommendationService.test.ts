@@ -81,12 +81,15 @@ interface Stub {
   urls: string[];
 }
 
-/** Serves the recorded bodies only for the recorded URLs, so a wrong request fails loudly. */
-function fixtureTransport(): Stub {
+/**
+ * Serves the recorded bodies (or `launchBody` for the launch request) only for the recorded URLs, so
+ * a wrong request fails loudly.
+ */
+function fixtureTransport(launchBody = launchesJSON): Stub {
   const urls: string[] = [];
   const transport: Transport = async (url) => {
     urls.push(url);
-    if (url === launchesURL.trim()) return { status: 200, body: launchesJSON };
+    if (url === launchesURL.trim()) return { status: 200, body: launchBody };
     if (url === neighborsURL.trim()) return { status: 200, body: neighborsJSON };
     throw new Error(`unexpected request: ${url}`);
   };
@@ -745,17 +748,6 @@ describe("getRecommendations with RRFS primary", () => {
     return JSON.stringify(locations);
   }
 
-  function bodyTransport(launchBody: string): Stub {
-    const urls: string[] = [];
-    const transport: Transport = async (url) => {
-      urls.push(url);
-      if (url === launchesURL.trim()) return { status: 200, body: launchBody };
-      if (url === neighborsURL.trim()) return { status: 200, body: neighborsJSON };
-      throw new Error(`unexpected request: ${url}`);
-    };
-    return { transport, urls };
-  }
-
   it("evaluatesEveryLaunchWithRRFSOnTheRecordedForecast", async () => {
     const forecasts = parseForecasts(launchesJSON, neighborsJSON, openLaunches());
     let windows = 0;
@@ -789,8 +781,8 @@ describe("getRecommendations with RRFS primary", () => {
   it("aDayRRFSDoesNotCoverFallsBackToECMWF", async () => {
     const body = noRRFSOnNov8();
     const day = "2026-11-08";
-    const rrfs = await getRecommendations(request({ day, model: "rrfs" }), deps(bodyTransport(body), newCache()));
-    const ecmwf = await getRecommendations(request({ day, model: "ecmwf" }), deps(bodyTransport(body), newCache()));
+    const rrfs = await getRecommendations(request({ day, model: "rrfs" }), deps(fixtureTransport(body), newCache()));
+    const ecmwf = await getRecommendations(request({ day, model: "ecmwf" }), deps(fixtureTransport(body), newCache()));
     expect(rrfs.model).toBe("rrfs");
     const launches = rrfs.sites.flatMap((rec) => rec.launches);
     expect(launches).toHaveLength(3);
@@ -805,7 +797,7 @@ describe("getRecommendations with RRFS primary", () => {
     // Nov 7 still has RRFS, so it stays primary there.
     const nov7 = await getRecommendations(
       request({ day: "2026-11-07", model: "rrfs" }),
-      deps(bodyTransport(body), newCache()),
+      deps(fixtureTransport(body), newCache()),
     );
     const nov7Launches = nov7.sites.flatMap((rec) => rec.launches);
     expect(nov7Launches).toHaveLength(3);

@@ -25,24 +25,24 @@ function queryModel(query: string): ModelName | undefined {
  */
 export function parseRoute(hash: string): Route {
   const queryStart = hash.indexOf("?");
-  const path = queryStart === -1 ? hash : hash.slice(0, queryStart);
+  const path = parsePath(queryStart === -1 ? hash : hash.slice(0, queryStart));
   const model = queryModel(queryStart === -1 ? "" : hash.slice(queryStart + 1));
-  const withModel = <R extends Route>(route: R): R =>
-    model === undefined ? route : { ...route, model };
+  return model === undefined ? path : { ...path, model };
+}
 
+/** The page and day from the part of the hash before any `?`. */
+function parsePath(path: string): Route {
   const match = /^#\/(?:day\/([^/]+)\/?)?(?:site\/(.+))?$/.exec(path);
-  if (match === null) return withModel({ page: "list" });
+  if (match === null) return { page: "list" };
   const [, dayText, idText] = match;
-  if (dayText !== undefined && !isDayKey(dayText)) return withModel({ page: "list" });
+  if (dayText !== undefined && !isDayKey(dayText)) return { page: "list" };
   const day = dayText;
-  if (idText === undefined) {
-    return withModel(day === undefined ? { page: "list" } : { page: "list", day });
-  }
+  if (idText === undefined) return day === undefined ? { page: "list" } : { page: "list", day };
   try {
     const id = decodeURIComponent(idText);
-    return withModel(day === undefined ? { page: "site", id } : { page: "site", id, day });
+    return day === undefined ? { page: "site", id } : { page: "site", id, day };
   } catch {
-    return withModel({ page: "list" });
+    return { page: "list" };
   }
 }
 
@@ -69,9 +69,7 @@ export function routeHref(route: Route, model: ModelName): string {
  * shares can't change it.
  */
 export function canonicalHash(hash: string, defaultModel: ModelName): string | undefined {
-  const route = parseRoute(hash);
-  const canonical = routeHref(route, route.model ?? defaultModel);
-  return canonical === hash ? undefined : canonical;
+  return resolveRoute(hash, defaultModel).rewrite;
 }
 
 /** A route that names its model, as the app uses it once the hash is canonical. */
@@ -85,8 +83,8 @@ export function resolveRoute(
   hash: string,
   defaultModel: ModelName,
 ): { route: CanonicalRoute; rewrite?: string } {
-  const rewrite = canonicalHash(hash, defaultModel);
   const parsed = parseRoute(hash);
   const route: CanonicalRoute = { ...parsed, model: parsed.model ?? defaultModel };
-  return rewrite === undefined ? { route } : { route, rewrite };
+  const canonical = routeHref(route, route.model);
+  return canonical === hash ? { route } : { route, rewrite: canonical };
 }

@@ -3,6 +3,7 @@ import { SCORING_DEFAULTS } from "../scoring/defaults";
 import type { ScoringDefaults } from "../scoring/defaults";
 import { CHECK_MODEL, applyStormLookahead, evaluateHour } from "../scoring/hourEvaluator";
 import type { HourContext, HourResult, ModelName } from "../scoring/hourEvaluator";
+import { checkCovers } from "../scoring/modelAgreement";
 import { daylightDayFor, daylightHours, findBestWindow } from "../scoring/windowFinder";
 import type { Launch, Site } from "../sites/site";
 import { HOUR_MS, byTime } from "../time";
@@ -104,7 +105,7 @@ function rrfsCoversDay(
     daylightHours([...results.ecmwf, ...results.rrfs], day, now).map((r) => r.time),
   );
   if (windowHours.size === 0) return true;
-  const covered = daylightHours(results.rrfs, day, now).filter((r) => r.call !== "noData").length;
+  const covered = daylightHours(results.rrfs, day, now).filter(checkCovers).length;
   return covered / windowHours.size >= defaults.rrfsPrimaryMinDaylightShare;
 }
 
