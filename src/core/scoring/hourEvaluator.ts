@@ -228,9 +228,10 @@ function finish(fields: HourFields, reasons: Reason[], defaults: ScoringDefaults
   let score = defaults.minScore;
   if (call === "good" || call === "flyable") {
     // Warnings and info reasons cost nothing.
-    let count = sorted.filter((r) => r.severity === "caution" || r.severity === "penalty").length;
+    const penalized = sorted.filter((r) => r.severity === "caution" || r.severity === "penalty");
+    let count = penalized.length;
     // The two nearby-wind cautions cost one penalty together.
-    if (sorted.some((r) => r.kind === "neighborWind") && sorted.some((r) => r.kind === "neighborOffDirection")) {
+    if (penalized.some((r) => r.kind === "neighborWind") && penalized.some((r) => r.kind === "neighborOffDirection")) {
       count -= 1;
     }
     const penalties = count * defaults.cautionReasonPenalty;

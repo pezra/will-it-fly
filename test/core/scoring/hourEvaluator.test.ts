@@ -132,24 +132,22 @@ function nextWith(change: (h: ModelHour) => void): HourBuilder {
   return perfectHour(REFERENCE_TIME + HOUR_MS).with(change);
 }
 
-/** RRFS neighbors all calm except those given, by bearing (a bearing given with an undefined wind has none). */
-function rrfsNeighbors(winds: Record<number, NeighborWind | undefined>): NeighborPointSample[] {
-  return calmNeighbors().points.map((p) => (p.bearingDeg in winds ? { ...p, rrfs: winds[p.bearingDeg] } : p));
+/** Neighbors all calm except `model`'s at the bearings given (a bearing given with an undefined wind has none). */
+function neighborsWith(
+  model: "ecmwf" | "rrfs",
+  winds: Record<number, NeighborWind | undefined>,
+): NeighborPointSample[] {
+  return calmNeighbors().points.map((p) => (p.bearingDeg in winds ? { ...p, [model]: winds[p.bearingDeg] } : p));
 }
 
 /** RRFS neighbors all calm except the one at `bearing`. */
 function rrfsNeighborAt(bearing: number, wind: NeighborWind | undefined): NeighborPointSample[] {
-  return rrfsNeighbors({ [bearing]: wind });
-}
-
-/** ECMWF neighbors all calm except those given, by bearing (a bearing given with an undefined wind has none). */
-function ecmwfNeighbors(winds: Record<number, NeighborWind | undefined>): NeighborPointSample[] {
-  return calmNeighbors().points.map((p) => (p.bearingDeg in winds ? { ...p, ecmwf: winds[p.bearingDeg] } : p));
+  return neighborsWith("rrfs", { [bearing]: wind });
 }
 
 /** ECMWF neighbors all calm except the one at `bearing`. */
 function ecmwfNeighborAt(bearing: number, wind: NeighborWind | undefined): NeighborPointSample[] {
-  return ecmwfNeighbors({ [bearing]: wind });
+  return neighborsWith("ecmwf", { [bearing]: wind });
 }
 
 /** A 3 mph center on both models, under the inconsistency rule's minimum, so only the off-direction rule applies. */
@@ -927,7 +925,6 @@ describe("high gusts warning", () => {
 });
 
 describe("neighbor check, mixed cases", () => {
-
   it("uses RRFS when its center and a neighbor are present", () => {
     const neighbors = calmNeighbors().points.map((p) =>
       p.bearingDeg === 180 ? { ...p, rrfs: nw(12, 0), ecmwf: nw(10, 270) } : p,
@@ -1160,7 +1157,7 @@ describe("off-direction wind nearby", () => {
     // The caution neighbor is much farther outside (135 degrees) than the no-go one (31).
     const noGoFirst = evalWith({
       neighborCenter: QUIET_CENTER,
-      neighbors: rrfsNeighbors({ 0: nw(9, 90), 90: nw(12, 346) }),
+      neighbors: neighborsWith("rrfs", { 0: nw(9, 90), 90: nw(12, 346) }),
     });
     expect(noGoFirst.call).toBe("noGo");
     expect(offReasons(noGoFirst)).toEqual([
@@ -1168,7 +1165,7 @@ describe("off-direction wind nearby", () => {
     ]);
     const farthest = evalWith({
       neighborCenter: QUIET_CENTER,
-      neighbors: rrfsNeighbors({ 0: nw(8, 320), 180: nw(8, 0) }),
+      neighbors: neighborsWith("rrfs", { 0: nw(8, 320), 180: nw(8, 0) }),
     });
     expect(offReasons(farthest)).toEqual([
       { kind: "neighborOffDirection", severity: "caution", text: "off-direction wind 5 mi S: N 8 mph" },
