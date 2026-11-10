@@ -26,3 +26,15 @@ export function arcContains(arc: DegreeArc, degrees: number): boolean {
 export function arcsContain(arcs: readonly DegreeArc[], degrees: number): boolean {
   return arcs.some((arc) => arcContains(arc, degrees));
 }
+
+/**
+ * How far `degrees` lies outside the arcs: 0 if any arc contains it, otherwise the
+ * angular distance to the nearest edge of the nearest arc. An empty list gives
+ * Infinity, so callers must handle an uncurated launch themselves.
+ */
+export function degreesOutsideArcs(arcs: readonly DegreeArc[], degrees: number): number {
+  if (arcsContain(arcs, degrees)) return 0;
+  return Math.min(
+    ...arcs.flatMap((arc) => [angularDifference(degrees, arc.from), angularDifference(degrees, arc.to)]),
+  );
+}

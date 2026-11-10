@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { angularDifference, arcContains, arcsContain } from "../../../src/core/sites/degreeArc";
+import {
+  angularDifference,
+  arcContains,
+  arcsContain,
+  degreesOutsideArcs,
+} from "../../../src/core/sites/degreeArc";
 
 describe("degreeArc", () => {
   it("nonWrappingArc", () => {
@@ -58,5 +63,47 @@ describe("degreeArc", () => {
     expect(angularDifference(0, 180)).toBe(180);
     expect(angularDifference(90, 90)).toBe(0);
     expect(angularDifference(-10, 370)).toBe(20);
+  });
+
+  it("degreesOutsideArcsIsZeroInside", () => {
+    expect(degreesOutsideArcs([{ from: 250, to: 325 }], 270)).toBe(0);
+    expect(degreesOutsideArcs([{ from: 250, to: 325 }], 250)).toBe(0);
+    expect(degreesOutsideArcs([{ from: 250, to: 325 }], 325)).toBe(0);
+  });
+
+  it("degreesOutsideArcsMeasuresToNearestEdge", () => {
+    const arc = { from: 250, to: 325 };
+    expect(degreesOutsideArcs([arc], 249)).toBe(1);
+    expect(degreesOutsideArcs([arc], 326)).toBe(1);
+    expect(degreesOutsideArcs([arc], 200)).toBe(50);
+  });
+
+  it("degreesOutsideArcsWrappingArc", () => {
+    const arc = { from: 337.5, to: 135 };
+    expect(degreesOutsideArcs([arc], 136)).toBe(1);
+    expect(degreesOutsideArcs([arc], 300)).toBe(37.5);
+  });
+
+  it("degreesOutsideArcsTakesNearestArc", () => {
+    const arcs = [
+      { from: 225, to: 315 },
+      { from: 0, to: 45 },
+    ];
+    expect(degreesOutsideArcs(arcs, 330)).toBe(15);
+    expect(degreesOutsideArcs(arcs, 170)).toBe(55);
+  });
+
+  it("degreesOutsideArcsFullCircleIsZero", () => {
+    expect(degreesOutsideArcs([{ from: 0, to: 360 }], 123)).toBe(0);
+  });
+
+  it("degreesOutsideArcsZeroWidthArc", () => {
+    const arc = { from: 270, to: 270 };
+    expect(degreesOutsideArcs([arc], 270)).toBe(0);
+    expect(degreesOutsideArcs([arc], 280)).toBe(10);
+  });
+
+  it("degreesOutsideArcsEmptyIsInfinity", () => {
+    expect(degreesOutsideArcs([], 90)).toBe(Infinity);
   });
 });
