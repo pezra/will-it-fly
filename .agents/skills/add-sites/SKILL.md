@@ -13,6 +13,7 @@ description: Add flying sites to sites.json from a site guide (club pages, a Goo
 - Google My Map: use its KML export, `https://www.google.com/maps/d/kml?mid=<mid>&forcekml=1`, and `$S/kml_summary.py`. KML is longitude first.
 - RMHPA (`rmhpa/`): one page per site under https://www.rmhpa.org/flying-sites.
 - Pawnee (`pawnee/`): pawneeparagliding.com redirects to a My Map, `mid=1I8Q0FGZfJT_J_VO8GnWyizANwfYgwPu6`. Each folder is a site.
+- BHGC (`bhgc/`): one page per region, e.g. https://www.bhgc.org/sites/laketahoe-renoarea/index.html, with `#site_<slug>` anchors. Its data file, https://raw.githubusercontent.com/BHGC/website/master/content/sites/sites.dcf, has `WindDirections` the page doesn't show. `Requirements` are hang gliding ratings. HangGliding.org links block automated fetches.
 
 ## Sites
 
