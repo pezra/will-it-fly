@@ -1,4 +1,7 @@
+import { Fragment } from "preact";
 import { useEffect, useState } from "preact/hooks";
+import type { SiteSource } from "../core/sites/site";
+import { bundledSources } from "../core/sites/siteProvider";
 import { wantedSiteIds } from "../core/travel/inRange";
 import type { ModelName } from "../core/scoring/hourEvaluator";
 import type { DebugParams } from "./debugParams";
@@ -20,6 +23,31 @@ function currentRoute(): CanonicalRoute {
   const { route, rewrite } = resolveRoute(window.location.hash, loadDefaultModel(localStorageStore()));
   if (rewrite !== undefined) window.history.replaceState(null, "", rewrite);
   return route;
+}
+
+/** The sources to credit in the footer. A malformed list credits none rather than breaking the page. */
+function footerSources(): SiteSource[] {
+  try {
+    return bundledSources();
+  } catch {
+    return [];
+  }
+}
+
+const SOURCES = footerSources();
+
+/** "A, B and C", each linked to its source. */
+function SourceLinks({ sources }: { sources: SiteSource[] }) {
+  return (
+    <>
+      {sources.map((s, i) => (
+        <Fragment key={s.id}>
+          {i === 0 ? "" : i === sources.length - 1 ? " and " : ", "}
+          <a href={s.url}>{s.name}</a>
+        </Fragment>
+      ))}
+    </>
+  );
 }
 
 /** The current route, canonical from the first render on. */
@@ -68,8 +96,7 @@ export function App({ debug }: { debug: DebugParams }) {
       <footer>
         Weather data by{" "}
         <a href="https://open-meteo.com/">Open-Meteo.com</a> (CC BY 4.0) · Site info from{" "}
-        <a href="https://www.rmhpa.org/">RMHPA</a> and{" "}
-        <a href="https://pawneeparagliding.com/">pawneeparagliding.com</a>, verify before flying · Routing by{" "}
+        <SourceLinks sources={SOURCES} />, verify before flying · Routing by{" "}
         <a href="https://project-osrm.org/">OSRM</a> and place search by{" "}
         <a href="https://nominatim.org/">Nominatim</a>, ©{" "}
         <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors · Drive times send your start point, rounded to about 1 km,

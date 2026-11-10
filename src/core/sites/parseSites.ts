@@ -5,6 +5,7 @@ import type {
   Launch,
   Site,
   SiteSoaring,
+  SiteSource,
   SiteStatus,
   SiteXC,
   WindLimits,
@@ -156,4 +157,21 @@ export function parseSites(json: unknown): Site[] {
     fail("catalog.curatedOn", "expected a string");
   }
   return arr(top, "sites", "catalog").map((s, i) => parseSite(s, `sites[${i}]`));
+}
+
+/**
+ * Validates the catalog's `sources` and returns fresh SiteSource objects. Throws SiteDataError on a
+ * malformed or repeated source.
+ */
+export function parseSources(json: unknown): SiteSource[] {
+  const top = obj(json, "catalog");
+  const ids = new Set<string>();
+  return arr(top, "sources", "catalog").map((s, i) => {
+    const w = `sources[${i}]`;
+    const o = obj(s, w);
+    const source: SiteSource = { id: str(o, "id", w), name: str(o, "name", w), url: str(o, "url", w) };
+    if (ids.has(source.id)) fail(`${w}.id`, `repeats '${source.id}'`);
+    ids.add(source.id);
+    return source;
+  });
 }

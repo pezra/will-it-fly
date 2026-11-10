@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { arcsContain } from "../../../src/core/sites/degreeArc";
 import type { Launch, Site, WindLimits } from "../../../src/core/sites/site";
-import { bundledSiteProvider } from "../../../src/core/sites/siteProvider";
+import { bundledSiteProvider, bundledSources } from "../../../src/core/sites/siteProvider";
+import rawSites from "../../../sites.json";
 
 /** Sanity checks on the real curated sites.json. */
 const sites: Site[] = await bundledSiteProvider().sites();
@@ -10,26 +11,23 @@ function allLimits(site: Site): WindLimits[] {
   return [site.limits, ...site.launches.flatMap((l) => (l.limits === undefined ? [] : [l.limits]))];
 }
 
-/** Each id prefix and the host its sites are curated from. */
-const SOURCE_HOSTS: Readonly<Record<string, string>> = {
-  rmhpa: "www.rmhpa.org",
-  pawnee: "pawneeparagliding.com",
-};
+const sources = bundledSources();
+const sourceHosts = new Map(sources.map((s) => [s.id, new URL(s.url).host]));
 
 function inRange(x: number, lo: number, hi: number): boolean {
   return x >= lo && x <= hi;
 }
 
 describe("sites.json", () => {
-  it("hasAll26SitesWithUniqueIds", () => {
-    expect(sites.length).toBe(26);
+  it("hasAll35SitesWithUniqueIds", () => {
+    expect(sites.length).toBe(35);
     expect(new Set(sites.map((s) => s.id)).size).toBe(sites.length);
     const launchIds = sites.flatMap((s) => s.launches.map((l) => l.id));
     expect(new Set(launchIds).size).toBe(launchIds.length);
     for (const site of sites) {
       const prefix = site.id.split("/")[0] ?? "";
-      expect(Object.keys(SOURCE_HOSTS), site.id).toContain(prefix);
-      expect(new URL(site.sourceURL).host, site.id).toBe(SOURCE_HOSTS[prefix]);
+      expect([...sourceHosts.keys()], site.id).toContain(prefix);
+      expect(new URL(site.sourceURL).host, site.id).toBe(sourceHosts.get(prefix));
       for (const launch of site.launches) {
         expect(launch.id.startsWith(`${site.id}/`), launch.id).toBe(true);
       }
@@ -37,10 +35,16 @@ describe("sites.json", () => {
   });
 
   it("hasCleanIds", () => {
-    const re = /^(rmhpa|pawnee)\/[a-z0-9]+(-[a-z0-9]+)*(\/[a-z0-9]+(-[a-z0-9]+)*)?$/;
+    const re = /^[a-z0-9]+\/[a-z0-9]+(-[a-z0-9]+)*(\/[a-z0-9]+(-[a-z0-9]+)*)?$/;
     for (const site of sites) {
       expect(site.id).toMatch(re);
       for (const launch of site.launches) expect(launch.id).toMatch(re);
+    }
+  });
+
+  it("everySourceHasSites", () => {
+    for (const source of sources) {
+      expect(sites.some((s) => s.id.startsWith(`${source.id}/`)), source.id).toBe(true);
     }
   });
 
@@ -48,8 +52,9 @@ describe("sites.json", () => {
     for (const site of sites) {
       expect(site.launches.length, site.id).toBeGreaterThan(0);
       for (const l of site.launches) {
-        expect(inRange(l.coordinate.latitude, 36, 42), l.id).toBe(true);
-        expect(inRange(l.coordinate.longitude, -110, -101), l.id).toBe(true);
+        // The contiguous US.
+        expect(inRange(l.coordinate.latitude, 24, 50), l.id).toBe(true);
+        expect(inRange(l.coordinate.longitude, -125, -66), l.id).toBe(true);
         expect(inRange(l.elevationFt, 4000, 14500), l.id).toBe(true);
       }
     }
@@ -69,15 +74,13 @@ describe("sites.json", () => {
     }
   });
 
+  // Curator-only fields (limitsSource) aren't parsed, so this reads the raw JSON.
   it("idealSpeedMissingOnlyWherePageGivesNone", () => {
-    const missing = sites.filter((s) => s.limits.idealMph === undefined).map((s) => s.id).sort();
-    expect(missing).toEqual([
-      "pawnee/indian-caves",
-      "pawnee/pony-ridge",
-      "pawnee/the-buttes",
-      "rmhpa/aspen",
-      "rmhpa/blodgett-open-space",
-    ]);
+    for (const site of rawSites.sites) {
+      if (site.limits.idealMph === undefined) {
+        expect(["default", "page-prose"], site.id).toContain(site.limitsSource);
+      }
+    }
   });
 
   it("arcBoundsAreNormalized", () => {
@@ -156,6 +159,33 @@ describe("sites.json", () => {
     expect(arcsContain(section15.ok, 90)).toBe(true);
     expect(arcsContain(section15.ok, 270)).toBe(false);
     expect(arcsContain(section15.ideal, 130)).toBe(true);
+  });
+
+  // BHGC gives no direction for these, so they're terrain estimates from 2026-11-09 (see the notes in the JSON).
+  it("bhgcTerrainDirections", () => {
+    function launch(id: string): Launch {
+      const found = sites.flatMap((s) => s.launches).find((l) => l.id === id);
+      if (found === undefined) throw new Error(`no launch ${id}`);
+      return found;
+    }
+    // Duck Hill, McClellan and Spooner wrap through north.
+    const duckHill = launch("bhgc/duck-hill/main").directions.ok;
+    expect(arcsContain(duckHill, 0)).toBe(true);
+    expect(arcsContain(duckHill, 180)).toBe(false);
+    const mcclellan = launch("bhgc/mcclellan/main").directions.ok;
+    expect(arcsContain(mcclellan, 0)).toBe(true);
+    expect(arcsContain(mcclellan, 180)).toBe(false);
+    const spooner = launch("bhgc/spooner/main").directions;
+    expect(arcsContain(spooner.ok, 0)).toBe(true);
+    expect(arcsContain(spooner.ideal, 0)).toBe(true);
+    expect(arcsContain(spooner.ok, 180)).toBe(false);
+    // Peavine faces read from the contours, not the script's estimate of 9.
+    const bowl = launch("bhgc/peavine-mt/bowl").directions.ok;
+    expect(arcsContain(bowl, 67.5)).toBe(true);
+    expect(arcsContain(bowl, 0)).toBe(false);
+    const tower = launch("bhgc/peavine-mt/tower").directions.ok;
+    expect(arcsContain(tower, 90)).toBe(true);
+    expect(arcsContain(tower, 9)).toBe(false);
   });
 
   it("lists only real launches under soaring, and Boulder and Golden are not ridge sites", () => {

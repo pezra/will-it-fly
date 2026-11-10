@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import sample from "../../fixtures/sites-sample.json?raw";
 import { DEFAULT_WIND_LIMITS, elevationM } from "../../../src/core/sites/site";
 import { bundledSiteProvider } from "../../../src/core/sites/siteProvider";
-import { parseSites, SiteDataError } from "../../../src/core/sites/parseSites";
+import { parseSites, parseSources, SiteDataError } from "../../../src/core/sites/parseSites";
 
 const sampleJson: unknown = JSON.parse(sample);
 
@@ -132,5 +132,18 @@ describe("parseSites", () => {
     expect(sites[0]?.soaring).toEqual({ notes: "n", minMph: 9, launchIds: ["a"] });
     expect(sites[0]?.xc).toEqual({ notes: "x" });
     expect(() => parseSites(broken(["sites", 0, "soaring"], {}))).toThrow(SiteDataError);
+  });
+});
+
+describe("parseSources", () => {
+  it("decodes the sources", () => {
+    expect(parseSources(sampleJson)).toEqual([{ id: "rmhpa", name: "RMHPA", url: "https://www.rmhpa.org/" }]);
+  });
+
+  it("rejects a malformed or repeated source", () => {
+    expect(() => parseSources(broken(["sources"]))).toThrow(/sources/);
+    expect(() => parseSources(broken(["sources", 0, "name"]))).toThrow(/sources\[0\]\.name/);
+    const repeated = broken(["sources", 1], { id: "rmhpa", name: "Again", url: "https://example.com/" });
+    expect(() => parseSources(repeated)).toThrow(/repeats 'rmhpa'/);
   });
 });
