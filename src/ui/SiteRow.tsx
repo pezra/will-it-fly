@@ -4,7 +4,7 @@ import { windowLabel } from "../core/scoring/windowFinder";
 import type { DayKey } from "../core/time";
 import { ResultBadge } from "./CallBadge";
 import { siteHref } from "./route";
-import { cautionLine, confidenceLabel, driveLabel, miles, ratingLabel } from "./format";
+import { cautionLine, confidenceLabel, driveLabel, miles } from "./format";
 
 /** `day` is the route's day (undefined for the default) and `model` its model, so the detail link keeps both. */
 export function SiteRow({
@@ -33,7 +33,6 @@ export function SiteRow({
         : undefined;
   const cautions = cautionLine(best?.window.cautions ?? []);
   const highGusts = best?.window.warnings.some((r) => r.kind === "highGusts") ?? false;
-  const rating = ratingLabel(site);
 
   return (
     <li>
@@ -43,7 +42,7 @@ export function SiteRow({
           <ResultBadge call={rec.call} conditions={best?.window.conditions} />
         </div>
         <div class="row-meta">
-          {rating !== undefined && <span>{rating}</span>}
+          {site.rating !== undefined && <span>{site.rating}</span>}
           {distance !== undefined && <span>{distance}</span>}
           {best !== undefined && (
             <>

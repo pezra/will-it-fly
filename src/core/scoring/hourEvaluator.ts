@@ -416,14 +416,15 @@ export function hasCoreData(hour: ModelHour, launch: Launch): boolean {
 /**
  * The rules on the launch's own wind and on storms, with nothing aloft, no cloud and no wind
  * nearby: precipitation, launch wind speed and direction, CAPE, and the other model seeing storms.
- * `inIdeal` is true when the launch is curated and the wind is from an ideal arc.
+ * `inIdeal` is true when the launch is curated and the wind is from an ideal arc. `curated` is
+ * whether the launch has any `ok` directions.
  */
 function surfaceReasons(
   ctx: HourContext,
   wind: Wind,
   limits: WindLimits,
   defaults: ScoringDefaults,
-): { reasons: Reason[]; inIdeal: boolean } {
+): { reasons: Reason[]; inIdeal: boolean; curated: boolean } {
   const { hour, next, launch } = ctx;
   const reasons: Reason[] = [];
   const { ok } = launch.directions;
@@ -473,7 +474,7 @@ function surfaceReasons(
     }
   }
 
-  return { reasons, inIdeal };
+  return { reasons, inIdeal, curated };
 }
 
 /**
@@ -517,7 +518,7 @@ export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORI
   }
 
   const limits = effectiveLimits(ctx.site, launch);
-  const { reasons, inIdeal } = surfaceReasons(ctx, wind, limits, defaults);
+  const { reasons, inIdeal, curated } = surfaceReasons(ctx, wind, limits, defaults);
 
   // A kiting site: the surface rules and gusts only. Nothing aloft, no cloud, thermals or wind nearby.
   if (ctx.site.kind === "kiting") {
@@ -528,7 +529,6 @@ export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORI
   }
 
   const { ok } = launch.directions;
-  const curated = ok.length > 0;
 
   // Gusts, from h and h+1: not scored, only warned about. A missing gust gives no reason at all.
   const factor = gustFactorMph(hour, next);

@@ -30,7 +30,7 @@ Follow the source's grouping, except:
 
 A kiting site is a park for ground handling. Add one only when the author gives it. It differs from a flying site in these ways:
 
-- `"kind": "kiting"` (after `name`) and `"rating": "Unrated"`.
+- `"kind": "kiting"` (after `name`) and no `rating`.
 - `limits`: `{ "minMph": 5, "idealMph": 8, "idealMaxMph": 12, "maxMph": 18 }` with `"limitsSource": "author"`, unless the author gives others. Leave out `gustFactorMph`, which kiting doesn't read.
 - No `soaring` or `xc`. Kiting ignores them, and `sitesData.test.ts` rejects them.
 - One launch, on the field. The directions are the wind directions the author gives, not a slope's facing, so don't run the terrain script, and ask if they're missing.

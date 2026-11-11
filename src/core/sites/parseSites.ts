@@ -147,11 +147,12 @@ function parseSite(v: unknown, where: string): Site {
     name: str(o, "name", w),
     kind: parseKind(o, w),
     sourceURL: str(o, "sourceURL", w),
-    rating: str(o, "rating", w),
     status: parseStatus(o["status"], `${w}.status`),
     launches: arr(o, "launches", w).map((l, i) => parseLaunch(l, `${w}.launches[${i}]`)),
     limits: parseLimits(o["limits"], `${w}.limits`),
   };
+  const rating = optStr(o, "rating", w);
+  if (rating !== undefined) site.rating = rating;
   const notes = optStr(o, "notes", w);
   if (notes !== undefined) site.notes = notes;
   if (present(o, "soaring")) site.soaring = parseSoaring(o["soaring"], `${w}.soaring`);

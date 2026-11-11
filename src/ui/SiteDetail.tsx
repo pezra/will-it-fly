@@ -5,7 +5,7 @@ import { windowLabel } from "../core/scoring/windowFinder";
 import type { Site, SiteKind } from "../core/sites/site";
 import { ResultBadge } from "./CallBadge";
 import { ForecastStatus } from "./ForecastStatus";
-import { arcsLabel, cautionLine, confidenceLabel, dayLabel, driveLabel, feet, idealLabel, launchFallbackNote, limitsLine, miles, ratingLabel, siteModel, sourceLabel } from "./format";
+import { arcsLabel, cautionLine, confidenceLabel, dayLabel, driveLabel, feet, idealLabel, launchFallbackNote, limitsLine, miles, siteModel, sourceLabel } from "./format";
 import { HourlyTable } from "./HourlyTable";
 import { listHref } from "./route";
 import type { DayKey } from "../core/time";
@@ -95,7 +95,6 @@ export function SiteDetail({
   const distance = miles(rec.distanceM);
   const cautions = cautionLine(best?.window.cautions ?? []);
   const closedReason = site.status.state === "closed" ? site.status.reason : undefined;
-  const rating = ratingLabel(site);
   return (
     <>
       {back}
@@ -105,10 +104,10 @@ export function SiteDetail({
       </p>
       {cautions !== undefined && <p class="row-caution">{cautions}</p>}
       <dl class="facts">
-        {rating !== undefined && (
+        {site.rating !== undefined && (
           <>
             <dt>Rating</dt>
-            <dd>{rating}</dd>
+            <dd>{site.rating}</dd>
           </>
         )}
         <dt>Forecast model</dt>

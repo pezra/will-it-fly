@@ -70,7 +70,7 @@ export interface Site {
   notes?: string;
   soaring?: SiteSoaring;
   xc?: SiteXC;
-  rating: string; // "P4"
+  rating?: string; // "P4"; kiting sites have none
   status: SiteStatus;
   launches: Launch[];
   limits: WindLimits;

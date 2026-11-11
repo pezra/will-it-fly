@@ -24,7 +24,8 @@ function queryModel(query: string): ModelName | undefined {
  * and `#/day/YYYY-MM-DD/site/<encoded id>` are the same for that day. `#/kite` and
  * `#/kite/YYYY-MM-DD` are the Kite list, for the default day and for that day. Any of them can end
  * in `?model=ecmwf|rrfs`. Anything else (an invalid date included) is the default day's list, in
- * Fly mode unless the path starts `#/kite/`. The model is read from the query whatever the path
+ * Fly mode. (Only `#/kite`, `#/kite/` and `#/kite/<one segment>` are Kite, so `#/kite/x/y` is the
+ * Fly list; a `#/kite/<segment>` that isn't a date is the Kite list for the default day.) The model is read from the query whatever the path
  * is, so a bad path keeps the link's model.
  */
 export function parseRoute(hash: string): Route {

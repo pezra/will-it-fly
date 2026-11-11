@@ -68,6 +68,12 @@ describe("parseSites", () => {
     expect(() => parseSites(j)).toThrow(/launches/);
   });
 
+  it("parses a missing rating as undefined", () => {
+    const sites = parseSites(broken(["sites", 0, "rating"]));
+    expect(sites[0]?.rating).toBeUndefined();
+    expect(sites[1]?.rating).toBe("P2");
+  });
+
   it("rejects a bad status state", () => {
     const j = broken(["sites", 0, "status"], { state: "ajar" });
     expect(() => parseSites(j)).toThrow(/status/);

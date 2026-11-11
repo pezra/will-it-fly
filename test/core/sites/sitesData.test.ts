@@ -208,7 +208,10 @@ describe("sites.json", () => {
   it("kitingSitesAreTheThreeParks", () => {
     expect(sites.filter((s) => s.kind === "kiting").map((s) => s.id).sort()).toEqual([...KITING_IDS].sort());
     for (const site of sites) {
-      if (!KITING_IDS.includes(site.id)) expect(site.kind, site.id).toBe("flying");
+      if (!KITING_IDS.includes(site.id)) {
+        expect(site.kind, site.id).toBe("flying");
+        expect(site.rating, site.id).toBeDefined();
+      }
     }
   });
 
@@ -216,7 +219,7 @@ describe("sites.json", () => {
     for (const site of sites.filter((s) => s.kind === "kiting")) {
       expect(site.soaring, site.id).toBeUndefined();
       expect(site.xc, site.id).toBeUndefined();
-      expect(site.rating, site.id).toBe("Unrated");
+      expect(site.rating, site.id).toBeUndefined();
       expect(site.launches.length, site.id).toBe(1);
       for (const limits of allLimits(site)) {
         expect(limits.idealMph, site.id).toBeDefined();

@@ -25,7 +25,6 @@ import {
   loadingMoreLine,
   miles,
   oneDecimal,
-  ratingLabel,
   siteModel,
   sourceLabel,
   stageMessage,
@@ -135,15 +134,6 @@ describe("limitsLine", () => {
   it("leaves the gust factor out of a kiting site", () => {
     const site = testSite({ kind: "kiting", limits: { minMph: 5, idealMph: 8, idealMaxMph: 12, maxMph: 18 } });
     expect(limitsLine(site, testLaunch())).toBe("5–18 mph, ideal 8–12 mph");
-  });
-});
-
-describe("ratingLabel", () => {
-  it("gives a flying site its rating", () => {
-    expect(ratingLabel(testSite())).toBe("P2");
-  });
-  it("gives a kiting site no rating", () => {
-    expect(ratingLabel(testSite({ kind: "kiting" }))).toBeUndefined();
   });
 });
 

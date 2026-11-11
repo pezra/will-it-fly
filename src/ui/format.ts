@@ -75,11 +75,6 @@ export function limitsLine(site: Site, launch: Launch): string {
   return parts.join(", ");
 }
 
-/** A site's rating for its row and page. Kiting sites have none, so undefined for them. */
-export function ratingLabel(site: Site): string | undefined {
-  return site.kind === "kiting" ? undefined : site.rating;
-}
-
 const wrap360 = (deg: number): number => (deg < 0 ? deg + 360 : deg > 360 ? deg - 360 : deg);
 
 /**
