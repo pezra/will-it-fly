@@ -133,6 +133,65 @@ describe("parseSites", () => {
     expect(sites[0]?.xc).toEqual({ notes: "x" });
     expect(() => parseSites(broken(["sites", 0, "soaring"], {}))).toThrow(SiteDataError);
   });
+
+  describe("kind", () => {
+    it("defaults an absent or null kind to flying", () => {
+      expect(parseSites(sampleJson)[0]?.kind).toBe("flying");
+      expect(parseSites(broken(["sites", 0, "kind"], null))[0]?.kind).toBe("flying");
+    });
+
+    it("reads kiting", () => {
+      expect(parseSites(broken(["sites", 0, "kind"], "kiting"))[0]?.kind).toBe("kiting");
+      expect(parseSites(broken(["sites", 0, "kind"], "flying"))[0]?.kind).toBe("flying");
+    });
+
+    it("rejects any other kind", () => {
+      for (const bad of ["kite", "", 3, true, {}]) {
+        const j = broken(["sites", 0, "kind"], bad);
+        expect(() => parseSites(j)).toThrow(SiteDataError);
+        expect(() => parseSites(j)).toThrow(/rmhpa\/glenwood-lookout\)\.kind/);
+      }
+    });
+  });
+
+  describe("idealMaxMph", () => {
+    it("is read next to idealMph, on a site or a launch", () => {
+      const site = parseSites(broken(["sites", 0, "limits", "idealMaxMph"], 12))[0];
+      expect(site?.limits).toStrictEqual({ minMph: 0, idealMph: 8, idealMaxMph: 12, maxMph: 15, gustFactorMph: 7 });
+
+      const launchLimits = { minMph: 3, idealMph: 5, idealMaxMph: 9, maxMph: 12 };
+      const onLaunch = parseSites(broken(["sites", 0, "launches", 1, "limits"], launchLimits))[0];
+      expect(onLaunch?.launches[1]?.limits).toStrictEqual(launchLimits);
+    });
+
+    it("is absent when the JSON has none, or has null", () => {
+      expect("idealMaxMph" in parseSites(sampleJson)[0]!.limits).toBe(false);
+      const j = broken(["sites", 0, "limits", "idealMaxMph"], null);
+      expect("idealMaxMph" in parseSites(j)[0]!.limits).toBe(false);
+    });
+
+    it("accepts idealMaxMph equal to idealMph", () => {
+      const j = broken(["sites", 0, "limits", "idealMaxMph"], 8);
+      expect(parseSites(j)[0]?.limits.idealMaxMph).toBe(8);
+    });
+
+    it("rejects idealMaxMph below idealMph", () => {
+      const j = broken(["sites", 0, "limits", "idealMaxMph"], 7.9);
+      expect(() => parseSites(j)).toThrow(SiteDataError);
+      expect(() => parseSites(j)).toThrow(/limits\.idealMaxMph/);
+    });
+
+    it("rejects idealMaxMph without idealMph", () => {
+      const j = broken(["sites", 1, "limits", "idealMaxMph"], 12);
+      expect(() => parseSites(j)).toThrow(SiteDataError);
+      expect(() => parseSites(j)).toThrow(/rmhpa\/wolcott\)\.limits\.idealMaxMph/);
+    });
+
+    it("rejects a non-numeric idealMaxMph", () => {
+      const j = broken(["sites", 0, "limits", "idealMaxMph"], "12");
+      expect(() => parseSites(j)).toThrow(/limits\.idealMaxMph/);
+    });
+  });
 });
 
 describe("parseSources", () => {

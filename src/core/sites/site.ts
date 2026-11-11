@@ -19,6 +19,8 @@ export interface DirectionRanges {
 export interface WindLimits {
   minMph: number;
   idealMph?: number;
+  /** With `idealMph`, the ideal is the range `idealMph`–`idealMaxMph`. */
+  idealMaxMph?: number;
   maxMph: number;
   gustFactorMph?: number;
 }
@@ -56,9 +58,14 @@ export interface SiteSource {
   url: string;
 }
 
+export const SITE_KINDS = ["flying", "kiting"] as const;
+export type SiteKind = (typeof SITE_KINDS)[number];
+
 export interface Site {
   id: string; // "rmhpa/crested-butte"
   name: string;
+  /** Kiting sites are scored with the kiting rules and listed only in Kite mode. */
+  kind: SiteKind;
   sourceURL: string;
   notes?: string;
   soaring?: SiteSoaring;

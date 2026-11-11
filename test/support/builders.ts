@@ -29,6 +29,7 @@ export function testSite(overrides: Partial<Site> = {}): Site {
   return {
     id: "test/site",
     name: "Test site",
+    kind: "flying",
     sourceURL: "https://example.com",
     rating: "P2",
     status: { state: "open" },

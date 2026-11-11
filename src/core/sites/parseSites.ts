@@ -1,9 +1,11 @@
 import { isRecord } from "../isRecord";
+import { SITE_KINDS } from "./site";
 import type {
   DegreeArc,
   DirectionRanges,
   Launch,
   Site,
+  SiteKind,
   SiteSoaring,
   SiteSource,
   SiteStatus,
@@ -66,6 +68,12 @@ function parseLimits(v: unknown, where: string): WindLimits {
   const limits: WindLimits = { minMph: num(o, "minMph", where), maxMph: num(o, "maxMph", where) };
   const ideal = optNum(o, "idealMph", where);
   if (ideal !== undefined) limits.idealMph = ideal;
+  const idealMax = optNum(o, "idealMaxMph", where);
+  if (idealMax !== undefined) {
+    if (ideal === undefined) fail(`${where}.idealMaxMph`, "needs idealMph");
+    if (idealMax < ideal) fail(`${where}.idealMaxMph`, `${idealMax} is below idealMph ${ideal}`);
+    limits.idealMaxMph = idealMax;
+  }
   const gust = optNum(o, "gustFactorMph", where);
   if (gust !== undefined) limits.gustFactorMph = gust;
   return limits;
@@ -107,6 +115,14 @@ function parseLaunch(v: unknown, where: string): Launch {
   return launch;
 }
 
+function parseKind(o: Obj, where: string): SiteKind {
+  if (!present(o, "kind")) return "flying";
+  const kind = o["kind"];
+  const known = SITE_KINDS.find((k) => k === kind);
+  if (known === undefined) fail(`${where}.kind`, `unknown site kind '${String(kind)}'`);
+  return known;
+}
+
 function parseSoaring(v: unknown, where: string): SiteSoaring {
   const o = obj(v, where);
   const soaring: SiteSoaring = { notes: str(o, "notes", where) };
@@ -129,6 +145,7 @@ function parseSite(v: unknown, where: string): Site {
   const site: Site = {
     id: str(o, "id", w),
     name: str(o, "name", w),
+    kind: parseKind(o, w),
     sourceURL: str(o, "sourceURL", w),
     rating: str(o, "rating", w),
     status: parseStatus(o["status"], `${w}.status`),
