@@ -53,13 +53,15 @@ Either model can be the **primary model**, with ECMWF as the default. The primar
 
 RRFS runs only about 3½ days ahead. With RRFS primary, a launch falls back to ECMWF for the day when RRFS covers less than three quarters (0.75) of the day's window hours: daylight, from the current hour if it's today. An hour counts as covered when RRFS has it with wind and precipitation. With no window hours left, RRFS stays primary. A launch never mixes models within a day.
 
-Precipitation is reported for the hour *before* each timestamp, so flying hour h uses the larger of hour h and h+1. Everything else uses hour h.
+Precipitation and gusts are reported for the hour *before* each timestamp, so flying hour h uses the larger of hour h and h+1. Everything else uses hour h.
 
 **Launch wind** is the stronger of the 10 m wind and, for launches above the 700 hPa height, the pressure-level wind interpolated to launch elevation. Model terrain is smoothed, so the 10 m wind reads low at peak launches.
 
 **Wind aloft** is the strongest wind at any pressure level between 600 m above launch and the top of lift. Top of lift is launch elevation plus the larger of the cloud base and the boundary layer height, or launch + 1500 m if both are missing.
 
 ### Hour calls
+
+These are the rules for flying sites. Kiting sites have their own, in [Kiting sites](#kiting-sites).
 
 Each hour is **no-go** if any of these hold:
 
@@ -110,7 +112,7 @@ If a launch has no ideal range, anywhere in its OK range counts as ideal. A sing
 
 The nearby-wind check compares 10 m winds at the launch's grid point and at points 5 mi N, E, S and W, within one model. It uses RRFS when it can, whichever model is primary, because ECMWF's ~9 km grid barely resolves 5 mi, and falls back to ECMWF. The check for wind 5 mi away outside the OK range uses the same four points and the same model. It compares each point's own wind with the launch's OK range, whatever the wind at launch, and only applies to launches with a curated OK range.
 
-**Gusts are not scored.** Model gusts on light thermal days often run 10–14 mph over the mean wind, which says little about what you'll find at launch. Instead, an hour shows "⚠ high gusts possible" when the gust factor (each hour's gust minus that hour's 10 m wind, the larger of h and h+1) is at least 3× the site's gust-factor limit. That's 15 mph at the default limit of 5.
+**Gusts are not scored** at flying sites. Model gusts on light thermal days often run 10–14 mph over the mean wind, which says little about what you'll find at launch. Instead, an hour shows "⚠ high gusts possible" when the gust factor (each hour's gust minus that hour's 10 m wind, the larger of h and h+1) is at least 3× the site's gust-factor limit. That's 15 mph at the default limit of 5.
 
 ### Hour score
 
@@ -118,7 +120,7 @@ No-go hours score 0. Other hours start at 50, then:
 
 | Factor | Points |
 |---|---|
-| Wind speed | up to +20 at the site's ideal speed (or the middle of min and max), falling linearly to 0 at min and max |
+| Wind speed | up to +20 at the site's ideal speed (or the middle of min and max), or anywhere in its ideal range if it has one, falling linearly to 0 at min and max |
 | Wind from an ideal direction | +10 |
 | Thermal index (lowest pressure level ≥ 1200 m above launch) | +10 if ≤ −3 °C, +5 if ≤ −1 °C |
 | Boundary layer height | +5 if ≥ 1500 m |
@@ -132,6 +134,44 @@ The score is clamped to 0–100.
 - **Cloud base** is (temperature − dewpoint) × 125 m, from 2 m values Open-Meteo adjusts to launch elevation. It runs high at launches well above model terrain, which is why low cloud cover is checked as well and the base is shown as "≈".
 - **Thermal index** is the level temperature minus a surface parcel lifted dry adiabatically (9.8 °C/km). Lower means stronger thermals.
 - **Boundary layer height** is relative to the model's smoothed terrain, not to launch, so treat it as a rough signal.
+
+### Kiting sites
+
+Kiting sites are parks for ground handling, and only the wind at the field and storms matter there. They skip every rule above about wind aloft, cloud, thermals and wind 5 mi away, and they get no sledder penalty, ridge lift or XC bonus, so none of those show up as reasons, "n/a" ones included. The launch wind is the same as at flying sites, which at a park (below the 700 hPa height) is the 10 m wind.
+
+Each hour is **no-go** if any of these hold:
+
+| Rule | Threshold |
+|---|---|
+| Precipitation (hour h or h+1) | ≥ 0.25 mm |
+| Launch wind over the site max | > max |
+| Launch wind under the site min | < min, when min > 0 |
+| Wind direction outside the launch's OK range | wind ≥ 0.5 mph (anything shown as 1 mph or more) |
+| Gusts (the larger of hour h and h+1) | > 20 mph |
+
+These produce warnings and lower the score:
+
+| Rule | Threshold |
+|---|---|
+| Storms coming | within 2 h before an hour with a precipitation no-go and CAPE ≥ 200 J/kg |
+| Other model sees storms (RRFS sees storms / ECMWF sees storms) | the check model has a precipitation no-go for this hour |
+| Overdevelopment risk | CAPE ≥ 500 J/kg |
+| High gusts possible | gust factor (each hour's gust minus that hour's 10 m wind, the larger of h and h+1) > 8 mph |
+| Near max | launch wind within 2 mph of the site max |
+| Direction OK but not ideal | inside the OK range, outside the ideal range |
+| Direction not curated | the launch has no OK range |
+
+With no gust forecast for hour h or h+1, the hour shows "gusts: n/a" and the other rules decide the call.
+
+No-go hours score 0. Other hours start at 50, then:
+
+| Factor | Points |
+|---|---|
+| Wind speed | up to +20 at the site's ideal speed or anywhere in its ideal range, falling linearly to 0 at min and max, as at flying sites |
+| Wind from an ideal direction | +10 |
+| Each warning | −5 |
+
+The score is clamped to 0–100.
 
 ### Windows and confidence
 
@@ -163,10 +203,11 @@ Flyable hours get one or more labels, shown as pills. They say what the hour off
 - **Soar**: the ridge lift rule applies. The site is marked soarable, the launch wind is in an ideal direction and it is at least 8 mph (a site can override the 8). It needs the `soaring` note.
 - **XC**: thermal index ≤ −3 °C, boundary layer ≥ 2000 m and wind aloft under 25 mph. This applies at any site, whether or not it is marked XC.
 - **Sledder**: neither Soar nor XC applies.
+- **Kite**: every good or flyable hour at a kiting site. It's the only label a kiting site gets.
 
 An hour can have both Soar and XC. Sledder is only the fallback. It is not the sledder penalty above, which uses different thresholds.
 
-A site's pills come from its best window: Soar and XC if any hour in the window has them, otherwise Sledder. So a window with XC hours and Sledder hours shows only XC.
+A site's pills come from its best window: Soar and XC if any hour in the window has them, otherwise Sledder, and Kite at a kiting site. So a window with XC hours and Sledder hours shows only XC.
 
 Cautions show on their own amber line, not as pills. Each kind of caution appears once, up to two are shown, and any others are counted as "+N more".
 

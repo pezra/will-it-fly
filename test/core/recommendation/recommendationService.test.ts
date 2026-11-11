@@ -20,7 +20,9 @@ import type {
   RecommendationDeps,
   RecommendationRequest,
 } from "../../../src/core/recommendation/recommendationService";
+import type { SiteRecommendation } from "../../../src/core/recommendation/types";
 import { SCORING_DEFAULTS } from "../../../src/core/scoring/defaults";
+import type { ReasonKind } from "../../../src/core/scoring/hourEvaluator";
 import { byTime, denverDayKey } from "../../../src/core/time";
 import type { DayKey } from "../../../src/core/time";
 import { windowLabel } from "../../../src/core/scoring/windowFinder";
@@ -29,7 +31,7 @@ import launchesJSON from "../../fixtures/openmeteo-launches.json?raw";
 import neighborsJSON from "../../fixtures/openmeteo-neighbors.json?raw";
 import launchesURL from "../../fixtures/openmeteo-launches.url.txt?raw";
 import neighborsURL from "../../fixtures/openmeteo-neighbors.url.txt?raw";
-import { mapStore } from "../../support/builders";
+import { FLYING_ONLY_KINDS, kinds, mapStore } from "../../support/builders";
 import {
   BOULDER,
   BUTTE,
@@ -249,6 +251,46 @@ describe("getRecommendations", () => {
     expect(boulder?.best?.window.cautions).toEqual([]);
     expect(glenwood?.best?.window.cautions.map((c) => c.kind)).toEqual(["neighborWind"]);
     expect(butte?.mainReason).toBeUndefined();
+  });
+
+  it("scoresAKitingSiteByTheKitingRulesOnly", async () => {
+    // Boulder with limits and directions that rule nothing out, as a kiting and as a flying site.
+    const anyDirection = [{ from: 0, to: 360 }];
+    const boulderAs = async (kind: Site["kind"]) => {
+      const catalog = sites.map((x) =>
+        x.id === BOULDER
+          ? {
+              ...x,
+              kind,
+              limits: { minMph: 0, idealMph: 8, idealMaxMph: 12, maxMph: 40 },
+              launches: x.launches.map((l) => ({ ...l, directions: { ok: anyDirection, ideal: anyDirection } })),
+            }
+          : x,
+      );
+      const result = await getRecommendations(
+        request(),
+        { ...deps(fixtureTransport(), newCache()), siteProvider: { sites: async () => catalog } },
+      );
+      return result.sites.find((r) => r.site.id === BOULDER) ?? never();
+    };
+    /** Each daylight hour's flying-only reason kinds, from both models. */
+    const flyingOnly = (r: SiteRecommendation): ReasonKind[][] =>
+      (r.launches[0]?.daylight ?? never()).map((row) =>
+        [row.primary, row.check]
+          .flatMap((m) => kinds(m?.result ?? { reasons: [] }))
+          .filter((k) => FLYING_ONLY_KINDS.includes(k)),
+      );
+
+    // The recorded day trips flying-only rules at Boulder as a flying site...
+    expect(flyingOnly(await boulderAs("flying")).flat()).not.toEqual([]);
+    // ...and none as a kiting site.
+    const kiting = await boulderAs("kiting");
+    expect(flyingOnly(kiting).length).toBeGreaterThan(0);
+    expect(flyingOnly(kiting).flat()).toEqual([]);
+    const window = kiting.best?.window ?? never();
+    expect(window.conditions).toEqual(["kite"]);
+    expect(window.hours.every((h) => h.conditions.join() === "kite")).toBe(true);
+    expect(["high", "medium", "low", "primaryOnly"]).toContain(window.confidence);
   });
 
   it("savesTheFetchedResponsesToTheCache", async () => {

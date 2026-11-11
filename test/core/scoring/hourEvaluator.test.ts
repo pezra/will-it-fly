@@ -11,6 +11,7 @@ import {
   evaluateHour,
 } from "../../../src/core/scoring/hourEvaluator";
 import type {
+  HourCall,
   HourContext,
   HourResult,
   NeighborPointSample,
@@ -30,7 +31,7 @@ import {
   perfectHour,
 } from "../../support/hourBuilder";
 import type { HourBuilder } from "../../support/hourBuilder";
-import { TEST_LIMITS, kinds, testLaunch, testSite } from "../../support/builders";
+import { FLYING_ONLY_KINDS, TEST_LIMITS, kinds, testLaunch, testSite } from "../../support/builders";
 
 const HOUR_MS = 3_600_000;
 const d = SCORING_DEFAULTS;
@@ -60,8 +61,8 @@ function makeLaunch(o: LaunchOptions = {}): Launch {
 /** A launch that takes every direction, so only the rule under test can set the call. */
 const ANY_DIRECTION_LAUNCH = makeLaunch({ ok: ANY_DIRECTION });
 
-function makeSite(launch: Launch, limits: WindLimits = TEST_LIMITS): Site {
-  return testSite({ launches: [launch], limits });
+function makeSite(launch: Launch, limits: WindLimits = TEST_LIMITS, extra: Partial<Site> = {}): Site {
+  return testSite({ launches: [launch], limits, ...extra });
 }
 
 function nw(windMph: number | undefined, windDir: number | undefined): NeighborWind {
@@ -97,6 +98,8 @@ interface CtxOptions {
   neighbors?: NeighborPointSample[];
   launch?: Launch;
   siteLimits?: WindLimits;
+  /** Site fields over the test site's (its `limits` win over `siteLimits`). */
+  site?: Partial<Site>;
 }
 
 function built(h: HourBuilder | ModelHour): ModelHour {
@@ -115,7 +118,7 @@ function ctx(o: CtxOptions = {}): HourContext {
     neighborCenter: o.neighborCenter ?? nb.center,
     neighbors: o.neighbors ?? nb.points,
     launch,
-    site: makeSite(launch, o.siteLimits),
+    site: makeSite(launch, o.siteLimits, o.site),
   };
   return c;
 }
@@ -1559,6 +1562,19 @@ describe("score", () => {
     expect(at(10)).toBeGreaterThan(at(12));
   });
 
+  it("gives the full wind bonus anywhere in an ideal range, falling linearly to 0 at min and max", () => {
+    const limits: WindLimits = { minMph: 5, idealMph: 8, idealMaxMph: 12, maxMph: 18, gustFactorMph: 6 };
+    const at = (mph: number) =>
+      evalWith({ siteLimits: limits, hour: hourWith((h) => ((h.windMph = mph), (h.gustMph = mph))) })
+        .unpenalizedScore;
+    expect(at(10)).toBe(PERFECT.unpenalizedScore);
+    expect(at(8)).toBe(at(10));
+    expect(at(12)).toBe(at(10));
+    // Halfway from 8 down to 5, and from 12 up to 18.
+    expect(at(6.5)).toBe(at(10) - d.windSpeedMaxBonus / 2);
+    expect(at(15)).toBe(at(10) - d.windSpeedMaxBonus / 2);
+  });
+
   it("better thermals, a deeper boundary layer and a higher base score higher", () => {
     const weakTI = evalWith({ hour: perfectHour().level(600, (l) => (l.tempC = -5)) });
     expect(PERFECT.score).toBeGreaterThan(weakTI.score);
@@ -1597,6 +1613,260 @@ describe("score", () => {
     expect(kinds(out[0] as HourResult)).toContain("stormsComing");
     expect(out[0]?.call).toBe("flyable");
     expect(out[0]?.score).toBe(d.maxScore);
+  });
+});
+
+describe("kiting sites", () => {
+  // The perfect hour at a kiting site: 10 mph from 270 (in the ideal 8-12 mph and the ideal arc),
+  // gust 12 at h and h+1 (factor 2), CAPE 100.
+  const KITING_LIMITS: WindLimits = { minMph: 5, idealMph: 8, idealMaxMph: 12, maxMph: 18 };
+  const KITING: Partial<Site> = { kind: "kiting", limits: KITING_LIMITS };
+  const kite = (o: CtxOptions = {}, defaults?: ScoringDefaults): HourResult =>
+    evalWith({ ...o, site: { ...KITING, ...o.site } }, defaults);
+  /** The same input at a flying site with the kiting limits. */
+  const fly = (o: CtxOptions = {}): HourResult => evalWith({ ...o, site: { limits: KITING_LIMITS, ...o.site } });
+  /** The launch wind at h, with a gust equal to it (gust factor 0 at h; h+1 stays 10 gusting 12). */
+  const windAt = (mph: number, dir = 270): CtxOptions => ({
+    hour: hourWith((h) => ((h.windMph = mph), (h.gustMph = mph), (h.windDir = dir))),
+  });
+  const KITE_PERFECT = kite();
+
+  it("the perfect hour is good with no reasons, scoring base + full wind bonus + ideal direction", () => {
+    expect(KITE_PERFECT.call).toBe("good");
+    expect(KITE_PERFECT.reasons).toEqual([]);
+    expect(KITE_PERFECT.score).toBe(d.baseScore + d.windSpeedMaxBonus + d.idealDirectionBonus);
+    expect(KITE_PERFECT.score).toBe(80);
+    expect(KITE_PERFECT.launchWind).toEqual({ speedMph: 10, dirDeg: 270 });
+  });
+
+  describe("ignores every flying-only rule", () => {
+    // Each row trips one flying-only rule (the kinds it gives at a flying site) and nothing else.
+    const rows: [string, CtxOptions, ReasonKind[]][] = [
+      ["30 mph aloft from inside ok", { hour: perfectHour().level(700, (l) => (l.windMph = 30)) }, ["aloftWind"]],
+      ["40 mph aloft", { hour: perfectHour().level(700, (l) => (l.windMph = 40)) }, ["strongAloft"]],
+      [
+        "25 mph aloft from 90",
+        { hour: perfectHour().level(700, (l) => ((l.windMph = 25), (l.windDir = 90))) },
+        ["overTheBack"],
+      ],
+      ["90% low cloud", { hour: hourWith((h) => (h.lowCloudPct = 90)) }, ["lowCloud"]],
+      ["dewpoint 1 °C under the temperature (base 125 m)", { hour: hourWith((h) => (h.dewpointC = 19)) }, ["lowCloud"]],
+      [
+        "a 12 mph neighbor 90° off",
+        { launch: ANY_DIRECTION_LAUNCH, neighbors: rrfsNeighborAt(180, nw(12, 0)) },
+        ["neighborWindStrong"],
+      ],
+      [
+        "an 8 mph neighbor 80° off",
+        { launch: ANY_DIRECTION_LAUNCH, neighbors: rrfsNeighborAt(180, nw(8, 350)) },
+        ["neighborWind"],
+      ],
+      [
+        "a 12 mph neighbor 45° outside ok",
+        { neighborCenter: QUIET_CENTER, neighbors: rrfsNeighborAt(180, nw(12, 0)) },
+        ["neighborOffDirectionStrong"],
+      ],
+      [
+        "an 8 mph neighbor 5° outside ok",
+        { neighborCenter: QUIET_CENTER, neighbors: rrfsNeighborAt(180, nw(8, 320)) },
+        ["neighborOffDirection"],
+      ],
+      // TI = -1.5 - (20 - 0.0098 x 2400) = +2.02 °C.
+      ["BLH 300 m and TI +2 °C", { hour: hourWith((h) => (h.blhM = 300)).level(600, (l) => (l.tempC = -1.5)) }, ["sledder"]],
+      ["soaring and xc on the site", { site: { soaring: { notes: "test" }, xc: { notes: "test" } } }, ["ridgeLift", "xcPotential"]],
+      [
+        "no pressure levels",
+        { hour: perfectHour().withoutLevel(700).withoutLevel(600).withoutLevel(500) },
+        ["aloftWindUnavailable", "thermalIndexUnavailable"],
+      ],
+      ["no BLH", { hour: hourWith((h) => (h.blhM = undefined)) }, ["blhUnavailable"]],
+      ["no low cloud cover", { hour: hourWith((h) => (h.lowCloudPct = undefined)) }, ["lowCloudCoverUnavailable"]],
+      ["no temperature", { hour: hourWith((h) => (h.tempC = undefined)) }, ["cloudBaseUnavailable"]],
+      ["no neighbors", { neighbors: [] }, ["neighborUnavailable"]],
+    ];
+
+    it.each(rows)("%s", (_name, o, flyingKinds) => {
+      expect(kinds(fly(o))).toEqual(expect.arrayContaining(flyingKinds));
+      const r = kite(o);
+      expect(kinds(r)).toEqual([]);
+      expect(r.call).toBe("good");
+      expect(r.score).toBe(KITE_PERFECT.score);
+      expect(r.conditions).toEqual(["kite"]);
+      // Below Z700 the launch wind is the 10 m wind, whatever the levels say.
+      expect(r.launchWind).toEqual({ speedMph: 10, dirDeg: 270 });
+    });
+
+    it("the rows cover every flying-only kind but the gust warning, which the gust tests cover", () => {
+      expect(new Set(rows.flatMap(([, , k]) => k))).toEqual(
+        new Set(FLYING_ONLY_KINDS.filter((k) => k !== "highGusts")),
+      );
+    });
+  });
+
+  describe("gusts", () => {
+    const gusts =
+      (wind: number, gust: number | undefined) =>
+      (h: ModelHour): void => {
+        h.windMph = wind;
+        h.gustMph = gust;
+      };
+    /** The same wind and gust at h and h+1. */
+    const both = (wind: number, gust: number | undefined): CtxOptions => ({
+      hour: hourWith(gusts(wind, gust)),
+      next: nextWith(gusts(wind, gust)),
+    });
+
+    it("gust 20 mph is not no-go; 20.1 in h+1 only is", () => {
+      // Wind 14, so the gust factor is 6 and 6.1, under the caution.
+      const at = kite(both(14, 20));
+      expect(kinds(at)).toEqual([]);
+      expect(at.call).toBe("good");
+      const over = kite({ next: nextWith(gusts(14, 20.1)) });
+      expect(kinds(over)).toEqual(["gustTooStrong"]);
+      expect(over.reasons[0]?.severity).toBe("noGo");
+      expect(over.call).toBe("noGo");
+      expect(over.score).toBe(d.minScore);
+    });
+
+    it("names the gust and the limit", () => {
+      // Wind 15: gust factor 8, not a caution, and under near max.
+      const r = kite(both(15, 23));
+      expect(r.reasons).toEqual([{ kind: "gustTooStrong", severity: "noGo", text: "gusts 23 mph over 20 mph" }]);
+    });
+
+    it("gust factor 8 mph is not a caution; 8.1 is, costing a caution's points", () => {
+      const at = kite(both(10, 18));
+      expect(kinds(at)).toEqual([]);
+      expect(at.call).toBe("good");
+      const over = kite(both(10, 18.1));
+      expect(kinds(over)).toEqual(["kitingGusts"]);
+      expect(over.reasons[0]?.severity).toBe("caution");
+      expect(over.call).toBe("flyable");
+      expect(over.score).toBe(at.score - d.cautionReasonPenalty);
+    });
+
+    it("names the gust factor", () => {
+      const r = kite(both(10, 19));
+      expect(r.reasons).toEqual([
+        { kind: "kitingGusts", severity: "caution", text: "high gusts possible (gust factor 9 mph)" },
+      ]);
+    });
+
+    it("uses h+1 when h has no gust, and never gives the flying gust warning", () => {
+      // Gust factor 15 in h+1: 3x the default gust-factor limit of 5 at a flying site.
+      const o: CtxOptions = { hour: hourWith(gusts(10, undefined)), next: nextWith(gusts(10, 25)) };
+      expect(kinds(fly(o))).toContain("highGusts");
+      const r = kite(o);
+      expect(kinds(r)).toEqual(["gustTooStrong", "kitingGusts"]);
+      expect(r.call).toBe("noGo");
+    });
+
+    it("no gust in h or h+1 is n/a, and the other rules decide the call", () => {
+      const r = kite(both(10, undefined));
+      expect(r.reasons).toEqual([{ kind: "gustUnavailable", severity: "info", text: "gusts: n/a" }]);
+      expect(r.call).toBe("good");
+      expect(r.score).toBe(KITE_PERFECT.score);
+      const flyable = kite({
+        hour: hourWith((h) => ((h.gustMph = undefined), (h.capeJkg = 600))),
+        next: nextWith((h) => (h.gustMph = undefined)),
+      });
+      expect(kinds(flyable)).toEqual(["overdevelopment", "gustUnavailable"]);
+      expect(flyable.call).toBe("flyable");
+    });
+
+    it("follows the thresholds in the defaults", () => {
+      const custom: ScoringDefaults = { ...d, kitingGustNoGoMph: 22, kitingGustFactorCautionMph: 9 };
+      expect(kinds(kite(both(15, 22)))).toEqual(["gustTooStrong"]);
+      expect(kinds(kite(both(15, 22), custom))).toEqual([]);
+      expect(kinds(kite(both(10, 19)))).toEqual(["kitingGusts"]);
+      expect(kinds(kite(both(10, 19), custom))).toEqual([]);
+    });
+  });
+
+  describe("applies the rules both kinds share", () => {
+    const rows: [string, CtxOptions, ReasonKind, HourCall][] = [
+      ["precipitation", { hour: hourWith((h) => (h.precipMm = 1)) }, "precipitation", "noGo"],
+      ["wind 19, over max 18", windAt(19), "windTooStrong", "noGo"],
+      ["wind 4, under min 5", windAt(4), "windTooWeak", "noGo"],
+      ["wind 0.4 from outside ok: under min, no direction reason", windAt(0.4, 90), "windTooWeak", "noGo"],
+      ["wind from 90, outside ok", windAt(10, 90), "wrongDirection", "noGo"],
+      ["wind 16, near max", windAt(16), "nearMaxWind", "flyable"],
+      ["wind from 240, ok but not ideal", windAt(10, 240), "directionNotIdeal", "flyable"],
+      ["launch not curated", { launch: makeLaunch({ ok: [], ideal: [] }) }, "notCurated", "flyable"],
+      ["CAPE 600", { hour: hourWith((h) => (h.capeJkg = 600)) }, "overdevelopment", "flyable"],
+      [
+        "RRFS sees storms",
+        { other: { hour: hourWith((h) => (h.precipMm = 2)).build(), next: undefined } },
+        "rrfsSeesStorms",
+        "flyable",
+      ],
+      ["CAPE n/a", { hour: hourWith((h) => (h.capeJkg = undefined)) }, "capeUnavailable", "good"],
+      ["no wind", { hour: hourWith((h) => (h.windMph = undefined)) }, "noData", "noData"],
+    ];
+
+    it.each(rows)("%s", (_name, o, kind, call) => {
+      const r = kite(o);
+      expect(kinds(r)).toEqual([kind]);
+      expect(r.call).toBe(call);
+    });
+  });
+
+  describe("score", () => {
+    const at = (mph: number): HourResult => kite(windAt(mph));
+
+    it("full wind bonus anywhere in 8-12 mph, falling linearly to 0 at 5 and 18", () => {
+      expect([8, 10, 12].map((mph) => at(mph).score)).toEqual([80, 80, 80]);
+      expect(at(15).score).toBe(70);
+      expect(at(6.5).score).toBe(70);
+      // At min: no wind bonus, but not under min.
+      expect(kinds(at(5))).toEqual([]);
+      expect(at(5).score).toBe(60);
+      // At max: no wind bonus, minus near max.
+      expect(kinds(at(18))).toEqual(["nearMaxWind"]);
+      expect(at(18).score).toBe(55);
+    });
+
+    it("earns no thermal index, boundary layer or cloud base points", () => {
+      expect(fly().unpenalizedScore).toBe(
+        KITE_PERFECT.unpenalizedScore + d.thermalIndexStrongBonus + d.blhBonus + d.cloudBaseBonus,
+      );
+      expect(KITE_PERFECT.unpenalizedScore).toBe(80);
+    });
+
+    it("each caution costs a caution's points", () => {
+      const r = kite({ hour: hourWith((h) => ((h.capeJkg = 600), (h.windDir = 240))) });
+      expect(kinds(r)).toEqual(["overdevelopment", "directionNotIdeal"]);
+      expect(r.score).toBe(KITE_PERFECT.score - d.idealDirectionBonus - 2 * d.cautionReasonPenalty);
+    });
+  });
+
+  describe("conditions", () => {
+    it("are kite for good and flyable hours, empty for no-go", () => {
+      expect(KITE_PERFECT.conditions).toEqual(["kite"]);
+      const flyable = kite({ hour: hourWith((h) => (h.capeJkg = 600)) });
+      expect(flyable.call).toBe("flyable");
+      expect(flyable.conditions).toEqual(["kite"]);
+      const noGo = kite({ hour: hourWith((h) => (h.precipMm = 1)) });
+      expect(noGo.call).toBe("noGo");
+      expect(noGo.conditions).toEqual([]);
+    });
+
+    it("survive the storm look-ahead recomputing the call", () => {
+      const c = ctx({ site: KITING });
+      const hours = [0, 1, 2, 3, 4].map((i) =>
+        i === 4
+          ? perfectHour(REFERENCE_TIME + i * HOUR_MS).with((h) => ((h.precipMm = 1), (h.capeJkg = 300))).build()
+          : perfectHour(REFERENCE_TIME + i * HOUR_MS).build(),
+      );
+      const results = hours.map((hour, i) => evaluateHour({ ...c, hour, next: hours[i + 1] }));
+      const out = applyStormLookahead(results, hours);
+      expect(results[1]?.call).toBe("good");
+      expect(out[1]?.call).toBe("flyable");
+      expect(kinds(out[1] as HourResult)).toEqual(["stormsComing"]);
+      expect(out[1]?.conditions).toEqual(["kite"]);
+      expect(out[3]?.call).toBe("noGo");
+      expect(out[3]?.conditions).toEqual([]);
+    });
   });
 });
 

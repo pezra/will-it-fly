@@ -65,6 +65,11 @@ export interface ScoringDefaults {
    * were dropped).
    */
   highGustWarningFactorMultiple: number;
+  // Kiting (sites of kind "kiting" only)
+  /** A gust above this (the larger of h and h+1) is no-go at a kiting site. */
+  kitingGustNoGoMph: number;
+  /** A gust factor above this is a caution ("high gusts possible") at a kiting site. */
+  kitingGustFactorCautionMph: number;
   // Storm look-ahead
   /** Hours before a convective no-go that are capped at flyable ("storms forecast by HH:00"). */
   stormLookaheadHours: number;
@@ -174,6 +179,9 @@ export const SCORING_DEFAULTS: Readonly<ScoringDefaults> = Object.freeze({
   xcBonus: 5,
   // Warnings (shown, never scored)
   highGustWarningFactorMultiple: 3,
+  // Kiting (sites of kind "kiting" only)
+  kitingGustNoGoMph: 20,
+  kitingGustFactorCautionMph: 8,
   // Storm look-ahead
   stormLookaheadHours: 2,
   stormCapeJkg: 200,

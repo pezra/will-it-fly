@@ -357,8 +357,8 @@ describe("loadingMoreLine", () => {
 });
 
 describe("CONDITION_LABEL", () => {
-  it("names the three conditions", () => {
-    expect(CONDITION_LABEL).toEqual({ soar: "Soar", xc: "XC", sledder: "Sledder" });
+  it("names the four conditions", () => {
+    expect(CONDITION_LABEL).toEqual({ soar: "Soar", xc: "XC", sledder: "Sledder", kite: "Kite" });
   });
 });
 
@@ -372,6 +372,7 @@ describe("callDisplay", () => {
       kind: "pills",
       conditions: ["sledder"],
     });
+    expect(callDisplay("good", ["kite"])).toEqual({ kind: "pills", conditions: ["kite"] });
   });
   it("falls back to a Sledder pill when conditions are missing or empty", () => {
     expect(callDisplay("good", undefined)).toEqual({ kind: "pills", conditions: ["sledder"] });

@@ -43,6 +43,7 @@ export const REASON_KIND_ORDER = [
   "noData",
   "precipitation",
   "windTooStrong",
+  "gustTooStrong",
   "windTooWeak",
   "wrongDirection",
   "overTheBack",
@@ -56,6 +57,7 @@ export const REASON_KIND_ORDER = [
   "overdevelopment",
   "aloftWind",
   "nearMaxWind",
+  "kitingGusts",
   "lowCloud",
   "neighborWind",
   "neighborOffDirection",
@@ -70,6 +72,7 @@ export const REASON_KIND_ORDER = [
   "highGusts",
   // Info: a rule or score factor skipped for missing data
   "capeUnavailable",
+  "gustUnavailable",
   "aloftWindUnavailable",
   "cloudBaseUnavailable",
   "lowCloudCoverUnavailable",
@@ -94,6 +97,7 @@ export const REASON_SEVERITY: Readonly<Record<ReasonKind, Severity>> = Object.fr
   noData: "noGo",
   precipitation: "noGo",
   windTooStrong: "noGo",
+  gustTooStrong: "noGo",
   windTooWeak: "noGo",
   wrongDirection: "noGo",
   overTheBack: "noGo",
@@ -106,6 +110,7 @@ export const REASON_SEVERITY: Readonly<Record<ReasonKind, Severity>> = Object.fr
   overdevelopment: "caution",
   aloftWind: "caution",
   nearMaxWind: "caution",
+  kitingGusts: "caution",
   lowCloud: "caution",
   neighborWind: "caution",
   neighborOffDirection: "caution",
@@ -116,6 +121,7 @@ export const REASON_SEVERITY: Readonly<Record<ReasonKind, Severity>> = Object.fr
   xcPotential: "bonus",
   highGusts: "warning",
   capeUnavailable: "info",
+  gustUnavailable: "info",
   aloftWindUnavailable: "info",
   cloudBaseUnavailable: "info",
   lowCloudCoverUnavailable: "info",
@@ -131,8 +137,8 @@ export interface Reason {
   text: string;
 }
 
-/** What kind of flying an hour offers. */
-export type HourCondition = "soar" | "xc" | "sledder";
+/** What kind of flying an hour offers, or kiting at a kiting site. */
+export type HourCondition = "soar" | "xc" | "sledder" | "kite";
 
 export interface HourResult {
   /** Start of the flying hour (epoch ms), from the evaluated `ModelHour`. */
@@ -153,7 +159,10 @@ export interface HourResult {
   cloudBaseM?: number | undefined;
   /** Thermal index (°C), as evaluated. Undefined when it can't be computed. */
   thermalIndexC?: number | undefined;
-  /** Soar and/or XC, in that order, or just sledder when neither applies. Empty for no-go and no-data hours. */
+  /**
+   * Soar and/or XC, in that order, or just sledder when neither applies; just kite at a kiting site.
+   * Empty for no-go and no-data hours.
+   */
   conditions: HourCondition[];
 }
 
@@ -261,13 +270,19 @@ export function effectiveIdealArcs(launch: Launch, defaults: ScoringDefaults): D
   return ideal.map((arc) => (arc.from === arc.to ? { from: arc.from - half, to: arc.from + half } : arc));
 }
 
-/** +max bonus at the ideal speed, falling linearly to 0 at min and max. */
+/**
+ * +max bonus at the ideal speed, falling linearly to 0 at min and max. With `idealMaxMph`, the ideal
+ * is the range from `idealMph` to `idealMaxMph`, and the whole range earns the full bonus.
+ */
 function windBonus(speed: number, limits: WindLimits, defaults: ScoringDefaults): number {
   const { minMph: min, maxMph: max } = limits;
-  const ideal = Math.min(max, Math.max(min, limits.idealMph ?? (min + max) / 2));
+  const clamped = (mph: number): number => Math.min(max, Math.max(min, mph));
+  const low = clamped(limits.idealMph ?? (min + max) / 2);
+  const high = limits.idealMaxMph === undefined ? low : Math.max(low, clamped(limits.idealMaxMph));
   let fraction: number;
-  if (speed <= ideal) fraction = ideal > min ? (speed - min) / (ideal - min) : 1;
-  else fraction = max > ideal ? (max - speed) / (max - ideal) : 0;
+  if (speed <= low) fraction = low > min ? (speed - min) / (low - min) : 1;
+  else if (speed <= high) fraction = 1;
+  else fraction = max > high ? (max - speed) / (max - high) : 0;
   return defaults.windSpeedMaxBonus * Math.min(1, Math.max(0, fraction));
 }
 
@@ -461,6 +476,24 @@ function surfaceReasons(
   return { reasons, inIdeal };
 }
 
+/**
+ * The kiting gust rules, from h and h+1: a gust over `kitingGustNoGoMph` is no-go, and a gust factor
+ * over `kitingGustFactorCautionMph` is a caution. No gust in either hour is "n/a".
+ */
+function kitingGustReasons(hour: ModelHour, next: ModelHour | undefined, defaults: ScoringDefaults): Reason[] {
+  const gust = definedMax(hour.gustMph, next?.gustMph);
+  if (gust === undefined) return [reason("gustUnavailable", "gusts: n/a")];
+  const reasons: Reason[] = [];
+  if (gust > defaults.kitingGustNoGoMph) {
+    reasons.push(reason("gustTooStrong", `gusts ${mph(gust)} over ${mph(defaults.kitingGustNoGoMph)}`));
+  }
+  const factor = gustFactorMph(hour, next);
+  if (factor !== undefined && factor > defaults.kitingGustFactorCautionMph) {
+    reasons.push(reason("kitingGusts", `high gusts possible (gust factor ${mph(factor)})`));
+  }
+  return reasons;
+}
+
 /** The per-hour call, score and reasons for one launch and one model. */
 export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORING_DEFAULTS): HourResult {
   const { hour, next, launch } = ctx;
@@ -485,6 +518,15 @@ export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORI
 
   const limits = effectiveLimits(ctx.site, launch);
   const { reasons, inIdeal } = surfaceReasons(ctx, wind, limits, defaults);
+
+  // A kiting site: the surface rules and gusts only. Nothing aloft, no cloud, thermals or wind nearby.
+  if (ctx.site.kind === "kiting") {
+    reasons.push(...kitingGustReasons(hour, next, defaults));
+    let unpenalized = defaults.baseScore + windBonus(wind.speedMph, limits, defaults);
+    if (inIdeal) unpenalized += defaults.idealDirectionBonus;
+    return finish(fields(unpenalized, ["kite"]), reasons, defaults);
+  }
+
   const { ok } = launch.directions;
   const curated = ok.length > 0;
 

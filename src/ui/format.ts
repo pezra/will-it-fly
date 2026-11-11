@@ -100,6 +100,7 @@ export const CONDITION_LABEL: Readonly<Record<HourCondition, string>> = {
   soar: "Soar",
   xc: "XC",
   sledder: "Sledder",
+  kite: "Kite",
 };
 
 /**

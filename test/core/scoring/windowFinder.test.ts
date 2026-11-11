@@ -385,6 +385,11 @@ describe("findBestWindow", () => {
       const w = find([withConditions(10, ["xc"]), withConditions(11, ["sledder"])]);
       expect(w?.conditions).toEqual(["xc"]);
     });
+
+    it("are kite for a run of kiting hours", () => {
+      const w = find([withConditions(10, ["kite"]), withConditions(11, ["kite"])]);
+      expect(w?.conditions).toEqual(["kite"]);
+    });
   });
 
   describe("cautions", () => {

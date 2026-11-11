@@ -52,3 +52,25 @@ export function mapStore(map = new Map<string, string>()): RemovableStore {
 export function kinds(r: { reasons: readonly Reason[] }): ReasonKind[] {
   return r.reasons.map((x) => x.kind);
 }
+
+/** The reason kinds a kiting hour never has: everything aloft, cloud, thermal and nearby, and the flying gust warning. */
+export const FLYING_ONLY_KINDS: readonly ReasonKind[] = Object.freeze([
+  "overTheBack",
+  "strongAloft",
+  "neighborWindStrong",
+  "neighborOffDirectionStrong",
+  "aloftWind",
+  "lowCloud",
+  "neighborWind",
+  "neighborOffDirection",
+  "sledder",
+  "ridgeLift",
+  "xcPotential",
+  "highGusts",
+  "aloftWindUnavailable",
+  "cloudBaseUnavailable",
+  "lowCloudCoverUnavailable",
+  "blhUnavailable",
+  "thermalIndexUnavailable",
+  "neighborUnavailable",
+]);
