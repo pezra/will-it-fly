@@ -69,20 +69,23 @@ describe("EXAMPLE_PLACE", () => {
 
 describe("offersExample", () => {
   it("offers the example with no start", () => {
-    expect(offersExample({ stage: "needsStart", missing: 0, shownCount: 0 })).toBe(true);
+    expect(offersExample({ stage: "needsStart", loaded: false, missing: 0, shownCount: 0 })).toBe(true);
   });
   it("offers the example when routing is done and nothing is in range", () => {
-    expect(offersExample({ stage: "ready", missing: 0, shownCount: 0 })).toBe(true);
+    expect(offersExample({ stage: "ready", loaded: true, missing: 0, shownCount: 0 })).toBe(true);
+  });
+  it("waits while the forecast loads", () => {
+    expect(offersExample({ stage: "ready", loaded: false, missing: 0, shownCount: 0 })).toBe(false);
   });
   it("waits while locating or routing", () => {
-    expect(offersExample({ stage: "locating", missing: 0, shownCount: 0 })).toBe(false);
-    expect(offersExample({ stage: "routing", missing: 0, shownCount: 0 })).toBe(false);
+    expect(offersExample({ stage: "locating", loaded: true, missing: 0, shownCount: 0 })).toBe(false);
+    expect(offersExample({ stage: "routing", loaded: true, missing: 0, shownCount: 0 })).toBe(false);
   });
   it("doesn't offer it while in-range sites are still loading", () => {
-    expect(offersExample({ stage: "ready", missing: 2, shownCount: 0 })).toBe(false);
+    expect(offersExample({ stage: "ready", loaded: true, missing: 2, shownCount: 0 })).toBe(false);
   });
   it("doesn't offer it when sites are shown", () => {
-    expect(offersExample({ stage: "ready", missing: 0, shownCount: 3 })).toBe(false);
+    expect(offersExample({ stage: "ready", loaded: true, missing: 0, shownCount: 3 })).toBe(false);
   });
 });
 

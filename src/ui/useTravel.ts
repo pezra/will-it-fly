@@ -105,20 +105,23 @@ export const EXAMPLE_PLACE: Place = {
 };
 
 /**
- * Whether the list offers `EXAMPLE_PLACE`: with no start, or once routing is done and no site is in
- * range. `missing` is the in-range sites whose weather hasn't arrived; `shownCount` the sites listed.
+ * Whether the list offers `EXAMPLE_PLACE`: with no start, or once the forecast has loaded with no
+ * site in range. `missing` is the in-range sites whose weather hasn't arrived; `shownCount` the
+ * sites listed.
  */
 export function offersExample({
   stage,
+  loaded,
   missing,
   shownCount,
 }: {
   stage: TravelStage;
+  loaded: boolean;
   missing: number;
   shownCount: number;
 }): boolean {
   if (stage === "needsStart") return true;
-  return stage === "ready" && missing === 0 && shownCount === 0;
+  return loaded && stage === "ready" && missing === 0 && shownCount === 0;
 }
 
 const routeTransport = fetchTransportWithTimeout(OSRM_TIMEOUT_MS);

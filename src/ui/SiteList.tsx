@@ -1,4 +1,5 @@
 import type { Recommendations } from "./useRecommendations";
+import { EXAMPLE_PLACE, offersExample } from "./useTravel";
 import type { Travel } from "./useTravel";
 import type { ModelName } from "../core/scoring/hourEvaluator";
 import { missingSiteIds } from "../core/travel/inRange";
@@ -23,6 +24,17 @@ function LocationNote({ location }: { location: Recommendations["location"] }) {
     return <p class="note">Couldn't get your location, so distances are hidden.</p>;
   }
   return null;
+}
+
+/** A one-tap start from `EXAMPLE_PLACE`, for an empty list. */
+function ExampleButton({ travel }: { travel: Travel }) {
+  return (
+    <p class="note">
+      <button type="button" onClick={() => travel.setPlace(EXAMPLE_PLACE)}>
+        See it from Boulder
+      </button>
+    </p>
+  );
 }
 
 /**
@@ -64,6 +76,9 @@ export function SiteList({
         ) : (
           <p class="status" role="status">{message}</p>
         )}
+        {offersExample({ stage: travel.stage, loaded: false, missing: 0, shownCount: 0 }) && (
+          <ExampleButton travel={travel} />
+        )}
         {travel.effectiveStart === undefined && <LocationNote location={location} />}
       </>
     );
@@ -90,6 +105,12 @@ export function SiteList({
           {hiddenLine(travel.hiddenCount, travel.settings.maxHours, travel.catalogSize)}
         </p>
       )}
+      {offersExample({
+        stage: travel.stage,
+        loaded: true,
+        missing,
+        shownCount: travel.shown.length,
+      }) && <ExampleButton travel={travel} />}
       {state.refreshing && missing > 0 && <p class="note">{loadingMoreLine(missing)}</p>}
       {result.isOffline && (
         <p class="banner" role="status">
