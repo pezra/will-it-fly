@@ -34,28 +34,29 @@ export function parseRoute(hash: string): Route {
   return model === undefined ? path : { ...path, model };
 }
 
+/** The `mode` list for `day`, the default day when undefined. */
+function list(mode: SiteKind, day?: DayKey): Route {
+  return day === undefined ? { page: "list", mode } : { page: "list", mode, day };
+}
+
 /** The page, mode and day from the part of the hash before any `?`. */
 function parsePath(path: string): Route {
   const kite = /^#\/kite(?:\/([^/]*)\/?)?$/.exec(path);
   if (kite !== null) {
     const dayText = kite[1];
-    return dayText !== undefined && isDayKey(dayText)
-      ? { page: "list", mode: "kiting", day: dayText }
-      : { page: "list", mode: "kiting" };
+    return list("kiting", dayText !== undefined && isDayKey(dayText) ? dayText : undefined);
   }
   const match = /^#\/(?:day\/([^/]+)\/?)?(?:site\/(.+))?$/.exec(path);
-  if (match === null) return { page: "list", mode: "flying" };
+  if (match === null) return list("flying");
   const [, dayText, idText] = match;
-  if (dayText !== undefined && !isDayKey(dayText)) return { page: "list", mode: "flying" };
+  if (dayText !== undefined && !isDayKey(dayText)) return list("flying");
   const day = dayText;
-  if (idText === undefined) {
-    return day === undefined ? { page: "list", mode: "flying" } : { page: "list", mode: "flying", day };
-  }
+  if (idText === undefined) return list("flying", day);
   try {
     const id = decodeURIComponent(idText);
     return day === undefined ? { page: "site", id } : { page: "site", id, day };
   } catch {
-    return { page: "list", mode: "flying" };
+    return list("flying");
   }
 }
 
