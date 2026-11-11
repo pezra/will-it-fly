@@ -1,4 +1,4 @@
-import { METERS_PER_FOOT, METERS_PER_MILE, compass } from "../core/units";
+import { METERS_PER_FOOT, METERS_PER_MILE, MINUTES_PER_HOUR, SECONDS_PER_MINUTE, compass } from "../core/units";
 import type { DriveTime } from "../core/travel/driveTime";
 import type { TravelStage } from "../core/travel/inRange";
 import type { Confidence } from "../core/scoring/modelAgreement";
@@ -6,11 +6,12 @@ import type { SiteRecommendation } from "../core/recommendation/types";
 import type { HourCall, HourCondition, ModelName, Reason } from "../core/scoring/hourEvaluator";
 import { SCORING_DEFAULTS } from "../core/scoring/defaults";
 import { CHECK_MODEL, MODEL_LABEL, effectiveIdealArcs } from "../core/scoring/hourEvaluator";
-import type { Coordinate, DegreeArc, Launch } from "../core/sites/site";
+import type { Coordinate, DegreeArc, Launch, SiteKind } from "../core/sites/site";
 import { addDays, formatDayKey } from "../core/time";
 import type { DayKey } from "../core/time";
 import type { LocationStatus } from "./location";
-import type { MaxHours, TravelSettings } from "./travelSettings";
+import { radiusLabel, radiusMinutes } from "./travelSettings";
+import type { TravelSettings } from "./travelSettings";
 
 /** Feet from meters, rounded to the nearest 100 ft, as "≈ 9,200 ft". "n/a" when missing. */
 export function approxFeet(meters: number | undefined): string {
@@ -152,9 +153,6 @@ export function oneDecimal(value: number | undefined): string {
   return value === undefined ? "n/a" : value.toFixed(1).replace("-", "−");
 }
 
-const SECONDS_PER_MINUTE = 60;
-const MINUTES_PER_HOUR = 60;
-
 /**
  * "1h 20m", "45m" or "2h": whole minutes, rounded up, so a site labelled "2h" is never hidden by a
  * 2 h limit. Estimates get a leading "≈ ".
@@ -169,15 +167,16 @@ export function driveLabel(driveTime: DriveTime): string {
 }
 
 /**
- * The travel bar's collapsed line: "Within 2 h of Boulder · RRFS" (the route's model), or a prompt
- * when there is no start. While the location is still pending and nothing else is chosen, it says
- * so instead.
+ * The travel bar's collapsed line: "Within 2 h of Boulder · RRFS" (`mode`'s radius and the route's
+ * model), or a prompt when there is no start. While the location is still pending and nothing else
+ * is chosen, it says so instead.
  */
 export function travelSummary(
   settings: TravelSettings,
   effectiveStart: Coordinate | undefined,
   location: LocationStatus,
   model: ModelName,
+  mode: SiteKind,
 ): string {
   if (effectiveStart === undefined) {
     return settings.start.kind === "geolocation" && location === "pending"
@@ -185,7 +184,7 @@ export function travelSummary(
       : "Set a starting point";
   }
   const where = settings.start.kind === "place" ? settings.start.name : "your location";
-  return `Within ${settings.maxHours} h of ${where} · ${MODEL_LABEL[model]}`;
+  return `Within ${radiusLabel(radiusMinutes(settings, mode))} of ${where} · ${MODEL_LABEL[model]}`;
 }
 
 /**
@@ -249,17 +248,18 @@ export function hourlyColumns(model: ModelName): readonly HourlyColumn[] {
 }
 
 /**
- * "3 sites hidden (over 2 h away)". Only shown when a limit hides something. With the catalog
- * size, hiding every site reads "All 21 sites are over 2 h away".
+ * "3 sites hidden (over 2 h away)". `radius` is the limit as `radiusLabel` says it ("2 h",
+ * "30 min"). Only shown when a limit hides something. With the number of sites of the listed kind,
+ * hiding every site reads "All 21 sites are over 2 h away".
  */
-export function hiddenLine(hiddenCount: number, maxHours: MaxHours, total?: number): string {
+export function hiddenLine(hiddenCount: number, radius: string, total?: number): string {
   if (total !== undefined && total > 0 && hiddenCount >= total) {
     return total === 1
-      ? `The only site is over ${maxHours} h away`
-      : `All ${total} sites are over ${maxHours} h away`;
+      ? `The only site is over ${radius} away`
+      : `All ${total} sites are over ${radius} away`;
   }
   const noun = hiddenCount === 1 ? "site" : "sites";
-  return `${hiddenCount} ${noun} hidden (over ${maxHours} h away)`;
+  return `${hiddenCount} ${noun} hidden (over ${radius} away)`;
 }
 
 /** What the list says while it waits on the start or the drive times. Nothing once ready. */

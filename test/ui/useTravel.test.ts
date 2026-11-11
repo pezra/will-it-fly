@@ -6,10 +6,11 @@ import { placeStart, resolveStart } from "../../src/ui/useTravel";
 const boulder = { latitude: 40.015, longitude: -105.27 };
 const aspen = { latitude: 39.19, longitude: -106.82 };
 
-const geolocation: TravelSettings = { start: { kind: "geolocation" }, maxHours: 2 };
+const geolocation: TravelSettings = { start: { kind: "geolocation" }, maxHours: 2, kiteMinutes: 30 };
 const place: TravelSettings = {
   start: { kind: "place", name: "Aspen", coordinate: aspen },
   maxHours: 2,
+  kiteMinutes: 30,
 };
 
 describe("resolveStart", () => {

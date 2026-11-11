@@ -66,7 +66,7 @@ export function SiteDetail({
   catalogIds: ReadonlySet<string> | undefined;
 }) {
   const { state } = recs;
-  const back = <a class="back" href={listHref(model, day)}>← All sites</a>;
+  const back = <a class="back" href={listHref(model, "flying", day)}>← All sites</a>;
 
   if (catalogIds?.has(siteId) === false) {
     return (

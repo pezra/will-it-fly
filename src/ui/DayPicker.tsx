@@ -19,7 +19,7 @@ export function DayPicker({
 }) {
   const tomorrow = addDays(today, 1);
   const link = (day: DayKey, label: string) => (
-    <a class="day-link" href={listHref(model, day)} aria-current={shown === day ? "page" : undefined}>
+    <a class="day-link" href={listHref(model, "flying", day)} aria-current={shown === day ? "page" : undefined}>
       {label}
     </a>
   );
@@ -35,7 +35,7 @@ export function DayPicker({
         value={shown ?? ""}
         onChange={(event) => {
           const value = event.currentTarget.value;
-          if (value !== "") window.location.hash = listHref(model, value);
+          if (value !== "") window.location.hash = listHref(model, "flying", value);
         }}
       />
     </nav>

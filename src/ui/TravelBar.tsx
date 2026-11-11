@@ -2,7 +2,7 @@ import { useEffect, useState } from "preact/hooks";
 import { MODEL_LABEL, MODEL_NAMES } from "../core/scoring/hourEvaluator";
 import type { ModelName } from "../core/scoring/hourEvaluator";
 import { travelSummary } from "./format";
-import { DRIVE_HOUR_CHOICES } from "./travelSettings";
+import { RADIUS_CHOICES, radiusLabel, radiusMinutes } from "./travelSettings";
 import type { Travel } from "./useTravel";
 
 const OPTIONS_ID = "travel-options";
@@ -40,20 +40,20 @@ export function TravelBar({
         aria-controls={OPTIONS_ID}
         onClick={() => setOpen(!open)}
       >
-        <span>{travelSummary(settings, travel.effectiveStart, travel.recs.location, model)}</span>
+        <span>{travelSummary(settings, travel.effectiveStart, travel.recs.location, model, "flying")}</span>
         <span aria-hidden="true">{open ? "▴" : "▾"}</span>
       </button>
       {open && (
         <div id={OPTIONS_ID} class="travel-options">
           <div class="travel-radius" role="group" aria-label="Drive time">
-            {DRIVE_HOUR_CHOICES.map((choice) => (
+            {RADIUS_CHOICES.flying.map((choice) => (
               <button
                 key={choice}
                 type="button"
-                aria-pressed={settings.maxHours === choice}
-                onClick={() => travel.setMaxHours(choice)}
+                aria-pressed={radiusMinutes(settings, "flying") === choice}
+                onClick={() => travel.setRadius(choice)}
               >
-                {choice} h
+                {radiusLabel(choice)}
               </button>
             ))}
           </div>

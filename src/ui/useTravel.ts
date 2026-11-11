@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks"
 import type { SiteRecommendation } from "../core/recommendation/types";
 import type { Coordinate, Site } from "../core/sites/site";
 import { bundledSiteProvider } from "../core/sites/siteProvider";
+import { MINUTES_PER_HOUR } from "../core/units";
 import { applyTravel } from "../core/travel/applyTravel";
 import type { TravelTimes } from "../core/travel/applyTravel";
 import { OSRM_TIMEOUT_MS, driveTimesFor, startKey, withinReach } from "../core/travel/driveTime";
@@ -20,9 +21,11 @@ import {
   MAX_PLACE_NAME_LENGTH,
   loadTravelSettings,
   maxSeconds,
+  radiusMinutes,
   saveTravelSettings,
+  withRadius,
 } from "./travelSettings";
-import type { MaxHours, TravelSettings, TravelStart } from "./travelSettings";
+import type { TravelSettings, TravelStart } from "./travelSettings";
 import type { ForecastLoad, Recommendations } from "./useRecommendations";
 
 /** A place search: `results` holds at least one place; `none` is an empty answer. */
@@ -55,7 +58,8 @@ export interface TravelPipeline {
    * later is ignored.
    */
   relocate: (result: LocationResult) => void;
-  setMaxHours: (maxHours: MaxHours) => void;
+  /** Sets the drive limit, in minutes. A value that isn't one of the mode's choices is ignored. */
+  setRadius: (minutes: number) => void;
   /** Starts from `place`, stored under its short name. */
   setPlace: (place: Place) => void;
   /** Re-requests the location and starts from it. On failure the place stays and `locationError` is set. */
@@ -169,12 +173,14 @@ export function useTravel(debug: DebugParams): TravelPipeline {
     [settings, locationResult],
   );
   const key = effectiveStart === undefined ? undefined : startKey(effectiveStart);
+  // The flying radius is all this reads until the mode is wired through.
+  const flyingMinutes = radiusMinutes(settings, "flying");
   const candidates = useMemo(
     () =>
       sites === undefined || effectiveStart === undefined
         ? undefined
-        : withinReach(sites, effectiveStart, settings.maxHours),
-    [sites, effectiveStart, settings.maxHours],
+        : withinReach(sites, effectiveStart, flyingMinutes / MINUTES_PER_HOUR),
+    [sites, effectiveStart, flyingMinutes],
   );
   // Ids in catalog order, so the same candidates always give the same string.
   const candidateKey = candidates?.map((s) => s.id).join("\n");
@@ -208,7 +214,7 @@ export function useTravel(debug: DebugParams): TravelPipeline {
     );
   }, [key, candidateKey, debug.routeBaseURL, store]);
 
-  const limit = maxSeconds(settings);
+  const limit = maxSeconds(settings, "flying");
   const stage = travelStage({
     start: effectiveStart,
     locationPending: locationResult === undefined,
@@ -276,8 +282,8 @@ export function useTravel(debug: DebugParams): TravelPipeline {
     setSettings((s) => ({ ...s, start: placeStart(place) }));
   }, []);
 
-  const setMaxHours = useCallback((maxHours: MaxHours) => {
-    setSettings((s) => ({ ...s, maxHours }));
+  const setRadius = useCallback((minutes: number) => {
+    setSettings((s) => withRadius(s, "flying", minutes));
   }, []);
 
   return {
@@ -291,7 +297,7 @@ export function useTravel(debug: DebugParams): TravelPipeline {
     location: locationResult?.status ?? "pending",
     locationResult,
     relocate,
-    setMaxHours,
+    setRadius,
     setPlace,
     useMyLocation,
     locating,
@@ -308,7 +314,7 @@ export function useTravel(debug: DebugParams): TravelPipeline {
  */
 export function useTravelView(travel: TravelPipeline, recs: ForecastLoad): Travel {
   const { effectiveStart, times, settings, catalogSize, location, locationResult, relocate } = travel;
-  const limit = maxSeconds(settings);
+  const limit = maxSeconds(settings, "flying");
   const applied = useMemo(
     () =>
       recs.state.status === "loaded"

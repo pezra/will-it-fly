@@ -8,6 +8,7 @@ import { DayPicker } from "./DayPicker";
 import { ForecastStatus } from "./ForecastStatus";
 import { dayLabel, fallbackLine, forecastAge, hiddenLine, loadingMoreLine, stageMessage } from "./format";
 import { listHref } from "./route";
+import { radiusLabel, radiusMinutes } from "./travelSettings";
 import { SiteRow } from "./SiteRow";
 import { TravelBar } from "./TravelBar";
 
@@ -87,7 +88,7 @@ export function SiteList({
       {/* Until routing is done and the in-range sites arrive the hidden count is wrong, so it waits. */}
       {travel.stage === "ready" && missing === 0 && travel.hiddenCount > 0 && !result.dayOver && (
         <p class="hidden-line">
-          {hiddenLine(travel.hiddenCount, travel.settings.maxHours, travel.catalogSize)}
+          {hiddenLine(travel.hiddenCount, radiusLabel(radiusMinutes(travel.settings, "flying")), travel.catalogSize)}
         </p>
       )}
       {state.refreshing && missing > 0 && <p class="note">{loadingMoreLine(missing)}</p>}
@@ -101,7 +102,7 @@ export function SiteList({
       )}
       {result.dayOver ? (
         <p class="banner">
-          Today's sunset has passed. <a href={listHref(model, addDays(result.today, 1))}>See tomorrow</a>
+          Today's sunset has passed. <a href={listHref(model, "flying", addDays(result.today, 1))}>See tomorrow</a>
         </p>
       ) : (
         <ul class="rows">

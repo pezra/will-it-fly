@@ -144,31 +144,46 @@ describe("travelSummary", () => {
   const place = { kind: "place" as const, name: "Boulder", coordinate: boulder };
   const here = { kind: "geolocation" as const };
   it("names the place or your location, then the model", () => {
-    expect(travelSummary({ start: place, maxHours: 2 }, boulder, "found", "ecmwf")).toBe(
+    expect(travelSummary({ start: place, maxHours: 2, kiteMinutes: 30 }, boulder, "found", "ecmwf", "flying")).toBe(
       "Within 2 h of Boulder · ECMWF",
     );
-    expect(travelSummary({ start: place, maxHours: 2 }, boulder, "found", "rrfs")).toBe(
+    expect(travelSummary({ start: place, maxHours: 2, kiteMinutes: 30 }, boulder, "found", "rrfs", "flying")).toBe(
       "Within 2 h of Boulder · RRFS",
     );
-    expect(travelSummary({ start: here, maxHours: 3 }, boulder, "found", "rrfs")).toBe(
+    expect(travelSummary({ start: here, maxHours: 3, kiteMinutes: 30 }, boulder, "found", "rrfs", "flying")).toBe(
       "Within 3 h of your location · RRFS",
+    );
+  });
+  it("gives the Kite radius in Kite mode", () => {
+    expect(travelSummary({ start: place, maxHours: 2, kiteMinutes: 30 }, boulder, "found", "ecmwf", "kiting")).toBe(
+      "Within 30 min of Boulder · ECMWF",
+    );
+    expect(travelSummary({ start: here, maxHours: 4, kiteMinutes: 15 }, boulder, "found", "rrfs", "kiting")).toBe(
+      "Within 15 min of your location · RRFS",
+    );
+    expect(travelSummary({ start: here, maxHours: 4, kiteMinutes: 60 }, boulder, "found", "ecmwf", "kiting")).toBe(
+      "Within 1 h of your location · ECMWF",
     );
   });
   it("asks for a start when there is none, without the model", () => {
     for (const model of ["ecmwf", "rrfs"] as const) {
-      expect(travelSummary({ start: here, maxHours: 2 }, undefined, "denied", model)).toBe(
-        "Set a starting point",
-      );
-      expect(travelSummary({ start: here, maxHours: 4 }, undefined, "unavailable", model)).toBe(
-        "Set a starting point",
-      );
+      for (const mode of ["flying", "kiting"] as const) {
+        expect(travelSummary({ start: here, maxHours: 2, kiteMinutes: 30 }, undefined, "denied", model, mode)).toBe(
+          "Set a starting point",
+        );
+        expect(
+          travelSummary({ start: here, maxHours: 4, kiteMinutes: 15 }, undefined, "unavailable", model, mode),
+        ).toBe("Set a starting point");
+      }
     }
   });
   it("says it is finding the location while geolocation is pending", () => {
     for (const model of ["ecmwf", "rrfs"] as const) {
-      expect(travelSummary({ start: here, maxHours: 2 }, undefined, "pending", model)).toBe(
-        "Finding your location…",
-      );
+      for (const mode of ["flying", "kiting"] as const) {
+        expect(travelSummary({ start: here, maxHours: 2, kiteMinutes: 30 }, undefined, "pending", model, mode)).toBe(
+          "Finding your location…",
+        );
+      }
     }
   });
 });
@@ -321,18 +336,24 @@ describe("hourlyColumns", () => {
 
 describe("hiddenLine", () => {
   it("counts the hidden sites and follows the limit", () => {
-    expect(hiddenLine(3, 2)).toBe("3 sites hidden (over 2 h away)");
-    expect(hiddenLine(5, 4)).toBe("5 sites hidden (over 4 h away)");
+    expect(hiddenLine(3, "2 h")).toBe("3 sites hidden (over 2 h away)");
+    expect(hiddenLine(5, "4 h")).toBe("5 sites hidden (over 4 h away)");
   });
   it("uses the singular for one", () => {
-    expect(hiddenLine(1, 4)).toBe("1 site hidden (over 4 h away)");
+    expect(hiddenLine(1, "4 h")).toBe("1 site hidden (over 4 h away)");
   });
   it("says all are over the limit when nothing is left to show", () => {
-    expect(hiddenLine(21, 2, 21)).toBe("All 21 sites are over 2 h away");
-    expect(hiddenLine(1, 1, 1)).toBe("The only site is over 1 h away");
+    expect(hiddenLine(21, "2 h", 21)).toBe("All 21 sites are over 2 h away");
+    expect(hiddenLine(1, "1 h", 1)).toBe("The only site is over 1 h away");
   });
   it("keeps the count form when some are shown", () => {
-    expect(hiddenLine(3, 2, 21)).toBe("3 sites hidden (over 2 h away)");
+    expect(hiddenLine(3, "2 h", 21)).toBe("3 sites hidden (over 2 h away)");
+  });
+  it("names minutes for a Kite radius", () => {
+    expect(hiddenLine(2, "30 min")).toBe("2 sites hidden (over 30 min away)");
+    expect(hiddenLine(1, "15 min", 3)).toBe("1 site hidden (over 15 min away)");
+    expect(hiddenLine(3, "30 min", 3)).toBe("All 3 sites are over 30 min away");
+    expect(hiddenLine(1, "30 min", 1)).toBe("The only site is over 30 min away");
   });
 });
 

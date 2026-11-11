@@ -1,9 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  RADIUS_CHOICES,
   defaultTravelSettings,
   loadTravelSettings,
   maxSeconds,
+  radiusLabel,
+  radiusMinutes,
   saveTravelSettings,
+  withRadius,
   type TravelSettings,
 } from "../../src/ui/travelSettings";
 import { mapStore } from "../support/builders";
@@ -15,13 +19,23 @@ afterEach(() => vi.restoreAllMocks());
 const PLACE: TravelSettings = {
   start: { kind: "place", name: "Golden, CO", coordinate: { latitude: 39.7555, longitude: -105.2211 } },
   maxHours: 3,
+  kiteMinutes: 30,
 };
 
 describe("loadTravelSettings and saveTravelSettings", () => {
   it("round-trips geolocation with each radius", () => {
     for (const maxHours of [1, 2, 3, 4] as const) {
       const store = mapStore();
-      const settings: TravelSettings = { start: { kind: "geolocation" }, maxHours };
+      const settings: TravelSettings = { start: { kind: "geolocation" }, maxHours, kiteMinutes: 30 };
+      saveTravelSettings(store, settings);
+      expect(loadTravelSettings(store)).toEqual(settings);
+    }
+  });
+
+  it("round-trips each kite radius", () => {
+    for (const kiteMinutes of [15, 30, 60] as const) {
+      const store = mapStore();
+      const settings: TravelSettings = { ...PLACE, kiteMinutes };
       saveTravelSettings(store, settings);
       expect(loadTravelSettings(store)).toEqual(settings);
     }
@@ -88,7 +102,32 @@ describe("loadTravelSettings and saveTravelSettings", () => {
   it("reads a stored \"any\" as the default radius and keeps the start", () => {
     const stored = { start: PLACE.start, maxHours: "any" };
     const store = mapStore(new Map([[KEY, JSON.stringify(stored)]]));
-    expect(loadTravelSettings(store)).toEqual({ start: PLACE.start, maxHours: 2 });
+    expect(loadTravelSettings(store)).toEqual({ start: PLACE.start, maxHours: 2, kiteMinutes: 30 });
+  });
+
+  it("reads settings stored before the kite radius with a 30 min kite radius, keeping the rest", () => {
+    const stored = { start: PLACE.start, maxHours: 4 };
+    const store = mapStore(new Map([[KEY, JSON.stringify(stored)]]));
+    expect(loadTravelSettings(store)).toEqual({ start: PLACE.start, maxHours: 4, kiteMinutes: 30 });
+  });
+
+  it.each([
+    ["45", 45],
+    ["0", 0],
+    ["a string of \"15\"", "15"],
+    ["null", null],
+    ["a fraction", 15.5],
+    ["an object", {}],
+  ])("reads a kite radius of %s as 30 min, keeping the start and flying radius", (_label, kiteMinutes) => {
+    const stored = { start: PLACE.start, maxHours: 4, kiteMinutes };
+    const store = mapStore(new Map([[KEY, JSON.stringify(stored)]]));
+    expect(loadTravelSettings(store)).toEqual({ start: PLACE.start, maxHours: 4, kiteMinutes: 30 });
+  });
+
+  it("still resets everything for a bad start, whatever the kite radius", () => {
+    const stored = { start: { kind: "gps" }, maxHours: 4, kiteMinutes: 15 };
+    const store = mapStore(new Map([[KEY, JSON.stringify(stored)]]));
+    expect(loadTravelSettings(store)).toEqual(defaultTravelSettings());
   });
 
   it("returns the defaults for a radius that was never offered", () => {
@@ -99,8 +138,8 @@ describe("loadTravelSettings and saveTravelSettings", () => {
 
   it("accepts coordinates on the range limits and a 120-character name", () => {
     const edges: TravelSettings[] = [
-      { start: { kind: "place", name: "x".repeat(120), coordinate: { latitude: 90, longitude: 180 } }, maxHours: 4 },
-      { start: { kind: "place", name: "y", coordinate: { latitude: -90, longitude: -180 } }, maxHours: 1 },
+      { start: { kind: "place", name: "x".repeat(120), coordinate: { latitude: 90, longitude: 180 } }, maxHours: 4, kiteMinutes: 60 },
+      { start: { kind: "place", name: "y", coordinate: { latitude: -90, longitude: -180 } }, maxHours: 1, kiteMinutes: 15 },
     ];
     for (const settings of edges) {
       expect(loadTravelSettings(mapStore(new Map([[KEY, JSON.stringify(settings)]])))).toEqual(settings);
@@ -108,9 +147,9 @@ describe("loadTravelSettings and saveTravelSettings", () => {
   });
 
   it("drops stray stored fields", () => {
-    const stored = { start: { kind: "geolocation", extra: 1 }, maxHours: 2, extra: true };
+    const stored = { start: { kind: "geolocation", extra: 1 }, maxHours: 2, kiteMinutes: 15, extra: true };
     const loaded = loadTravelSettings(mapStore(new Map([[KEY, JSON.stringify(stored)]])));
-    expect(loaded).toEqual({ start: { kind: "geolocation" }, maxHours: 2 });
+    expect(loaded).toEqual({ start: { kind: "geolocation" }, maxHours: 2, kiteMinutes: 15 });
   });
 
   it("returns a fresh copy each time", () => {
@@ -145,10 +184,77 @@ describe("loadTravelSettings and saveTravelSettings", () => {
   });
 });
 
-describe("maxSeconds", () => {
-  it("converts hours to seconds", () => {
-    expect(maxSeconds({ start: { kind: "geolocation" }, maxHours: 1 })).toBe(3600);
-    expect(maxSeconds({ start: { kind: "geolocation" }, maxHours: 4 })).toBe(14400);
+describe("defaultTravelSettings", () => {
+  it("starts from the location with 2 h to fly and 30 min to kite", () => {
+    expect(defaultTravelSettings()).toEqual({ start: { kind: "geolocation" }, maxHours: 2, kiteMinutes: 30 });
   });
+});
 
+describe("RADIUS_CHOICES", () => {
+  it("lists each mode's choices in minutes", () => {
+    expect(RADIUS_CHOICES.flying).toEqual([60, 120, 180, 240]);
+    expect(RADIUS_CHOICES.kiting).toEqual([15, 30, 60]);
+  });
+});
+
+describe("radiusMinutes", () => {
+  it("reads the mode's own radius", () => {
+    const settings: TravelSettings = { start: { kind: "geolocation" }, maxHours: 3, kiteMinutes: 15 };
+    expect(radiusMinutes(settings, "flying")).toBe(180);
+    expect(radiusMinutes(settings, "kiting")).toBe(15);
+  });
+});
+
+describe("withRadius", () => {
+  const settings: TravelSettings = { ...PLACE, maxHours: 2, kiteMinutes: 30 };
+  it("sets the flying radius from minutes and leaves the kite radius and start alone", () => {
+    expect(withRadius(settings, "flying", 240)).toEqual({ ...settings, maxHours: 4 });
+    expect(withRadius(settings, "flying", 60)).toEqual({ ...settings, maxHours: 1 });
+  });
+  it("sets the kite radius and leaves the flying radius and start alone", () => {
+    expect(withRadius(settings, "kiting", 15)).toEqual({ ...settings, kiteMinutes: 15 });
+    expect(withRadius(settings, "kiting", 60)).toEqual({ ...settings, kiteMinutes: 60 });
+  });
+  it("does not change the settings it is given", () => {
+    withRadius(settings, "kiting", 15);
+    expect(settings).toEqual({ ...PLACE, maxHours: 2, kiteMinutes: 30 });
+  });
+  it("ignores a value that is not one of the mode's choices", () => {
+    expect(withRadius(settings, "flying", 15)).toEqual(settings);
+    expect(withRadius(settings, "flying", 90)).toEqual(settings);
+    expect(withRadius(settings, "kiting", 120)).toEqual(settings);
+    expect(withRadius(settings, "kiting", 45)).toEqual(settings);
+    expect(withRadius(settings, "kiting", Number.NaN)).toEqual(settings);
+  });
+  it("accepts every choice for its mode", () => {
+    for (const mode of ["flying", "kiting"] as const) {
+      for (const minutes of RADIUS_CHOICES[mode]) {
+        expect(radiusMinutes(withRadius(settings, mode, minutes), mode)).toBe(minutes);
+      }
+    }
+  });
+});
+
+describe("maxSeconds", () => {
+  it("converts the flying hours to seconds", () => {
+    expect(maxSeconds({ start: { kind: "geolocation" }, maxHours: 1, kiteMinutes: 30 }, "flying")).toBe(3600);
+    expect(maxSeconds({ start: { kind: "geolocation" }, maxHours: 4, kiteMinutes: 30 }, "flying")).toBe(14400);
+  });
+  it("converts the kite minutes to seconds", () => {
+    const base: TravelSettings = { start: { kind: "geolocation" }, maxHours: 4, kiteMinutes: 15 };
+    expect(maxSeconds(base, "kiting")).toBe(900);
+    expect(maxSeconds({ ...base, kiteMinutes: 30 }, "kiting")).toBe(1800);
+    expect(maxSeconds({ ...base, kiteMinutes: 60 }, "kiting")).toBe(3600);
+  });
+});
+
+describe("radiusLabel", () => {
+  it("reads whole hours as hours and the rest as minutes", () => {
+    expect(radiusLabel(15)).toBe("15 min");
+    expect(radiusLabel(30)).toBe("30 min");
+    expect(radiusLabel(60)).toBe("1 h");
+    expect(radiusLabel(120)).toBe("2 h");
+    expect(radiusLabel(240)).toBe("4 h");
+    expect(radiusLabel(90)).toBe("90 min");
+  });
 });
