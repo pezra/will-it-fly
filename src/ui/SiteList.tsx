@@ -1,6 +1,8 @@
 import type { Recommendations } from "./useRecommendations";
 import type { Travel } from "./useTravel";
 import type { ModelName } from "../core/scoring/hourEvaluator";
+import { SITE_KINDS } from "../core/sites/site";
+import type { SiteKind } from "../core/sites/site";
 import { missingSiteIds } from "../core/travel/inRange";
 import { addDays, denverDayKey } from "../core/time";
 import type { DayKey } from "../core/time";
@@ -26,9 +28,29 @@ function LocationNote({ location }: { location: Recommendations["location"] }) {
   return null;
 }
 
+const MODE_LABEL: Readonly<Record<SiteKind, string>> = { flying: "Fly", kiting: "Kite" };
+
+/** Links to the same day and model in each mode. The mode on screen is the current page. */
+function ModeToggle({ mode, day, model }: { mode: SiteKind; day: DayKey | undefined; model: ModelName }) {
+  return (
+    <nav class="mode-toggle" aria-label="Mode">
+      {SITE_KINDS.map((kind) => (
+        <a
+          key={kind}
+          class="mode-link"
+          href={listHref(model, kind, day)}
+          aria-current={kind === mode ? "page" : undefined}
+        >
+          {MODE_LABEL[kind]}
+        </a>
+      ))}
+    </nav>
+  );
+}
+
 /**
  * `day` is the route's day, undefined for the default day; `model` is the route's model, kept by
- * every link, and `setModel` switches it. Lists `travel.shown`.
+ * every link, and `setModel` switches it. Lists `travel.shown`, the sites of `travel.mode`.
  */
 export function SiteList({
   travel,
@@ -50,7 +72,9 @@ export function SiteList({
     return (
       <>
         <h1>Will it fly?</h1>
-        <DayPicker today={denverDayKey(now())} shown={day} model={model} />
+        {/* Keyed like the loaded view's, so the link a switch was made from keeps its focus. */}
+        <ModeToggle key="mode" mode={travel.mode} day={day} model={model} />
+        <DayPicker today={denverDayKey(now())} shown={day} model={model} mode={travel.mode} />
         {/* The travel bar is the only way to set a start when there is none. The same `key` as the
             loaded view's, so a switch that passes through loading doesn't close its options. */}
         <TravelBar
@@ -82,13 +106,14 @@ export function SiteList({
         </button>
       </header>
       <p class="age">{forecastAge(result.fetchedAt, now())}</p>
-      <DayPicker today={result.today} shown={result.day} model={model} />
+      <ModeToggle key="mode" mode={travel.mode} day={day} model={model} />
+      <DayPicker today={result.today} shown={result.day} model={model} mode={travel.mode} />
       <TravelBar key="travel" travel={travel} model={model} setModel={setModel} />
       {fallback !== undefined && !result.dayOver && <p class="note">{fallback}</p>}
       {/* Until routing is done and the in-range sites arrive the hidden count is wrong, so it waits. */}
       {travel.stage === "ready" && missing === 0 && travel.hiddenCount > 0 && !result.dayOver && (
         <p class="hidden-line">
-          {hiddenLine(travel.hiddenCount, radiusLabel(radiusMinutes(travel.settings, "flying")), travel.catalogSize)}
+          {hiddenLine(travel.hiddenCount, radiusLabel(radiusMinutes(travel.settings, travel.mode)), travel.total)}
         </p>
       )}
       {state.refreshing && missing > 0 && <p class="note">{loadingMoreLine(missing)}</p>}
@@ -102,7 +127,7 @@ export function SiteList({
       )}
       {result.dayOver ? (
         <p class="banner">
-          Today's sunset has passed. <a href={listHref(model, "flying", addDays(result.today, 1))}>See tomorrow</a>
+          Today's sunset has passed. <a href={listHref(model, travel.mode, addDays(result.today, 1))}>See tomorrow</a>
         </p>
       ) : (
         <ul class="rows">

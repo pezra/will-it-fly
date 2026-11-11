@@ -16,7 +16,6 @@ import { locate } from "./location";
 import type { LocationResult, LocationStatus } from "./location";
 import { localStorageStore } from "./storage";
 import { fetchTransportWithTimeout } from "./transport";
-import { useCatalog } from "./useCatalog";
 import {
   MAX_PLACE_NAME_LENGTH,
   loadTravelSettings,
@@ -39,14 +38,14 @@ type SearchState =
 /** What `useTravel` returns: the start, the drive limit and which sites are in range. */
 export interface TravelPipeline {
   settings: TravelSettings;
+  /** The mode the pipeline serves: the kind of site it routes, and whose radius is the drive limit. */
+  mode: SiteKind;
   /** The start in use: the chosen place, else the found location, else none (nothing loads until one is set). */
   effectiveStart: Coordinate | undefined;
   /** The drive times fetched so far for the current start (routed or estimated). */
   times: TravelTimes | undefined;
-  /** How many sites the catalog has, 0 until it is read. */
-  catalogSize: number;
-  /** The ids of every catalog site, undefined until the catalog is read. */
-  catalogIds: ReadonlySet<string> | undefined;
+  /** The catalog `useTravel` was given, undefined until it is read. */
+  catalog: readonly Site[] | undefined;
   stage: TravelStage;
   /** The sites within the drive limit, in catalog order. Meaningful once `stage` is ready. */
   inRangeIds: readonly string[];
@@ -81,8 +80,10 @@ export interface Travel extends TravelPipeline {
   recs: Recommendations;
   /** The sites within the drive limit, in rank order. Empty until the forecast loads. */
   shown: SiteRecommendation[];
-  /** Catalog sites not shown, 0 without a start or a loaded forecast. */
+  /** The mode's catalog sites not shown, 0 without a start or a loaded forecast. */
   hiddenCount: number;
+  /** How many catalog sites are of the mode's kind, 0 until the catalog is read. */
+  total: number;
 }
 
 /** The chosen place wins; else the location if it was found; else there is no start. */
@@ -151,11 +152,16 @@ const NO_TIMES: ReadonlyMap<string, DriveTime> = new Map();
 
 /**
  * Owns everything before the weather: the location, the start point, the drive limit, the place
- * search and the drive times. The candidates are the catalog sites `withinReach` of the start;
- * OSRM is asked only for candidates the current start has no time for yet, so narrowing the limit
- * asks nothing and widening asks only for the new sites. The settings are stored between visits.
+ * search and the drive times. The candidates are the `catalog` sites of the `mode`'s kind
+ * `withinReach` of the start at the mode's radius; OSRM is asked only for candidates the current
+ * start has no time for yet, so narrowing the limit or switching back asks nothing and widening
+ * or switching to a new mode asks only for the new sites. The settings are stored between visits.
  */
-export function useTravel(debug: DebugParams): TravelPipeline {
+export function useTravel(
+  debug: DebugParams,
+  catalog: readonly Site[] | undefined,
+  mode: SiteKind,
+): TravelPipeline {
   const store = useMemo(() => localStorageStore(), []);
   const [settings, setSettings] = useState<TravelSettings>(() => loadTravelSettings(store));
   const saved = useRef(settings);
@@ -181,22 +187,19 @@ export function useTravel(debug: DebugParams): TravelPipeline {
     };
   }, [debug.noLocation, debug.location]);
 
-  const sites = useCatalog();
-  const catalogIds = useMemo(() => sites && new Set(sites.map((s) => s.id)), [sites]);
-
   const effectiveStart = useMemo(
     () => resolveStart(settings, locationResult),
     [settings, locationResult],
   );
   const key = effectiveStart === undefined ? undefined : startKey(effectiveStart);
-  // The flying radius is all this reads until the mode is wired through.
-  const flyingMinutes = radiusMinutes(settings, "flying");
+  // Keyed on the mode's own radius, so the other mode's radius changing recomputes nothing.
+  const modeMinutes = radiusMinutes(settings, mode);
   const candidates = useMemo(
     () =>
-      sites === undefined || effectiveStart === undefined
+      catalog === undefined || effectiveStart === undefined
         ? undefined
-        : withinReach(sites, effectiveStart, flyingMinutes / MINUTES_PER_HOUR),
-    [sites, effectiveStart, flyingMinutes],
+        : travelCandidates(catalog, mode, effectiveStart, settings),
+    [catalog, effectiveStart, mode, modeMinutes],
   );
   // Ids in catalog order, so the same candidates always give the same string.
   const candidateKey = candidates?.map((s) => s.id).join("\n");
@@ -209,9 +212,12 @@ export function useTravel(debug: DebugParams): TravelPipeline {
   candidatesRef.current = candidates;
   const timesRef = useRef(times);
   timesRef.current = times;
-  const timesRequest = useRef(0);
+  // A response is kept only if it is for the start now in use. Merging into the same start is
+  // always safe, so a response a mode switch left behind still counts; `mergeTimes` replaces the
+  // map of another start.
+  const keyRef = useRef(key);
+  keyRef.current = key;
   useEffect(() => {
-    const id = ++timesRequest.current;
     const start = startRef.current;
     const wanted = candidatesRef.current;
     if (key === undefined || start === undefined || wanted === undefined) return;
@@ -224,13 +230,13 @@ export function useTravel(debug: DebugParams): TravelPipeline {
     const deps = { transport: routeTransport, cache: store, baseURL: debug.routeBaseURL };
     driveTimesFor(start, missing, deps).then(
       (result) => {
-        if (id === timesRequest.current) setTimes((prev) => mergeTimes(prev, key, result));
+        if (key === keyRef.current) setTimes((prev) => mergeTimes(prev, key, result));
       },
       (error: unknown) => console.warn("Could not load drive times", error),
     );
   }, [key, candidateKey, debug.routeBaseURL, store]);
 
-  const limit = maxSeconds(settings, "flying");
+  const limit = maxSeconds(settings, mode);
   const stage = travelStage({
     start: effectiveStart,
     locationPending: locationResult === undefined,
@@ -299,15 +305,15 @@ export function useTravel(debug: DebugParams): TravelPipeline {
   }, []);
 
   const setRadius = useCallback((minutes: number) => {
-    setSettings((s) => withRadius(s, "flying", minutes));
-  }, []);
+    setSettings((s) => withRadius(s, mode, minutes));
+  }, [mode]);
 
   return {
     settings,
+    mode,
     effectiveStart,
     times,
-    catalogSize: sites?.length ?? 0,
-    catalogIds,
+    catalog,
     stage,
     inRangeIds: inRange,
     location: locationResult?.status ?? "pending",
@@ -329,8 +335,8 @@ export function useTravel(debug: DebugParams): TravelPipeline {
  * candidate gets the straight-line estimate, which is always over the limit, so it stays hidden.
  */
 export function useTravelView(travel: TravelPipeline, recs: ForecastLoad): Travel {
-  const { effectiveStart, times, settings, catalogSize, location, locationResult, relocate } = travel;
-  const limit = maxSeconds(settings, "flying");
+  const { effectiveStart, times, settings, mode, catalog, location, locationResult, relocate } = travel;
+  const limit = maxSeconds(settings, mode);
   const applied = useMemo(
     () =>
       recs.state.status === "loaded"
@@ -343,11 +349,21 @@ export function useTravelView(travel: TravelPipeline, recs: ForecastLoad): Trave
     applied !== undefined && recs.state.status === "loaded"
       ? { ...recs.state, result: applied.result }
       : recs.state;
-  const shown = applied?.shown ?? [];
+  const { shown, hiddenCount, total } = useMemo(
+    () =>
+      listView(
+        applied?.shown ?? [],
+        mode,
+        catalog ?? [],
+        applied !== undefined && effectiveStart !== undefined && catalog !== undefined,
+      ),
+    [applied, mode, catalog, effectiveStart],
+  );
   return {
     ...travel,
     recs: { ...recs, state, location, locationResult, relocate },
     shown,
-    hiddenCount: applied === undefined || effectiveStart === undefined ? 0 : catalogSize - shown.length,
+    hiddenCount,
+    total,
   };
 }

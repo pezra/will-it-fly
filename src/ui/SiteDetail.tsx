@@ -3,7 +3,7 @@ import { MODEL_LABEL } from "../core/scoring/hourEvaluator";
 import type { ModelName } from "../core/scoring/hourEvaluator";
 import { windowLabel } from "../core/scoring/windowFinder";
 import { effectiveLimits } from "../core/sites/site";
-import type { Launch, Site } from "../core/sites/site";
+import type { Launch, Site, SiteKind } from "../core/sites/site";
 import { ResultBadge } from "./CallBadge";
 import { ForecastStatus } from "./ForecastStatus";
 import { arcsLabel, cautionLine, confidenceLabel, dayLabel, driveLabel, feet, idealLabel, launchFallbackNote, miles, siteModel, sourceLabel } from "./format";
@@ -49,24 +49,27 @@ function LaunchSection({ site, evaluation }: { site: Site; evaluation: LaunchEva
 
 /**
  * `day` is the route's day, undefined for the default day, and `model` its model; the back link
- * keeps both. `catalogIds` is undefined until the catalog is read; only an id outside it is
+ * keeps both. `mode` is the site's kind (Fly until the catalog is read), and the back link goes
+ * to that mode's list. `catalogIds` is undefined until the catalog is read; only an id outside it is
  * "not found".
  */
 export function SiteDetail({
   siteId,
   day,
   model,
+  mode,
   recs,
   catalogIds,
 }: {
   siteId: string;
   day: DayKey | undefined;
   model: ModelName;
+  mode: SiteKind;
   recs: Recommendations;
   catalogIds: ReadonlySet<string> | undefined;
 }) {
   const { state } = recs;
-  const back = <a class="back" href={listHref(model, "flying", day)}>← All sites</a>;
+  const back = <a class="back" href={listHref(model, mode, day)}>← All sites</a>;
 
   if (catalogIds?.has(siteId) === false) {
     return (

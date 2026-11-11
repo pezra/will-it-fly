@@ -40,17 +40,17 @@ export function TravelBar({
         aria-controls={OPTIONS_ID}
         onClick={() => setOpen(!open)}
       >
-        <span>{travelSummary(settings, travel.effectiveStart, travel.recs.location, model, "flying")}</span>
+        <span>{travelSummary(settings, travel.effectiveStart, travel.recs.location, model, travel.mode)}</span>
         <span aria-hidden="true">{open ? "▴" : "▾"}</span>
       </button>
       {open && (
         <div id={OPTIONS_ID} class="travel-options">
           <div class="travel-radius" role="group" aria-label="Drive time">
-            {RADIUS_CHOICES.flying.map((choice) => (
+            {RADIUS_CHOICES[travel.mode].map((choice) => (
               <button
                 key={choice}
                 type="button"
-                aria-pressed={radiusMinutes(settings, "flying") === choice}
+                aria-pressed={radiusMinutes(settings, travel.mode) === choice}
                 onClick={() => travel.setRadius(choice)}
               >
                 {radiusLabel(choice)}

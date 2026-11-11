@@ -81,8 +81,8 @@ button:disabled { opacity: 0.6; }
 .age { margin: 4px 0 12px; color: var(--muted); font-size: 14px; }
 .status { color: var(--muted); }
 
-.day-picker { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 12px; }
-.day-link {
+.day-picker, .mode-toggle { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 12px; }
+.day-link, .mode-link {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
@@ -93,7 +93,7 @@ button:disabled { opacity: 0.6; }
   color: var(--text);
   text-decoration: none;
 }
-.day-link[aria-current="page"] { border-color: currentColor; font-weight: 600; }
+.day-link[aria-current="page"], .mode-link[aria-current="page"] { border-color: currentColor; font-weight: 600; }
 .day-picker input[type="date"] {
   font: inherit;
   min-height: 44px;
