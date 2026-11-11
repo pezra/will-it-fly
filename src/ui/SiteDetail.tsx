@@ -2,23 +2,14 @@ import type { LaunchEvaluation } from "../core/recommendation/types";
 import { MODEL_LABEL } from "../core/scoring/hourEvaluator";
 import type { ModelName } from "../core/scoring/hourEvaluator";
 import { windowLabel } from "../core/scoring/windowFinder";
-import { effectiveLimits } from "../core/sites/site";
-import type { Launch, Site, SiteKind } from "../core/sites/site";
+import type { Site, SiteKind } from "../core/sites/site";
 import { ResultBadge } from "./CallBadge";
 import { ForecastStatus } from "./ForecastStatus";
-import { arcsLabel, cautionLine, confidenceLabel, dayLabel, driveLabel, feet, idealLabel, launchFallbackNote, miles, siteModel, sourceLabel } from "./format";
+import { arcsLabel, cautionLine, confidenceLabel, dayLabel, driveLabel, feet, idealLabel, launchFallbackNote, limitsLine, miles, ratingLabel, siteModel, sourceLabel } from "./format";
 import { HourlyTable } from "./HourlyTable";
 import { listHref } from "./route";
 import type { DayKey } from "../core/time";
 import type { Recommendations } from "./useRecommendations";
-
-function limitsLine(site: Site, launch: Launch): string {
-  const l = effectiveLimits(site, launch);
-  const parts = [`${l.minMph}–${l.maxMph} mph`];
-  if (l.idealMph !== undefined) parts.push(`ideal ${l.idealMph} mph`);
-  parts.push(`gust factor ${l.gustFactorMph} mph`);
-  return parts.join(", ");
-}
 
 function LaunchSection({ site, evaluation }: { site: Site; evaluation: LaunchEvaluation }) {
   const { launch, window } = evaluation;
@@ -42,7 +33,7 @@ function LaunchSection({ site, evaluation }: { site: Site; evaluation: LaunchEva
         </dd>
       </dl>
       {evaluation.fellBack && <p class="note">{launchFallbackNote}</p>}
-      <HourlyTable evaluation={evaluation} />
+      <HourlyTable evaluation={evaluation} kind={site.kind} />
     </section>
   );
 }
@@ -104,6 +95,7 @@ export function SiteDetail({
   const distance = miles(rec.distanceM);
   const cautions = cautionLine(best?.window.cautions ?? []);
   const closedReason = site.status.state === "closed" ? site.status.reason : undefined;
+  const rating = ratingLabel(site);
   return (
     <>
       {back}
@@ -113,8 +105,12 @@ export function SiteDetail({
       </p>
       {cautions !== undefined && <p class="row-caution">{cautions}</p>}
       <dl class="facts">
-        <dt>Rating</dt>
-        <dd>{site.rating}</dd>
+        {rating !== undefined && (
+          <>
+            <dt>Rating</dt>
+            <dd>{rating}</dd>
+          </>
+        )}
         <dt>Forecast model</dt>
         <dd>{MODEL_LABEL[siteModel(rec, state.result.model)]}</dd>
         {rec.driveTime !== undefined && (

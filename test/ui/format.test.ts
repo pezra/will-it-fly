@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { testLaunch, testSite } from "../support/builders";
 import type { LaunchEvaluation, SiteRecommendation } from "../../src/core/recommendation/types";
 import type { ModelName, Reason } from "../../src/core/scoring/hourEvaluator";
+import type { SiteKind } from "../../src/core/sites/site";
 import {
   CONDITION_LABEL,
   approxFeet,
@@ -20,9 +21,11 @@ import {
   hourlyColumns,
   idealLabel,
   launchFallbackNote,
+  limitsLine,
   loadingMoreLine,
   miles,
   oneDecimal,
+  ratingLabel,
   siteModel,
   sourceLabel,
   stageMessage,
@@ -118,6 +121,29 @@ describe("idealLabel", () => {
   });
   it("shows a normal arc as is", () => {
     expect(withIdeal([{ from: 250, to: 290 }])).toMatch(/^250–290°/);
+  });
+});
+
+describe("limitsLine", () => {
+  it("gives a flying site's limits with the gust factor", () => {
+    expect(limitsLine(testSite(), testLaunch())).toBe("5–18 mph, ideal 10 mph, gust factor 6 mph");
+  });
+  it("gives a flying site's ideal range when it has a top", () => {
+    const site = testSite({ limits: { minMph: 5, idealMph: 8, idealMaxMph: 12, maxMph: 18, gustFactorMph: 6 } });
+    expect(limitsLine(site, testLaunch())).toBe("5–18 mph, ideal 8–12 mph, gust factor 6 mph");
+  });
+  it("leaves the gust factor out of a kiting site", () => {
+    const site = testSite({ kind: "kiting", limits: { minMph: 5, idealMph: 8, idealMaxMph: 12, maxMph: 18 } });
+    expect(limitsLine(site, testLaunch())).toBe("5–18 mph, ideal 8–12 mph");
+  });
+});
+
+describe("ratingLabel", () => {
+  it("gives a flying site its rating", () => {
+    expect(ratingLabel(testSite())).toBe("P2");
+  });
+  it("gives a kiting site no rating", () => {
+    expect(ratingLabel(testSite({ kind: "kiting" }))).toBeUndefined();
   });
 });
 
@@ -286,12 +312,13 @@ describe("launchFallbackNote", () => {
 });
 
 describe("hourlyColumns", () => {
-  const headers = (model: ModelName): string[] => hourlyColumns(model).map((c) => c.header);
-  const reads = (model: ModelName): string[] =>
-    hourlyColumns(model).map((c) => `${c.side ?? "-"}:${c.value}`);
+  const headers = (model: ModelName, kind: SiteKind): string[] =>
+    hourlyColumns(model, kind).map((c) => c.header);
+  const reads = (model: ModelName, kind: SiteKind): string[] =>
+    hourlyColumns(model, kind).map((c) => `${c.side ?? "-"}:${c.value}`);
 
   it("puts the primary model first when it is ECMWF", () => {
-    expect(headers("ecmwf")).toEqual([
+    expect(headers("ecmwf", "flying")).toEqual([
       "Time",
       "ECMWF",
       "Wind / gust / dir",
@@ -303,7 +330,7 @@ describe("hourlyColumns", () => {
     ]);
   });
   it("puts the primary model first when it is RRFS", () => {
-    expect(headers("rrfs")).toEqual([
+    expect(headers("rrfs", "flying")).toEqual([
       "Time",
       "RRFS",
       "Wind / gust / dir",
@@ -312,6 +339,24 @@ describe("hourlyColumns", () => {
       "CAPE J/kg",
       "Cloud base",
       "TI °C",
+    ]);
+  });
+  it("leaves out cloud base and TI at a kiting site, keeping CAPE", () => {
+    expect(headers("rrfs", "kiting")).toEqual([
+      "Time",
+      "RRFS",
+      "Wind / gust / dir",
+      "ECMWF",
+      "ECMWF wind / dir",
+      "CAPE J/kg",
+    ]);
+    expect(reads("rrfs", "kiting")).toEqual([
+      "-:time",
+      "primary:call",
+      "primary:wind",
+      "check:call",
+      "check:wind",
+      "primary:cape",
     ]);
   });
   it("reads the primary side for the call, the wind, CAPE, cloud base and TI, and the check side for the check", () => {
@@ -325,11 +370,11 @@ describe("hourlyColumns", () => {
       "primary:cloudBase",
       "primary:thermalIndex",
     ];
-    expect(reads("ecmwf")).toEqual(expected);
-    expect(reads("rrfs")).toEqual(expected);
+    expect(reads("ecmwf", "flying")).toEqual(expected);
+    expect(reads("rrfs", "flying")).toEqual(expected);
   });
   it("shows the gust only on the primary wind column", () => {
-    const withGust = hourlyColumns("rrfs").filter((c) => c.value === "wind" && c.withGust);
+    const withGust = hourlyColumns("rrfs", "flying").filter((c) => c.value === "wind" && c.withGust);
     expect(withGust.map((c) => c.side)).toEqual(["primary"]);
   });
 });

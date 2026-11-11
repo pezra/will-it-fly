@@ -6,7 +6,8 @@ import type { SiteRecommendation } from "../core/recommendation/types";
 import type { HourCall, HourCondition, ModelName, Reason } from "../core/scoring/hourEvaluator";
 import { SCORING_DEFAULTS } from "../core/scoring/defaults";
 import { CHECK_MODEL, MODEL_LABEL, effectiveIdealArcs } from "../core/scoring/hourEvaluator";
-import type { Coordinate, DegreeArc, Launch, SiteKind } from "../core/sites/site";
+import type { Coordinate, DegreeArc, Launch, Site, SiteKind } from "../core/sites/site";
+import { effectiveLimits } from "../core/sites/site";
 import { addDays, formatDayKey } from "../core/time";
 import type { DayKey } from "../core/time";
 import type { LocationStatus } from "./location";
@@ -56,6 +57,27 @@ export function arcLabel(arc: DegreeArc): string {
 
 export function arcsLabel(arcs: readonly DegreeArc[]): string {
   return arcs.length === 0 ? "none" : arcs.map(arcLabel).join(", ");
+}
+
+/**
+ * A launch's wind limits as the site page words them: "5–18 mph, ideal 10 mph, gust factor 6 mph".
+ * An ideal range reads "ideal 8–12 mph". Kiting sites leave out the gust factor.
+ */
+export function limitsLine(site: Site, launch: Launch): string {
+  const l = effectiveLimits(site, launch);
+  const parts = [`${l.minMph}–${l.maxMph} mph`];
+  if (l.idealMph !== undefined) {
+    parts.push(
+      l.idealMaxMph === undefined ? `ideal ${l.idealMph} mph` : `ideal ${l.idealMph}–${l.idealMaxMph} mph`,
+    );
+  }
+  if (site.kind !== "kiting") parts.push(`gust factor ${l.gustFactorMph} mph`);
+  return parts.join(", ");
+}
+
+/** A site's rating for its row and page. Kiting sites have none, so undefined for them. */
+export function ratingLabel(site: Site): string | undefined {
+  return site.kind === "kiting" ? undefined : site.rating;
 }
 
 const wrap360 = (deg: number): number => (deg < 0 ? deg + 360 : deg > 360 ? deg - 360 : deg);
@@ -230,21 +252,27 @@ export interface HourlyColumn {
 
 /**
  * The hourly table's columns, in order, for a launch whose primary model is `model`: the primary
- * model first, then the check model. CAPE, cloud base and TI come from the primary model.
+ * model first, then the check model. CAPE, cloud base and TI come from the primary model. A kiting
+ * site has no cloud base or TI column.
  */
-export function hourlyColumns(model: ModelName): readonly HourlyColumn[] {
+export function hourlyColumns(model: ModelName, kind: SiteKind): readonly HourlyColumn[] {
   const primary = MODEL_LABEL[model];
   const check = MODEL_LABEL[CHECK_MODEL[model]];
-  return [
+  const columns: HourlyColumn[] = [
     { header: "Time", value: "time" },
     { header: primary, value: "call", side: "primary" },
     { header: "Wind / gust / dir", value: "wind", side: "primary", withGust: true },
     { header: check, value: "call", side: "check" },
     { header: `${check} wind / dir`, value: "wind", side: "check" },
     { header: "CAPE J/kg", value: "cape", side: "primary" },
-    { header: "Cloud base", value: "cloudBase", side: "primary" },
-    { header: "TI °C", value: "thermalIndex", side: "primary" },
   ];
+  if (kind === "flying") {
+    columns.push(
+      { header: "Cloud base", value: "cloudBase", side: "primary" },
+      { header: "TI °C", value: "thermalIndex", side: "primary" },
+    );
+  }
+  return columns;
 }
 
 /**
