@@ -183,12 +183,15 @@ export function driveLabel(driveTime: DriveTime): string {
   return driveTime.source === "estimate" ? `≈ ${text}` : text;
 }
 
+const ACTIVITY_LABEL: Readonly<Record<SiteKind, string>> = { flying: "Flying", kiting: "Kiting" };
+
 /**
- * The travel bar's collapsed line: "Within 2 h of Boulder · RRFS" (`mode`'s radius and the route's
- * model), or a prompt when there is no start. While the location is still pending and nothing else
- * is chosen, it says so instead.
+ * The bar's closed line: "Tomorrow · Flying ≤ 2 h · RRFS" (`mode`'s radius and the route's model).
+ * `day` is the shown day's label, left out while it isn't known yet. With no start it is a prompt
+ * instead; while the location is still pending and nothing else is chosen, it says so.
  */
-export function travelSummary(
+export function statusLine(
+  day: string | undefined,
   settings: TravelSettings,
   effectiveStart: Coordinate | undefined,
   location: LocationStatus,
@@ -200,8 +203,8 @@ export function travelSummary(
       ? "Finding your location…"
       : "Set a starting point";
   }
-  const where = settings.start.kind === "place" ? settings.start.name : "your location";
-  return `Within ${radiusLabel(radiusMinutes(settings, mode))} of ${where} · ${MODEL_LABEL[model]}`;
+  const what = `${ACTIVITY_LABEL[mode]} ≤ ${radiusLabel(radiusMinutes(settings, mode))}`;
+  return [day, what, MODEL_LABEL[model]].filter((part) => part !== undefined).join(" · ");
 }
 
 /**

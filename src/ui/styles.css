@@ -81,7 +81,7 @@ button:disabled { opacity: 0.6; }
 .age { margin: 4px 0 12px; color: var(--muted); font-size: 14px; }
 .status { color: var(--muted); }
 
-.day-picker, .mode-toggle { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 12px; }
+.day-picker, .mode-toggle { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; }
 .day-link, .mode-link {
   display: inline-flex;
   align-items: center;
