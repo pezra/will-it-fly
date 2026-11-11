@@ -98,6 +98,32 @@ export function placeStart(place: Place): TravelStart {
   return { kind: "place", name, coordinate: place.coordinate };
 }
 
+/** The start the empty list offers, so someone with no start or no site in range can see it work. */
+export const EXAMPLE_PLACE: Place = {
+  name: "Boulder, Colorado",
+  coordinate: { latitude: 40.015, longitude: -105.27 },
+};
+
+/**
+ * Whether the list offers `EXAMPLE_PLACE`: with no start, or once the forecast has loaded with no
+ * site in range. `missing` is the in-range sites whose weather hasn't arrived; `shownCount` the
+ * sites listed.
+ */
+export function offersExample({
+  stage,
+  loaded,
+  missing,
+  shownCount,
+}: {
+  stage: TravelStage;
+  loaded: boolean;
+  missing: number;
+  shownCount: number;
+}): boolean {
+  if (stage === "needsStart") return true;
+  return loaded && stage === "ready" && missing === 0 && shownCount === 0;
+}
+
 const routeTransport = fetchTransportWithTimeout(OSRM_TIMEOUT_MS);
 const geocodeTransport = fetchTransportWithTimeout(GEOCODE_TIMEOUT_MS);
 

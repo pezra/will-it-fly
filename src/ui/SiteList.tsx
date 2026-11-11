@@ -1,4 +1,5 @@
 import type { Recommendations } from "./useRecommendations";
+import { EXAMPLE_PLACE, offersExample } from "./useTravel";
 import type { Travel } from "./useTravel";
 import type { ModelName } from "../core/scoring/hourEvaluator";
 import { missingSiteIds } from "../core/travel/inRange";
@@ -25,6 +26,17 @@ function LocationNote({ location }: { location: Recommendations["location"] }) {
   return null;
 }
 
+/** A one-tap start from `EXAMPLE_PLACE`, for an empty list. */
+function ExampleButton({ travel }: { travel: Travel }) {
+  return (
+    <p class="note">
+      <button type="button" onClick={() => travel.setPlace(EXAMPLE_PLACE)}>
+        See an example with sites
+      </button>
+    </p>
+  );
+}
+
 /**
  * `day` is the route's day, undefined for the default day; `model` is the route's model, kept by
  * every link, and `setModel` switches it. Lists `travel.shown`.
@@ -41,6 +53,12 @@ export function SiteList({
   setModel: (model: ModelName) => void;
 }) {
   const { state, location, now, refresh, retry } = travel.recs;
+  const loaded = state.status === "loaded";
+  const missing = loaded ? missingSiteIds(state.result, travel.inRangeIds).length : 0;
+  const example =
+    offersExample({ stage: travel.stage, loaded, missing, shownCount: travel.shown.length }) && (
+      <ExampleButton travel={travel} />
+    );
 
   // With no start, a loaded result can only be a site page's own site, so it is not the list.
   const noStart = travel.stage === "needsStart" || travel.stage === "locating";
@@ -64,13 +82,13 @@ export function SiteList({
         ) : (
           <p class="status" role="status">{message}</p>
         )}
+        {example}
         {travel.effectiveStart === undefined && <LocationNote location={location} />}
       </>
     );
   }
 
   const { result } = state;
-  const missing = missingSiteIds(result, travel.inRangeIds).length;
   const fallback = fallbackLine(result.model, travel.shown);
   return (
     <>
@@ -90,6 +108,7 @@ export function SiteList({
           {hiddenLine(travel.hiddenCount, travel.settings.maxHours, travel.catalogSize)}
         </p>
       )}
+      {example}
       {state.refreshing && missing > 0 && <p class="note">{loadingMoreLine(missing)}</p>}
       {result.isOffline && (
         <p class="banner" role="status">
