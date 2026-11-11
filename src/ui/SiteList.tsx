@@ -53,6 +53,12 @@ export function SiteList({
   setModel: (model: ModelName) => void;
 }) {
   const { state, location, now, refresh, retry } = travel.recs;
+  const loaded = state.status === "loaded";
+  const missing = loaded ? missingSiteIds(state.result, travel.inRangeIds).length : 0;
+  const example =
+    offersExample({ stage: travel.stage, loaded, missing, shownCount: travel.shown.length }) && (
+      <ExampleButton travel={travel} />
+    );
 
   // With no start, a loaded result can only be a site page's own site, so it is not the list.
   const noStart = travel.stage === "needsStart" || travel.stage === "locating";
@@ -76,16 +82,13 @@ export function SiteList({
         ) : (
           <p class="status" role="status">{message}</p>
         )}
-        {offersExample({ stage: travel.stage, loaded: false, missing: 0, shownCount: 0 }) && (
-          <ExampleButton travel={travel} />
-        )}
+        {example}
         {travel.effectiveStart === undefined && <LocationNote location={location} />}
       </>
     );
   }
 
   const { result } = state;
-  const missing = missingSiteIds(result, travel.inRangeIds).length;
   const fallback = fallbackLine(result.model, travel.shown);
   return (
     <>
@@ -105,12 +108,7 @@ export function SiteList({
           {hiddenLine(travel.hiddenCount, travel.settings.maxHours, travel.catalogSize)}
         </p>
       )}
-      {offersExample({
-        stage: travel.stage,
-        loaded: true,
-        missing,
-        shownCount: travel.shown.length,
-      }) && <ExampleButton travel={travel} />}
+      {example}
       {state.refreshing && missing > 0 && <p class="note">{loadingMoreLine(missing)}</p>}
       {result.isOffline && (
         <p class="banner" role="status">
