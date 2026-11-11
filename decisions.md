@@ -2,6 +2,18 @@
 
 Architectural decisions that would be costly to reverse. Newest first.
 
+## Sites have a kind, and Kite mode is in the list URL (2026-11-11, `14-kiting-sites`)
+
+A site in `sites.json` is `"kind": "flying"` (the default) or `"kiting"`, and its kind decides how it is scored, wherever it is shown. Kiting parks are scored on surface wind and gusts only, with the gust rules in `SCORING_DEFAULTS`. The mode only chooses which kind a list shows. Kite lists are `#/kite` and `#/kite/<date>`, and site pages have no mode in their URL, because the site's kind gives it. Nothing saves the mode on the device. The weather load is keyed by the list's mode like the model, and a site page loads with no mode. Kite has its own radius (`kiteMinutes`) in `willItFly.travel.v1`.
+
+A site page has no mode in its URL, so if the mode decided the rules a park could be scored as a flying site. A link should open in the mode it names, but a fresh open should be Fly, so the mode lives in the URL and not on the device. Keying the load by mode keeps one mode's list from showing under the other. Leaving the site page's load unkeyed keeps it from restarting when the catalog arrives.
+
+### Rejected
+- A separate kiting catalog. It needs a second provider and the composite provider that doesn't exist yet, and a site would have two shapes.
+- The mode deciding the rules. A site page has no mode, so a park could get flying calls.
+- The mode in the query string or saved on the device. A device default would make the home screen icon open in Kite after one use.
+- Keeping the other mode's result on screen during a switch. Filtered by kind, it showed as an empty list.
+
 ## The primary model is a per-request choice, evaluated by role (2026-11-09, `primary-model-switch`)
 
 The request names a primary model (ECMWF or RRFS). Each launch is evaluated with that model deciding and the other as the cross-check, and every result past the hour evaluator (daylight rows, windows, agreement, confidence) is shaped by role, not by model name. With RRFS asked for, a launch falls back to ECMWF for the whole day when RRFS covers less than 75% of the day's window hours.
