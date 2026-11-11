@@ -398,42 +398,26 @@ export function hasCoreData(hour: ModelHour, launch: Launch): boolean {
   return missingCoreFields(hour, launchWind(hour, elevationM(launch))).length === 0;
 }
 
-/** The per-hour call, score and reasons for one launch and one model. */
-export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORING_DEFAULTS): HourResult {
+/**
+ * The rules on the launch's own wind and on storms, with nothing aloft, no cloud and no wind
+ * nearby: precipitation, launch wind speed and direction, CAPE, and the other model seeing storms.
+ * `inIdeal` is true when the launch is curated and the wind is from an ideal arc.
+ */
+function surfaceReasons(
+  ctx: HourContext,
+  wind: Wind,
+  limits: WindLimits,
+  defaults: ScoringDefaults,
+): { reasons: Reason[]; inIdeal: boolean } {
   const { hour, next, launch } = ctx;
-  const elev = elevationM(launch);
-  const wind = launchWind(hour, elev);
-  // Shown for every hour, no-data ones included.
-  const cloudBase = cloudBaseAboveLaunchM(hour, defaults);
-  const ti = thermalIndex(hour, elev, defaults);
-  const fields = (unpenalizedScore: number, conditions: HourCondition[] = []): HourFields => ({
-    time: hour.time,
-    launchWind: wind,
-    unpenalizedScore,
-    cloudBaseM: cloudBase,
-    thermalIndexC: ti,
-    conditions,
-  });
-
-  const missing = missingCoreFields(hour, wind);
-  if (wind === undefined || missing.length > 0) {
-    return finish(fields(0), [reason("noData", `no data: ${missing.join(", ")}`)], defaults);
-  }
-
   const reasons: Reason[] = [];
-  const limits = effectiveLimits(ctx.site, launch);
   const { ok } = launch.directions;
   const curated = ok.length > 0;
 
-  // Precipitation and gusts: the preceding-hour values, so max(h, h+1).
+  // Precipitation: the preceding-hour values, so max(h, h+1).
   const precip = precipNoGoMm(hour, next, defaults);
   if (precip !== undefined) {
     reasons.push(reason("precipitation", `rain ${precip.toFixed(1)} mm`));
-  }
-  // Forecast gusts are not scored, only warned about. A missing gust gives no reason at all.
-  const factor = gustFactorMph(hour, next);
-  if (factor !== undefined && factor >= defaults.highGustWarningFactorMultiple * limits.gustFactorMph) {
-    reasons.push(reason("highGusts", `high gusts possible (gust factor ${mph(factor)})`));
   }
 
   // Launch wind speed.
@@ -460,6 +444,56 @@ export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORI
     }
   }
 
+  // CAPE (instantaneous, hour h).
+  if (hour.capeJkg === undefined) {
+    reasons.push(reason("capeUnavailable", "CAPE: n/a"));
+  } else if (hour.capeJkg >= defaults.capeCautionJkg) {
+    reasons.push(reason("overdevelopment", `overdevelopment risk (CAPE ${Math.round(hour.capeJkg)} J/kg)`));
+  }
+
+  // The other model sees storms (primary model evaluation only).
+  if (ctx.other?.hour !== undefined) {
+    if (precipNoGoMm(ctx.other.hour, ctx.other.next, defaults) !== undefined) {
+      reasons.push(reason(SEES_STORMS[ctx.model], `${MODEL_LABEL[CHECK_MODEL[ctx.model]]} sees storms`));
+    }
+  }
+
+  return { reasons, inIdeal };
+}
+
+/** The per-hour call, score and reasons for one launch and one model. */
+export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORING_DEFAULTS): HourResult {
+  const { hour, next, launch } = ctx;
+  const elev = elevationM(launch);
+  const wind = launchWind(hour, elev);
+  // Shown for every hour, no-data ones included.
+  const cloudBase = cloudBaseAboveLaunchM(hour, defaults);
+  const ti = thermalIndex(hour, elev, defaults);
+  const fields = (unpenalizedScore: number, conditions: HourCondition[] = []): HourFields => ({
+    time: hour.time,
+    launchWind: wind,
+    unpenalizedScore,
+    cloudBaseM: cloudBase,
+    thermalIndexC: ti,
+    conditions,
+  });
+
+  const missing = missingCoreFields(hour, wind);
+  if (wind === undefined || missing.length > 0) {
+    return finish(fields(0), [reason("noData", `no data: ${missing.join(", ")}`)], defaults);
+  }
+
+  const limits = effectiveLimits(ctx.site, launch);
+  const { reasons, inIdeal } = surfaceReasons(ctx, wind, limits, defaults);
+  const { ok } = launch.directions;
+  const curated = ok.length > 0;
+
+  // Gusts, from h and h+1: not scored, only warned about. A missing gust gives no reason at all.
+  const factor = gustFactorMph(hour, next);
+  if (factor !== undefined && factor >= defaults.highGustWarningFactorMultiple * limits.gustFactorMph) {
+    reasons.push(reason("highGusts", `high gusts possible (gust factor ${mph(factor)})`));
+  }
+
   // Aloft.
   const aloft = aloftWind(hour, elev, topOfLiftM(hour, elev, defaults), defaults);
   if (aloft === undefined) {
@@ -473,13 +507,6 @@ export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORI
     if (!strong && !overTheBack && aloft.speedMph >= defaults.aloftCautionMph) {
       reasons.push(reason("aloftWind", `wind aloft ${windText(aloft)}`));
     }
-  }
-
-  // CAPE (instantaneous, hour h).
-  if (hour.capeJkg === undefined) {
-    reasons.push(reason("capeUnavailable", "CAPE: n/a"));
-  } else if (hour.capeJkg >= defaults.capeCautionJkg) {
-    reasons.push(reason("overdevelopment", `overdevelopment risk (CAPE ${Math.round(hour.capeJkg)} J/kg)`));
   }
 
   // Low cloud.
@@ -538,13 +565,6 @@ export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORI
   const xcPotential = thermalXC && ctx.site.xc !== undefined;
   if (xcPotential && ti !== undefined && blh !== undefined) {
     reasons.push(reason("xcPotential", `XC potential (thermal index ${ti.toFixed(1)} °C, BLH ${Math.round(blh)} m)`));
-  }
-
-  // The other model sees storms (primary model evaluation only).
-  if (ctx.other?.hour !== undefined) {
-    if (precipNoGoMm(ctx.other.hour, ctx.other.next, defaults) !== undefined) {
-      reasons.push(reason(SEES_STORMS[ctx.model], `${MODEL_LABEL[CHECK_MODEL[ctx.model]]} sees storms`));
-    }
   }
 
   // Score bonuses.
