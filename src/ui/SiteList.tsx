@@ -2,7 +2,6 @@ import type { Recommendations } from "./useRecommendations";
 import { EXAMPLE_PLACE, offersExample } from "./useTravel";
 import type { Travel } from "./useTravel";
 import type { ModelName } from "../core/scoring/hourEvaluator";
-import { shortPlaceName } from "../core/travel/geocode";
 import { missingSiteIds } from "../core/travel/inRange";
 import { addDays, denverDayKey } from "../core/time";
 import type { DayKey } from "../core/time";
@@ -32,7 +31,7 @@ function ExampleButton({ travel }: { travel: Travel }) {
   return (
     <p class="note">
       <button type="button" onClick={() => travel.setPlace(EXAMPLE_PLACE)}>
-        See it from {shortPlaceName(EXAMPLE_PLACE.name)}
+        See an example with sites
       </button>
     </p>
   );
