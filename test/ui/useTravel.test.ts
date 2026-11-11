@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { SiteRecommendation } from "../../src/core/recommendation/types";
 import type { Site, SiteKind } from "../../src/core/sites/site";
-import { startKey } from "../../src/core/travel/driveTime";
+import { bundledSiteProvider } from "../../src/core/sites/siteProvider";
+import { startKey, withinReach } from "../../src/core/travel/driveTime";
 import type { KiteMinutes, MaxHours, TravelSettings } from "../../src/ui/travelSettings";
-import { listView, placeStart, resolveStart, travelCandidates } from "../../src/ui/useTravel";
+import { EXAMPLE_PLACE, listView, offersExample, placeStart, resolveStart, travelCandidates } from "../../src/ui/useTravel";
 import { testLaunch, testSite } from "../support/builders";
 
 const boulder = { latitude: 40.015, longitude: -105.27 };
@@ -53,6 +54,42 @@ describe("placeStart", () => {
   it("caps a long short name", () => {
     const start = placeStart({ name: "y".repeat(200), coordinate: boulder });
     expect(start.kind === "place" && start.name.length).toBe(120);
+  });
+});
+
+describe("EXAMPLE_PLACE", () => {
+  it("is stored as Boulder", () => {
+    expect(placeStart(EXAMPLE_PLACE)).toEqual({
+      kind: "place",
+      name: "Boulder",
+      coordinate: EXAMPLE_PLACE.coordinate,
+    });
+  });
+  it("has a catalog site with a launch within an hour's straight-line reach", async () => {
+    const sites = (await bundledSiteProvider().sites()).filter((s) => s.launches.length > 0);
+    expect(withinReach(sites, EXAMPLE_PLACE.coordinate, 1).length).toBeGreaterThan(0);
+  });
+});
+
+describe("offersExample", () => {
+  it("offers the example with no start", () => {
+    expect(offersExample({ stage: "needsStart", loaded: false, missing: 0, shownCount: 0 })).toBe(true);
+  });
+  it("offers the example when routing is done and nothing is in range", () => {
+    expect(offersExample({ stage: "ready", loaded: true, missing: 0, shownCount: 0 })).toBe(true);
+  });
+  it("waits while the forecast loads", () => {
+    expect(offersExample({ stage: "ready", loaded: false, missing: 0, shownCount: 0 })).toBe(false);
+  });
+  it("waits while locating or routing", () => {
+    expect(offersExample({ stage: "locating", loaded: true, missing: 0, shownCount: 0 })).toBe(false);
+    expect(offersExample({ stage: "routing", loaded: true, missing: 0, shownCount: 0 })).toBe(false);
+  });
+  it("doesn't offer it while in-range sites are still loading", () => {
+    expect(offersExample({ stage: "ready", loaded: true, missing: 2, shownCount: 0 })).toBe(false);
+  });
+  it("doesn't offer it when sites are shown", () => {
+    expect(offersExample({ stage: "ready", loaded: true, missing: 0, shownCount: 3 })).toBe(false);
   });
 });
 

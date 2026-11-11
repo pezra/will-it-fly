@@ -120,6 +120,32 @@ export function travelCandidates(
   );
 }
 
+/** The start the empty list offers, so someone with no start or no site in range can see it work. */
+export const EXAMPLE_PLACE: Place = {
+  name: "Boulder, Colorado",
+  coordinate: { latitude: 40.015, longitude: -105.27 },
+};
+
+/**
+ * Whether the list offers `EXAMPLE_PLACE`: with no start, or once the forecast has loaded with no
+ * site in range. `missing` is the in-range sites whose weather hasn't arrived; `shownCount` the
+ * sites listed.
+ */
+export function offersExample({
+  stage,
+  loaded,
+  missing,
+  shownCount,
+}: {
+  stage: TravelStage;
+  loaded: boolean;
+  missing: number;
+  shownCount: number;
+}): boolean {
+  if (stage === "needsStart") return true;
+  return loaded && stage === "ready" && missing === 0 && shownCount === 0;
+}
+
 /** What the `mode` list shows of the in-range sites, and what its hidden line counts. */
 export interface ListView {
   /** The in-range sites of the mode's kind, in the order given (rank order). */

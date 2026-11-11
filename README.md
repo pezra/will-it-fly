@@ -26,7 +26,7 @@ The drive time starts at 2 h from your location, with 1, 2, 3 or 4 h to choose f
 
 The forecast model is ECMWF or RRFS. The one you pick makes the call for every site, and the other checks it. The bar's summary line shows which is in use. The choice is in the link, so a link you share, Back and a reload all keep it, and your last choice is remembered on this device. RRFS only runs about 3½ days ahead, so with RRFS chosen the days beyond that use ECMWF, and the list and the site page say so.
 
-When sites are hidden, the list says how many (for example "3 sites hidden (over 2 h away)"). Each mode counts only its own kind of site. Widen the drive time to see them. Without a start point the list is empty and asks you to set one, since there is nothing to measure from.
+When sites are hidden, the list says how many (for example "3 sites hidden (over 2 h away)"). Each mode counts only its own kind of site. Widen the drive time to see them. Without a start point the list is empty and asks you to set one, since there is nothing to measure from. When the list is empty, because there is no start point or no site within the drive time, "See an example with sites" sets Boulder as the start point so you can see the app at work.
 
 Tap a site to see its launches, the hour by hour conditions from both models (the one making the call first), and the reasons for each hour's call. Refresh fetches a new forecast, unless the last one is under 5 minutes old. Each site's forecast is reused for an hour, and the age shown is that of the oldest one on screen.
 
