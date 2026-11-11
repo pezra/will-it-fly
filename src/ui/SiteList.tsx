@@ -45,6 +45,7 @@ export function SiteList({
   // With no start, a loaded result can only be a site page's own site, so it is not the list.
   const noStart = travel.stage === "needsStart" || travel.stage === "locating";
   if (state.status !== "loaded" || noStart) {
+    const today = denverDayKey(now());
     const message = stageMessage(travel.stage);
     return (
       <>
@@ -56,9 +57,9 @@ export function SiteList({
           travel={travel}
           model={model}
           setModel={setModel}
-          day={day}
-          today={denverDayKey(now())}
-          dayText={day === undefined ? undefined : dayLabel(day, denverDayKey(now()))}
+          routeDay={day}
+          shownDay={day}
+          today={today}
           openWhen={travel.stage === "needsStart"}
         />
         {state.status === "failed" || (state.status === "loading" && message === undefined) ? (
@@ -88,9 +89,9 @@ export function SiteList({
         travel={travel}
         model={model}
         setModel={setModel}
-        day={result.day}
+        routeDay={day}
+        shownDay={result.day}
         today={result.today}
-        dayText={dayLabel(result.day, result.today)}
       />
       {fallback !== undefined && !result.dayOver && <p class="note">{fallback}</p>}
       {/* Until routing is done and the in-range sites arrive the hidden count is wrong, so it waits. */}

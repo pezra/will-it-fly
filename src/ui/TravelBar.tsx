@@ -3,17 +3,20 @@ import { MODEL_LABEL, MODEL_NAMES } from "../core/scoring/hourEvaluator";
 import type { ModelName } from "../core/scoring/hourEvaluator";
 import type { DayKey } from "../core/time";
 import { DayPicker } from "./DayPicker";
-import { statusLine } from "./format";
+import { dayLabel, statusLine } from "./format";
 import { ModeToggle } from "./ModeToggle";
 import { RADIUS_CHOICES, radiusLabel, radiusMinutes } from "./travelSettings";
+import { placeStart } from "./useTravel";
 import type { Travel } from "./useTravel";
 
 const OPTIONS_ID = "travel-options";
 
 /**
  * The one bar for mode, day, start point, drive limit and forecast model: a status line that
- * expands to the controls. `day` is the shown day (the route's while loading, else the result's),
- * `dayText` its label (undefined while the default day isn't known) and `today` anchors the picker.
+ * expands to the controls. `routeDay` is the route's day (undefined on the default day) and is what
+ * the mode links keep; `shownDay` is the day on screen (the route's while loading, else the result's;
+ * undefined while the default day isn't known), labelled in the status line and marked in the picker.
+ * `today` anchors the picker and the label.
  * `openWhen` opens them when it turns true (no start yet, so the search is the next step); the user
  * can still close them. `model` is the route's model and `setModel` switches it.
  */
@@ -21,17 +24,17 @@ export function TravelBar({
   travel,
   model,
   setModel,
-  day,
+  routeDay,
+  shownDay,
   today,
-  dayText,
   openWhen = false,
 }: {
   travel: Travel;
   model: ModelName;
   setModel: (model: ModelName) => void;
-  day: DayKey | undefined;
+  routeDay: DayKey | undefined;
+  shownDay: DayKey | undefined;
   today: DayKey;
-  dayText: string | undefined;
   openWhen?: boolean;
 }) {
   const [open, setOpen] = useState(openWhen);
@@ -43,6 +46,7 @@ export function TravelBar({
   const startText = settings.start.kind === "place" ? settings.start.name : "";
   const [query, setQuery] = useState(startText);
   useEffect(() => setQuery(startText), [startText]);
+  const dayText = shownDay === undefined ? undefined : dayLabel(shownDay, today);
   const searching = searchState.status === "searching";
 
   return (
@@ -59,8 +63,8 @@ export function TravelBar({
       </button>
       {open && (
         <div id={OPTIONS_ID} class="travel-options">
-          <ModeToggle mode={travel.mode} day={day} model={model} />
-          <DayPicker today={today} shown={day} model={model} mode={travel.mode} />
+          <ModeToggle mode={travel.mode} day={routeDay} model={model} />
+          <DayPicker today={today} shown={shownDay} model={model} mode={travel.mode} />
           <div class="travel-radius" role="group" aria-label="Drive time">
             {RADIUS_CHOICES[travel.mode].map((choice) => (
               <button
@@ -89,13 +93,13 @@ export function TravelBar({
             class="travel-search"
             onSubmit={(event) => {
               event.preventDefault();
-              travel.search(query);
+              if (query !== startText) travel.search(query);
             }}
           >
             <input
               type="search"
               aria-label="Search for a starting place"
-              placeholder={settings.start.kind === "geolocation" ? "Your location" : "Search for a place"}
+              placeholder={settings.start.kind === "geolocation" && travel.effectiveStart !== undefined ? "Your location" : "Search for a place"}
               autocomplete="off"
               value={query}
               onInput={(event) => setQuery(event.currentTarget.value)}
@@ -111,6 +115,8 @@ export function TravelBar({
                   <button
                     type="button"
                     onClick={() => {
+                      const start = placeStart(place);
+                      if (start.kind === "place") setQuery(start.name);
                       travel.setPlace(place);
                     }}
                   >
