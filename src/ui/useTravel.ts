@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { SiteRecommendation } from "../core/recommendation/types";
-import type { Coordinate, Site } from "../core/sites/site";
-import { bundledSiteProvider } from "../core/sites/siteProvider";
+import type { Coordinate, Site, SiteKind } from "../core/sites/site";
 import { MINUTES_PER_HOUR } from "../core/units";
 import { applyTravel } from "../core/travel/applyTravel";
 import type { TravelTimes } from "../core/travel/applyTravel";
@@ -17,6 +16,7 @@ import { locate } from "./location";
 import type { LocationResult, LocationStatus } from "./location";
 import { localStorageStore } from "./storage";
 import { fetchTransportWithTimeout } from "./transport";
+import { useCatalog } from "./useCatalog";
 import {
   MAX_PLACE_NAME_LENGTH,
   loadTravelSettings,
@@ -102,21 +102,50 @@ export function placeStart(place: Place): TravelStart {
   return { kind: "place", name, coordinate: place.coordinate };
 }
 
+/**
+ * The sites to route for the `mode` list: the catalog's sites of that kind `withinReach` of `start`
+ * at the mode's radius, in catalog order.
+ */
+export function travelCandidates(
+  sites: readonly Site[],
+  mode: SiteKind,
+  start: Coordinate,
+  settings: TravelSettings,
+): Site[] {
+  return withinReach(
+    sites.filter((site) => site.kind === mode),
+    start,
+    radiusMinutes(settings, mode) / MINUTES_PER_HOUR,
+  );
+}
+
+/** What the `mode` list shows of the in-range sites, and what its hidden line counts. */
+export interface ListView {
+  /** The in-range sites of the mode's kind, in the order given (rank order). */
+  shown: SiteRecommendation[];
+  /** The mode's sites not shown, 0 without a start. */
+  hiddenCount: number;
+  /** How many sites of the mode's kind the catalog has. */
+  total: number;
+}
+
+/**
+ * The `mode` list's view of `shown`, the sites `applyTravel` kept: only the mode's kind, counted
+ * against the catalog `sites` of that kind. Without a start nothing is hidden.
+ */
+export function listView(
+  shown: readonly SiteRecommendation[],
+  mode: SiteKind,
+  sites: readonly Site[],
+  hasStart: boolean,
+): ListView {
+  const ofKind = shown.filter((rec) => rec.site.kind === mode);
+  const total = sites.filter((site) => site.kind === mode).length;
+  return { shown: ofKind, hiddenCount: hasStart ? total - ofKind.length : 0, total };
+}
+
 const routeTransport = fetchTransportWithTimeout(OSRM_TIMEOUT_MS);
 const geocodeTransport = fetchTransportWithTimeout(GEOCODE_TIMEOUT_MS);
-
-let catalog: Promise<Site[]> | undefined;
-
-/** The bundled catalog, read once. A failure is not kept, so the next call tries again. */
-function loadCatalog(): Promise<Site[]> {
-  catalog ??= bundledSiteProvider()
-    .sites()
-    .catch((error: unknown) => {
-      catalog = undefined;
-      throw error;
-    });
-  return catalog;
-}
 
 const NO_TIMES: ReadonlyMap<string, DriveTime> = new Map();
 
@@ -152,20 +181,7 @@ export function useTravel(debug: DebugParams): TravelPipeline {
     };
   }, [debug.noLocation, debug.location]);
 
-  const [sites, setSites] = useState<Site[] | undefined>(undefined);
-  useEffect(() => {
-    let cancelled = false;
-    loadCatalog().then(
-      (all) => {
-        if (!cancelled) setSites(all);
-      },
-      (error: unknown) => console.error("Could not read the site catalog", error),
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
+  const sites = useCatalog();
   const catalogIds = useMemo(() => sites && new Set(sites.map((s) => s.id)), [sites]);
 
   const effectiveStart = useMemo(

@@ -1,6 +1,6 @@
 import { isModelName } from "../core/scoring/hourEvaluator";
 import type { ModelName } from "../core/scoring/hourEvaluator";
-import type { SiteKind } from "../core/sites/site";
+import type { Site, SiteKind } from "../core/sites/site";
 import { isDayKey } from "../core/time";
 import type { DayKey } from "../core/time";
 
@@ -78,6 +78,15 @@ export function routeHref(route: Route, model: ModelName): string {
   return route.page === "site"
     ? siteHref(route.id, model, route.day)
     : listHref(model, route.mode, route.day);
+}
+
+/**
+ * The kind of site the page is about: a list's own mode, or on a site's page that site's kind from
+ * `catalog`. Fly for an id the catalog doesn't have, and until the catalog is read (undefined).
+ */
+export function activeMode(route: Route, catalog: readonly Site[] | undefined): SiteKind {
+  if (route.page === "list") return route.mode;
+  return catalog?.find((site) => site.id === route.id)?.kind ?? "flying";
 }
 
 /** A route that names its model, as the app uses it once the hash is canonical. */

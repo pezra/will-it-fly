@@ -77,7 +77,8 @@ export function App({ debug }: { debug: DebugParams }) {
     stage: travel.stage,
     inRangeIds: travel.inRangeIds,
   });
-  const recs = useRecommendations(debug, route.day, model, wanted);
+  // The route's mode, not the site's kind on its page: see `useRecommendations`.
+  const recs = useRecommendations(debug, route.day, model, route.page === "list" ? route.mode : undefined, wanted);
   const view = useTravelView(travel, recs);
   // Sets the hash, which pushes a history entry and fires `hashchange`, so Back undoes a switch.
   const setModel = (next: ModelName): void => {

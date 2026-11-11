@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { MODEL_NAMES } from "../../src/core/scoring/hourEvaluator";
 import type { ModelName } from "../../src/core/scoring/hourEvaluator";
-import { listHref, parseRoute, resolveRoute, routeHref, siteHref } from "../../src/ui/route";
+import { activeMode, listHref, parseRoute, resolveRoute, routeHref, siteHref } from "../../src/ui/route";
+import { testSite } from "../support/builders";
 
 const IDS = ["rmhpa/crested-butte", "a?b", "50%/off", "a?b/c%d", "plain", "a b&c=d#e"];
 
@@ -111,6 +112,26 @@ describe("kite routes", () => {
     expect(parseRoute("#/site/a%2Fb")).toEqual({ page: "site", id: "a/b" });
     expect(parseRoute("#/day/2026-11-12/site/a%2Fb")).toEqual({ page: "site", id: "a/b", day: "2026-11-12" });
     expect(parseRoute("#/site/a%2Fb")).not.toHaveProperty("mode");
+  });
+});
+
+describe("activeMode", () => {
+  const catalog = [testSite({ id: "fly" }), testSite({ id: "kite", kind: "kiting" })];
+
+  it("is the list's own mode, with or without the catalog", () => {
+    expect(activeMode({ page: "list", mode: "flying" }, catalog)).toBe("flying");
+    expect(activeMode({ page: "list", mode: "kiting" }, catalog)).toBe("kiting");
+    expect(activeMode({ page: "list", mode: "kiting", day: "2026-11-12" }, undefined)).toBe("kiting");
+  });
+  it("is the site's kind on a site's page", () => {
+    expect(activeMode({ page: "site", id: "kite" }, catalog)).toBe("kiting");
+    expect(activeMode({ page: "site", id: "kite", day: "2026-11-12", model: "rrfs" }, catalog)).toBe("kiting");
+    expect(activeMode({ page: "site", id: "fly" }, catalog)).toBe("flying");
+  });
+  it("is Fly for an unknown site and until the catalog is read", () => {
+    expect(activeMode({ page: "site", id: "nope" }, catalog)).toBe("flying");
+    expect(activeMode({ page: "site", id: "kite" }, undefined)).toBe("flying");
+    expect(activeMode({ page: "site", id: "kite" }, [])).toBe("flying");
   });
 });
 
