@@ -18,11 +18,13 @@ The list shows the sites within a drive time of your start point, in this order:
 
 Flyable sites show condition labels (Soar, XC or Sledder). A caution line in amber lists any cautions in the best window. See [Condition labels](#condition-labels).
 
-The start point and drive time are set in the bar under the day picker. It starts at 2 h from your location. Tap it to choose 1, 2, 3 or 4 h. You can also search for a town or address and start from there, and "Use my location" switches back to your location once a place is chosen. Start point and drive time are remembered on this device.
+The Fly / Kite buttons under the heading switch the list. Fly lists paragliding sites and never lists a kiting park. Kite lists only the parks for kiting (ground handling). Kiting sites are scored on surface wind and gusts only, by the rules in [Kiting sites](#kiting-sites), and an hour that works is labeled Kite. They show no rating. The mode is in the link, so a link to the Kite list opens in Kite mode, and Back and a reload keep it. Opening the app fresh, from the home screen icon too, starts in Fly. A site's page follows the site: a kiting park's page shows its ideal wind range, leaves out the cloud base and thermal index columns, and its back link goes to the Kite list.
+
+The start point and drive time are set in the bar under the day picker. It starts at 2 h from your location. Tap it to choose 1, 2, 3 or 4 h. Kite mode offers 15 min, 30 min or 1 h instead, and starts at 30 min. Each mode remembers its own drive time, and both use the same start point. You can also search for a town or address and start from there, and "Use my location" switches back to your location once a place is chosen. Start point and drive time are remembered on this device.
 
 The same bar has a Forecast model choice, ECMWF or RRFS. The one you pick makes the call for every site, and the other checks it. The bar's summary line shows which is in use, for example "Within 2 h of Boulder · RRFS". The choice is in the link, so a link you share, Back and a reload all keep it, and your last choice is remembered on this device. RRFS only runs about 3½ days ahead, so with RRFS chosen the days beyond that use ECMWF, and the list and the site page say so.
 
-When sites are hidden, the list says how many (for example "3 sites hidden (over 2 h away)"). Widen the drive time to see them. Without a start point the list is empty and asks you to set one, since there is nothing to measure from.
+When sites are hidden, the list says how many (for example "3 sites hidden (over 2 h away)"). Each mode counts only its own kind of site. Widen the drive time to see them. Without a start point the list is empty and asks you to set one, since there is nothing to measure from.
 
 Tap a site to see its launches, the hour by hour conditions from both models (the one making the call first), and the reasons for each hour's call. Refresh fetches a new forecast, unless the last one is under 5 minutes old. Each site's forecast is reused for an hour, and the age shown is that of the oldest one on screen.
 

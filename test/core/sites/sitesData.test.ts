@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { arcsContain } from "../../../src/core/sites/degreeArc";
-import type { Launch, Site, WindLimits } from "../../../src/core/sites/site";
+import { arcsContain, normalizedDegrees } from "../../../src/core/sites/degreeArc";
+import type { DegreeArc, Launch, Site, WindLimits } from "../../../src/core/sites/site";
 import { bundledSiteProvider, bundledSources } from "../../../src/core/sites/siteProvider";
 import rawSites from "../../../sites.json";
 
@@ -18,9 +18,22 @@ function inRange(x: number, lo: number, hi: number): boolean {
   return x >= lo && x <= hi;
 }
 
+function launchById(id: string): Launch {
+  const found = sites.flatMap((s) => s.launches).find((l) => l.id === id);
+  if (found === undefined) throw new Error(`no launch ${id}`);
+  return found;
+}
+
+/** The bearing halfway along an arc, going clockwise from `from` to `to`. */
+function arcMidpoint(arc: DegreeArc): number {
+  return normalizedDegrees(arc.from + normalizedDegrees(arc.to - arc.from) / 2);
+}
+
+const KITING_IDS = ["manual/circle-park", "manual/foothills-community-park", "manual/carstens-park"];
+
 describe("sites.json", () => {
-  it("hasAll35SitesWithUniqueIds", () => {
-    expect(sites.length).toBe(35);
+  it("hasAll38SitesWithUniqueIds", () => {
+    expect(sites.length).toBe(38);
     expect(new Set(sites.map((s) => s.id)).size).toBe(sites.length);
     const launchIds = sites.flatMap((s) => s.launches.map((l) => l.id));
     expect(new Set(launchIds).size).toBe(launchIds.length);
@@ -66,6 +79,10 @@ describe("sites.json", () => {
         expect(limits.minMph, site.id).toBeLessThan(limits.maxMph);
         if (limits.idealMph !== undefined) {
           expect(inRange(limits.idealMph, limits.minMph, limits.maxMph), site.id).toBe(true);
+        }
+        if (limits.idealMaxMph !== undefined) {
+          expect(limits.idealMph, site.id).toBeDefined();
+          expect(inRange(limits.idealMaxMph, limits.idealMph ?? 0, limits.maxMph), site.id).toBe(true);
         }
         if (limits.gustFactorMph !== undefined) {
           expect(limits.gustFactorMph, site.id).toBeGreaterThan(0);
@@ -186,6 +203,64 @@ describe("sites.json", () => {
     const tower = launch("bhgc/peavine-mt/tower").directions.ok;
     expect(arcsContain(tower, 90)).toBe(true);
     expect(arcsContain(tower, 9)).toBe(false);
+  });
+
+  it("kitingSitesAreTheThreeParks", () => {
+    expect(sites.filter((s) => s.kind === "kiting").map((s) => s.id).sort()).toEqual([...KITING_IDS].sort());
+    for (const site of sites) {
+      if (!KITING_IDS.includes(site.id)) expect(site.kind, site.id).toBe("flying");
+    }
+  });
+
+  it("kitingSitesHaveKitingLimitsAndNoSoaringOrXc", () => {
+    for (const site of sites.filter((s) => s.kind === "kiting")) {
+      expect(site.soaring, site.id).toBeUndefined();
+      expect(site.xc, site.id).toBeUndefined();
+      expect(site.rating, site.id).toBe("Unrated");
+      expect(site.launches.length, site.id).toBe(1);
+      for (const limits of allLimits(site)) {
+        expect(limits.idealMph, site.id).toBeDefined();
+        expect(limits.idealMaxMph, site.id).toBeDefined();
+        expect(limits.idealMaxMph ?? Infinity, site.id).toBeLessThanOrEqual(limits.maxMph);
+      }
+    }
+    // Curator-only fields aren't parsed, so this reads the raw JSON.
+    for (const site of rawSites.sites.filter((s) => "kind" in s && s.kind === "kiting")) {
+      expect(site.limitsSource, site.id).toBe("author");
+    }
+  });
+
+  // The author's directions from issue #14 (2026-11-11). Circle Park's arcs wrap through north.
+  it("kitingParkDirections", () => {
+    const circle = launchById("manual/circle-park/field").directions;
+    expect(arcsContain(circle.ok, 0)).toBe(true);
+    expect(arcsContain(circle.ok, 250)).toBe(true);
+    expect(arcsContain(circle.ok, 240)).toBe(false);
+    expect(arcsContain(circle.ok, 30)).toBe(false);
+    expect(arcsContain(circle.ideal, 300)).toBe(true);
+    expect(arcsContain(circle.ideal, 0)).toBe(true);
+    expect(arcsContain(circle.ideal, 260)).toBe(false);
+    const foothills = launchById("manual/foothills-community-park/field").directions;
+    expect(arcsContain(foothills.ok, 0)).toBe(true);
+    expect(arcsContain(foothills.ok, 100)).toBe(true);
+    expect(arcsContain(foothills.ok, 120)).toBe(false);
+    const carstens = launchById("manual/carstens-park/bowl").directions;
+    expect(arcsContain(carstens.ok, 200)).toBe(true);
+    expect(arcsContain(carstens.ok, 240)).toBe(false);
+  });
+
+  it("kitingIdealArcsSitInsideTheirOkArcs", () => {
+    for (const site of sites.filter((s) => s.kind === "kiting")) {
+      for (const launch of site.launches) {
+        const { ok, ideal } = launch.directions;
+        expect(ideal.length, launch.id).toBeGreaterThan(0);
+        for (const arc of ideal) {
+          expect(arcsContain(ok, arcMidpoint(arc)), launch.id).toBe(true);
+          expect(arcsContain(ok, arc.from), launch.id).toBe(true);
+          expect(arcsContain(ok, arc.to), launch.id).toBe(true);
+        }
+      }
+    }
   });
 
   it("lists only real launches under soaring, and Boulder and Golden are not ridge sites", () => {

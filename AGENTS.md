@@ -20,5 +20,5 @@ npm run check
 - A change to `SCORING_DEFAULTS` or to a scoring rule updates the "How sites are scored" section of `README.md` in the same commit.
 - Tests read fixtures with Vite's `?raw` import, not `node:fs`. Open-Meteo fixtures are re-recorded with the commands in `CONTRIBUTING.md`, never edited by hand.
 - `README.md` describes the app as it is now: usage, and how it decides which sites are flyable. No history or plans, except safety caveats.
-- No training hills or tow sites in `sites.json`. Adding sites follows the `add-sites` skill, `.agents/skills/add-sites/SKILL.md`.
+- No training hills or tow sites as flying sites in `sites.json`. Parks for ground handling go in as `"kind": "kiting"` sites. Adding sites follows the `add-sites` skill, `.agents/skills/add-sites/SKILL.md`.
 - A decision that would be costly to reverse gets an entry in `decisions.md`, as described in `CONTRIBUTING.md`.

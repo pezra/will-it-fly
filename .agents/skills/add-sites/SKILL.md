@@ -24,7 +24,16 @@ Follow the source's grouping, except:
 - Drive time uses a site's first launch. Launches far apart or with separate entrances are separate sites. Put the one nearest parking first.
 - `status` is per site, so a launch with its own closure is its own site.
 - A site's call comes from its best launch, so a launch with empty `ok` makes the whole site flyable in any wind. Keep uncurated launches out of curated sites.
-- Leave out training hills and tow sites.
+- Leave out training hills and tow sites as flying sites. A park for ground handling is a kiting site (below).
+
+## Kiting sites
+
+A kiting site is a park for ground handling. Add one only when the author gives it. It differs from a flying site in these ways:
+
+- `"kind": "kiting"` (after `name`) and `"rating": "Unrated"`.
+- `limits`: `{ "minMph": 5, "idealMph": 8, "idealMaxMph": 12, "maxMph": 18 }` with `"limitsSource": "author"`, unless the author gives others. Leave out `gustFactorMph`, which kiting doesn't read.
+- No `soaring` or `xc`. Kiting ignores them, and `sitesData.test.ts` rejects them.
+- One launch, on the field. The directions are the wind directions the author gives, not a slope's facing, so don't run the terrain script, and ask if they're missing.
 
 ## Launches
 
@@ -65,7 +74,7 @@ Pilot information first: closures, directions, hazards, access, camping. Then `C
 
 ## Tests and docs
 
-- `test/core/sites/sitesData.test.ts`: the count and the `closedSites` list. For a new source, `SOURCE_HOSTS` and the `hasCleanIds` regex. Add `arcsContain` checks for arcs that could go the wrong way and for judgment calls.
+- `test/core/sites/sitesData.test.ts`: the count, the `closedSites` list and, for a kiting site, `KITING_IDS`. For a new source, `SOURCE_HOSTS` and the `hasCleanIds` regex. Add `arcsContain` checks for arcs that could go the wrong way and for judgment calls.
 - New source: an entry in `sources` in sites.json (its id is the site id prefix, and its URL's host must match its sites' `sourceURL`s; the footer credits it by name), and "Sources" above.
 
 ## Verify
