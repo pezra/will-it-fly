@@ -2,23 +2,14 @@ import type { LaunchEvaluation } from "../core/recommendation/types";
 import { MODEL_LABEL } from "../core/scoring/hourEvaluator";
 import type { ModelName } from "../core/scoring/hourEvaluator";
 import { windowLabel } from "../core/scoring/windowFinder";
-import { effectiveLimits } from "../core/sites/site";
-import type { Launch, Site } from "../core/sites/site";
+import type { Site, SiteKind } from "../core/sites/site";
 import { ResultBadge } from "./CallBadge";
 import { ForecastStatus } from "./ForecastStatus";
-import { arcsLabel, cautionLine, confidenceLabel, dayLabel, driveLabel, feet, idealLabel, launchFallbackNote, miles, siteModel, sourceLabel } from "./format";
+import { arcsLabel, cautionLine, confidenceLabel, dayLabel, driveLabel, feet, idealLabel, launchFallbackNote, limitsLine, miles, siteModel, sourceLabel } from "./format";
 import { HourlyTable } from "./HourlyTable";
 import { listHref } from "./route";
 import type { DayKey } from "../core/time";
 import type { Recommendations } from "./useRecommendations";
-
-function limitsLine(site: Site, launch: Launch): string {
-  const l = effectiveLimits(site, launch);
-  const parts = [`${l.minMph}–${l.maxMph} mph`];
-  if (l.idealMph !== undefined) parts.push(`ideal ${l.idealMph} mph`);
-  parts.push(`gust factor ${l.gustFactorMph} mph`);
-  return parts.join(", ");
-}
 
 function LaunchSection({ site, evaluation }: { site: Site; evaluation: LaunchEvaluation }) {
   const { launch, window } = evaluation;
@@ -42,31 +33,34 @@ function LaunchSection({ site, evaluation }: { site: Site; evaluation: LaunchEva
         </dd>
       </dl>
       {evaluation.fellBack && <p class="note">{launchFallbackNote}</p>}
-      <HourlyTable evaluation={evaluation} />
+      <HourlyTable evaluation={evaluation} kind={site.kind} />
     </section>
   );
 }
 
 /**
  * `day` is the route's day, undefined for the default day, and `model` its model; the back link
- * keeps both. `catalogIds` is undefined until the catalog is read; only an id outside it is
+ * keeps both. `mode` is the site's kind (Fly until the catalog is read), and the back link goes
+ * to that mode's list. `catalogIds` is undefined until the catalog is read; only an id outside it is
  * "not found".
  */
 export function SiteDetail({
   siteId,
   day,
   model,
+  mode,
   recs,
   catalogIds,
 }: {
   siteId: string;
   day: DayKey | undefined;
   model: ModelName;
+  mode: SiteKind;
   recs: Recommendations;
   catalogIds: ReadonlySet<string> | undefined;
 }) {
   const { state } = recs;
-  const back = <a class="back" href={listHref(model, day)}>← All sites</a>;
+  const back = <a class="back" href={listHref(model, mode, day)}>← All sites</a>;
 
   if (catalogIds?.has(siteId) === false) {
     return (
@@ -110,8 +104,12 @@ export function SiteDetail({
       </p>
       {cautions !== undefined && <p class="row-caution">{cautions}</p>}
       <dl class="facts">
-        <dt>Rating</dt>
-        <dd>{site.rating}</dd>
+        {site.rating !== undefined && (
+          <>
+            <dt>Rating</dt>
+            <dd>{site.rating}</dd>
+          </>
+        )}
         <dt>Forecast model</dt>
         <dd>{MODEL_LABEL[siteModel(rec, state.result.model)]}</dd>
         {rec.driveTime !== undefined && (

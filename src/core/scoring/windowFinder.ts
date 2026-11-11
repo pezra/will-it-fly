@@ -24,7 +24,7 @@ export interface FlyingWindow {
   confidence: Confidence;
   /** The run's warning reasons, one per kind (the first occurrence), for the summary. */
   warnings: Reason[];
-  /** Soar and XC if any hour has them, else sledder. */
+  /** Soar and XC if any hour has them, else sledder. Kite at a kiting site. */
   conditions: HourCondition[];
   /** The run's caution reasons, one per kind (the first occurrence), most severe kind first. */
   cautions: Reason[];
@@ -83,7 +83,7 @@ function buildWindow(
 }
 
 function windowConditions(run: readonly HourResult[]): HourCondition[] {
-  const found = (["soar", "xc"] as const).filter((c) => run.some((h) => h.conditions.includes(c)));
+  const found = (["soar", "xc", "kite"] as const).filter((c) => run.some((h) => h.conditions.includes(c)));
   return found.length > 0 ? found : ["sledder"];
 }
 

@@ -2,6 +2,7 @@ import type { ModelHour } from "../core/forecast/models";
 import type { DaylightRow, LaunchEvaluation } from "../core/recommendation/types";
 import type { HourResult } from "../core/scoring/hourEvaluator";
 import { formatDenverTime } from "../core/time";
+import type { SiteKind } from "../core/sites/site";
 import { compass } from "../core/units";
 import { ResultBadge } from "./CallBadge";
 import { approxFeet, hourlyColumns, oneDecimal, whole } from "./format";
@@ -98,9 +99,9 @@ function Cell({ column, row }: { column: HourlyColumn; row: DaylightRow }) {
  * them, both named from the launch's model. Scrolls sideways on a phone with the time column
  * pinned. Reasons for each hour follow the table.
  */
-export function HourlyTable({ evaluation }: { evaluation: LaunchEvaluation }) {
+export function HourlyTable({ evaluation, kind }: { evaluation: LaunchEvaluation; kind: SiteKind }) {
   const { launch, daylight, model } = evaluation;
-  const columns = hourlyColumns(model);
+  const columns = hourlyColumns(model, kind);
   if (daylight.length === 0) return <p class="note">No daylight hours left in this forecast.</p>;
 
   return (
@@ -130,7 +131,9 @@ export function HourlyTable({ evaluation }: { evaluation: LaunchEvaluation }) {
           isMarked(row.check?.result, row.check?.hour)) && (
         <p class="note">† launch-height wind (interpolated from pressure levels)</p>
       )}
-      <p class="note">Cloud base is above launch, from temperature minus dewpoint. It runs high at launches well above model terrain.</p>
+      {columns.some((column) => column.value === "cloudBase") && (
+        <p class="note">Cloud base is above launch, from temperature minus dewpoint. It runs high at launches well above model terrain.</p>
+      )}
       <h4>Why, hour by hour</h4>
       <ul class="reasons">
         {daylight.map(({ time, primary }) => (

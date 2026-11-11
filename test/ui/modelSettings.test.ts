@@ -67,9 +67,17 @@ describe("loadDefaultModel and saveDefaultModel", () => {
 describe("switchModel", () => {
   it("saves the model and returns the route's hash with it", () => {
     const store = mapStore();
-    const hash = switchModel(store, { page: "list", model: "ecmwf" }, "rrfs");
+    const hash = switchModel(store, { page: "list", mode: "flying", model: "ecmwf" }, "rrfs");
     expect(hash).toBe("#/?model=rrfs");
     expect(loadDefaultModel(store)).toBe("rrfs");
+  });
+
+  it("keeps the Kite list and its day", () => {
+    const store = mapStore();
+    expect(switchModel(store, { page: "list", mode: "kiting", model: "ecmwf" }, "rrfs")).toBe("#/kite?model=rrfs");
+    expect(switchModel(store, { page: "list", mode: "kiting", day: "2026-11-12", model: "rrfs" }, "ecmwf")).toBe(
+      "#/kite/2026-11-12?model=ecmwf",
+    );
   });
 
   it("keeps the page and day of a site route", () => {
@@ -87,6 +95,6 @@ describe("switchModel", () => {
         throw new Error("full");
       },
     };
-    expect(switchModel(store, { page: "list" }, "rrfs")).toBe("#/?model=rrfs");
+    expect(switchModel(store, { page: "list", mode: "flying" }, "rrfs")).toBe("#/?model=rrfs");
   });
 });

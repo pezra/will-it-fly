@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { testLaunch, testSite } from "../support/builders";
 import type { LaunchEvaluation, SiteRecommendation } from "../../src/core/recommendation/types";
 import type { ModelName, Reason } from "../../src/core/scoring/hourEvaluator";
+import type { SiteKind } from "../../src/core/sites/site";
 import {
   CONDITION_LABEL,
   approxFeet,
@@ -20,13 +21,14 @@ import {
   hourlyColumns,
   idealLabel,
   launchFallbackNote,
+  limitsLine,
   loadingMoreLine,
   miles,
   oneDecimal,
   siteModel,
   sourceLabel,
   stageMessage,
-  travelSummary,
+  statusLine,
   whole,
 } from "../../src/ui/format";
 
@@ -121,6 +123,20 @@ describe("idealLabel", () => {
   });
 });
 
+describe("limitsLine", () => {
+  it("gives a flying site's limits with the gust factor", () => {
+    expect(limitsLine(testSite(), testLaunch())).toBe("5–18 mph, ideal 10 mph, gust factor 6 mph");
+  });
+  it("gives a flying site's ideal range when it has a top", () => {
+    const site = testSite({ limits: { minMph: 5, idealMph: 8, idealMaxMph: 12, maxMph: 18, gustFactorMph: 6 } });
+    expect(limitsLine(site, testLaunch())).toBe("5–18 mph, ideal 8–12 mph, gust factor 6 mph");
+  });
+  it("leaves the gust factor out of a kiting site", () => {
+    const site = testSite({ kind: "kiting", limits: { minMph: 5, idealMph: 8, idealMaxMph: 12, maxMph: 18 } });
+    expect(limitsLine(site, testLaunch())).toBe("5–18 mph, ideal 8–12 mph");
+  });
+});
+
 describe("driveLabel", () => {
   const route = (seconds: number) => ({ seconds, source: "route" as const });
   it("shows minutes under an hour and hours with leftover minutes", () => {
@@ -139,36 +155,55 @@ describe("driveLabel", () => {
   });
 });
 
-describe("travelSummary", () => {
+describe("statusLine", () => {
   const boulder = { latitude: 40.01, longitude: -105.27 };
   const place = { kind: "place" as const, name: "Boulder", coordinate: boulder };
   const here = { kind: "geolocation" as const };
-  it("names the place or your location, then the model", () => {
-    expect(travelSummary({ start: place, maxHours: 2 }, boulder, "found", "ecmwf")).toBe(
-      "Within 2 h of Boulder · ECMWF",
+  it("gives the day, Flying and its radius, then the model", () => {
+    expect(statusLine("Tomorrow", { start: place, maxHours: 2, kiteMinutes: 30 }, boulder, "found", "rrfs", "flying")).toBe(
+      "Tomorrow · Flying ≤ 2 h · RRFS",
     );
-    expect(travelSummary({ start: place, maxHours: 2 }, boulder, "found", "rrfs")).toBe(
-      "Within 2 h of Boulder · RRFS",
-    );
-    expect(travelSummary({ start: here, maxHours: 3 }, boulder, "found", "rrfs")).toBe(
-      "Within 3 h of your location · RRFS",
+    expect(statusLine("Today", { start: here, maxHours: 3, kiteMinutes: 30 }, boulder, "found", "ecmwf", "flying")).toBe(
+      "Today · Flying ≤ 3 h · ECMWF",
     );
   });
-  it("asks for a start when there is none, without the model", () => {
+  it("gives Kiting and the Kite radius in Kite mode", () => {
+    expect(statusLine("Today", { start: place, maxHours: 2, kiteMinutes: 30 }, boulder, "found", "ecmwf", "kiting")).toBe(
+      "Today · Kiting ≤ 30 min · ECMWF",
+    );
+    expect(statusLine("Today", { start: here, maxHours: 4, kiteMinutes: 60 }, boulder, "found", "rrfs", "kiting")).toBe(
+      "Today · Kiting ≤ 1 h · RRFS",
+    );
+  });
+  it("leaves out the day when it isn't known", () => {
+    expect(statusLine(undefined, { start: place, maxHours: 2, kiteMinutes: 30 }, boulder, "found", "rrfs", "flying")).toBe(
+      "Flying ≤ 2 h · RRFS",
+    );
+    expect(statusLine(undefined, { start: here, maxHours: 4, kiteMinutes: 15 }, boulder, "found", "ecmwf", "kiting")).toBe(
+      "Kiting ≤ 15 min · ECMWF",
+    );
+  });
+  it("asks for a start when there is none, without the day or model", () => {
     for (const model of ["ecmwf", "rrfs"] as const) {
-      expect(travelSummary({ start: here, maxHours: 2 }, undefined, "denied", model)).toBe(
-        "Set a starting point",
-      );
-      expect(travelSummary({ start: here, maxHours: 4 }, undefined, "unavailable", model)).toBe(
-        "Set a starting point",
-      );
+      for (const mode of ["flying", "kiting"] as const) {
+        for (const day of ["Today", undefined]) {
+          expect(statusLine(day, { start: here, maxHours: 2, kiteMinutes: 30 }, undefined, "denied", model, mode)).toBe(
+            "Set a starting point",
+          );
+          expect(statusLine(day, { start: here, maxHours: 4, kiteMinutes: 15 }, undefined, "unavailable", model, mode)).toBe(
+            "Set a starting point",
+          );
+        }
+      }
     }
   });
   it("says it is finding the location while geolocation is pending", () => {
     for (const model of ["ecmwf", "rrfs"] as const) {
-      expect(travelSummary({ start: here, maxHours: 2 }, undefined, "pending", model)).toBe(
-        "Finding your location…",
-      );
+      for (const mode of ["flying", "kiting"] as const) {
+        expect(statusLine("Today", { start: here, maxHours: 2, kiteMinutes: 30 }, undefined, "pending", model, mode)).toBe(
+          "Finding your location…",
+        );
+      }
     }
   });
 });
@@ -271,12 +306,13 @@ describe("launchFallbackNote", () => {
 });
 
 describe("hourlyColumns", () => {
-  const headers = (model: ModelName): string[] => hourlyColumns(model).map((c) => c.header);
-  const reads = (model: ModelName): string[] =>
-    hourlyColumns(model).map((c) => `${c.side ?? "-"}:${c.value}`);
+  const headers = (model: ModelName, kind: SiteKind): string[] =>
+    hourlyColumns(model, kind).map((c) => c.header);
+  const reads = (model: ModelName, kind: SiteKind): string[] =>
+    hourlyColumns(model, kind).map((c) => `${c.side ?? "-"}:${c.value}`);
 
   it("puts the primary model first when it is ECMWF", () => {
-    expect(headers("ecmwf")).toEqual([
+    expect(headers("ecmwf", "flying")).toEqual([
       "Time",
       "ECMWF",
       "Wind / gust / dir",
@@ -288,7 +324,7 @@ describe("hourlyColumns", () => {
     ]);
   });
   it("puts the primary model first when it is RRFS", () => {
-    expect(headers("rrfs")).toEqual([
+    expect(headers("rrfs", "flying")).toEqual([
       "Time",
       "RRFS",
       "Wind / gust / dir",
@@ -297,6 +333,24 @@ describe("hourlyColumns", () => {
       "CAPE J/kg",
       "Cloud base",
       "TI °C",
+    ]);
+  });
+  it("leaves out cloud base and TI at a kiting site, keeping CAPE", () => {
+    expect(headers("rrfs", "kiting")).toEqual([
+      "Time",
+      "RRFS",
+      "Wind / gust / dir",
+      "ECMWF",
+      "ECMWF wind / dir",
+      "CAPE J/kg",
+    ]);
+    expect(reads("rrfs", "kiting")).toEqual([
+      "-:time",
+      "primary:call",
+      "primary:wind",
+      "check:call",
+      "check:wind",
+      "primary:cape",
     ]);
   });
   it("reads the primary side for the call, the wind, CAPE, cloud base and TI, and the check side for the check", () => {
@@ -310,29 +364,35 @@ describe("hourlyColumns", () => {
       "primary:cloudBase",
       "primary:thermalIndex",
     ];
-    expect(reads("ecmwf")).toEqual(expected);
-    expect(reads("rrfs")).toEqual(expected);
+    expect(reads("ecmwf", "flying")).toEqual(expected);
+    expect(reads("rrfs", "flying")).toEqual(expected);
   });
   it("shows the gust only on the primary wind column", () => {
-    const withGust = hourlyColumns("rrfs").filter((c) => c.value === "wind" && c.withGust);
+    const withGust = hourlyColumns("rrfs", "flying").filter((c) => c.value === "wind" && c.withGust);
     expect(withGust.map((c) => c.side)).toEqual(["primary"]);
   });
 });
 
 describe("hiddenLine", () => {
   it("counts the hidden sites and follows the limit", () => {
-    expect(hiddenLine(3, 2)).toBe("3 sites hidden (over 2 h away)");
-    expect(hiddenLine(5, 4)).toBe("5 sites hidden (over 4 h away)");
+    expect(hiddenLine(3, "2 h")).toBe("3 sites hidden (over 2 h away)");
+    expect(hiddenLine(5, "4 h")).toBe("5 sites hidden (over 4 h away)");
   });
   it("uses the singular for one", () => {
-    expect(hiddenLine(1, 4)).toBe("1 site hidden (over 4 h away)");
+    expect(hiddenLine(1, "4 h")).toBe("1 site hidden (over 4 h away)");
   });
   it("says all are over the limit when nothing is left to show", () => {
-    expect(hiddenLine(21, 2, 21)).toBe("All 21 sites are over 2 h away");
-    expect(hiddenLine(1, 1, 1)).toBe("The only site is over 1 h away");
+    expect(hiddenLine(21, "2 h", 21)).toBe("All 21 sites are over 2 h away");
+    expect(hiddenLine(1, "1 h", 1)).toBe("The only site is over 1 h away");
   });
   it("keeps the count form when some are shown", () => {
-    expect(hiddenLine(3, 2, 21)).toBe("3 sites hidden (over 2 h away)");
+    expect(hiddenLine(3, "2 h", 21)).toBe("3 sites hidden (over 2 h away)");
+  });
+  it("names minutes for a Kite radius", () => {
+    expect(hiddenLine(2, "30 min")).toBe("2 sites hidden (over 30 min away)");
+    expect(hiddenLine(1, "15 min", 3)).toBe("1 site hidden (over 15 min away)");
+    expect(hiddenLine(3, "30 min", 3)).toBe("All 3 sites are over 30 min away");
+    expect(hiddenLine(1, "30 min", 1)).toBe("The only site is over 30 min away");
   });
 });
 
@@ -357,8 +417,8 @@ describe("loadingMoreLine", () => {
 });
 
 describe("CONDITION_LABEL", () => {
-  it("names the three conditions", () => {
-    expect(CONDITION_LABEL).toEqual({ soar: "Soar", xc: "XC", sledder: "Sledder" });
+  it("names the four conditions", () => {
+    expect(CONDITION_LABEL).toEqual({ soar: "Soar", xc: "XC", sledder: "Sledder", kite: "Kite" });
   });
 });
 
@@ -372,6 +432,7 @@ describe("callDisplay", () => {
       kind: "pills",
       conditions: ["sledder"],
     });
+    expect(callDisplay("good", ["kite"])).toEqual({ kind: "pills", conditions: ["kite"] });
   });
   it("falls back to a Sledder pill when conditions are missing or empty", () => {
     expect(callDisplay("good", undefined)).toEqual({ kind: "pills", conditions: ["sledder"] });

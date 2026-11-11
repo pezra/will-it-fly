@@ -508,6 +508,9 @@ describe("SCORING_DEFAULTS", () => {
       // Web-only: gusts warn instead of scoring (author, 2026-11-08). Swift has gustNoGoMph 25
       // and gustFactorPenalty 5, which the web dropped.
       highGustWarningFactorMultiple: 3,
+      // Web-only: kiting sites (approved 2026-11-11). Not in Swift.
+      kitingGustNoGoMph: 20,
+      kitingGustFactorCautionMph: 8,
       stormLookaheadHours: 2,
       stormCapeJkg: 200,
       baseScore: 50,

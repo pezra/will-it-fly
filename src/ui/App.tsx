@@ -1,16 +1,17 @@
 import { Fragment } from "preact";
-import { useEffect, useState } from "preact/hooks";
+import { useEffect, useMemo, useState } from "preact/hooks";
 import type { SiteSource } from "../core/sites/site";
 import { bundledSources } from "../core/sites/siteProvider";
 import { wantedSiteIds } from "../core/travel/inRange";
 import type { ModelName } from "../core/scoring/hourEvaluator";
 import type { DebugParams } from "./debugParams";
 import { loadDefaultModel, switchModel } from "./modelSettings";
-import { resolveRoute } from "./route";
+import { activeMode, resolveRoute } from "./route";
 import type { CanonicalRoute } from "./route";
 import { SiteDetail } from "./SiteDetail";
 import { SiteList } from "./SiteList";
 import { localStorageStore } from "./storage";
+import { useCatalog } from "./useCatalog";
 import { useRecommendations } from "./useRecommendations";
 import { useTravel, useTravelView } from "./useTravel";
 
@@ -68,16 +69,21 @@ function useHashRoute(): CanonicalRoute {
 export function App({ debug }: { debug: DebugParams }) {
   const route = useHashRoute();
   const { model } = route;
+  const catalog = useCatalog();
+  const catalogIds = useMemo(() => catalog && new Set(catalog.map((s) => s.id)), [catalog]);
+  // A list's own mode, else the site's kind on its page (Fly until the catalog is read).
+  const mode = activeMode(route, catalog);
   // Location, prefilter and drive times first; weather only for the sites they leave (or the
   // site page's own site, at once).
-  const travel = useTravel(debug);
+  const travel = useTravel(debug, catalog, mode);
   const wanted = wantedSiteIds({
     page: route.page,
     routeSiteId: route.page === "site" ? route.id : undefined,
     stage: travel.stage,
     inRangeIds: travel.inRangeIds,
   });
-  const recs = useRecommendations(debug, route.day, model, wanted);
+  // The route's mode, not the site's kind on its page: see `useRecommendations`.
+  const recs = useRecommendations(debug, route.day, model, route.page === "list" ? route.mode : undefined, wanted);
   const view = useTravelView(travel, recs);
   // Sets the hash, which pushes a history entry and fires `hashchange`, so Back undoes a switch.
   const setModel = (next: ModelName): void => {
@@ -88,7 +94,7 @@ export function App({ debug }: { debug: DebugParams }) {
     <>
       <main>
         {route.page === "site" ? (
-          <SiteDetail siteId={route.id} day={route.day} model={model} recs={view.recs} catalogIds={view.catalogIds} />
+          <SiteDetail siteId={route.id} day={route.day} model={model} mode={mode} recs={view.recs} catalogIds={catalogIds} />
         ) : (
           <SiteList travel={view} day={route.day} model={model} setModel={setModel} />
         )}

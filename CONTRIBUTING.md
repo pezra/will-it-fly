@@ -46,7 +46,7 @@ Tests read fixture files with Vite's `?raw` import rather than `node:fs`.
 
 ## Running it
 
-`npm run dev` serves the app at http://localhost:5173/. The hash picks the page: `#/` and `#/site/<id>` are the default day, and `#/day/YYYY-MM-DD` and `#/day/YYYY-MM-DD/site/<id>` are that day. Every hash ends in `?model=ecmwf` or `?model=rrfs`, the primary forecast model. One with no model, or a bad one, is rewritten in place (no history entry) to the saved default, which is ECMWF until someone uses the model control. Only the control saves the default; opening a link with a model never does. Dev builds honor a few query parameters for checking states by hand. Production builds ignore them.
+`npm run dev` serves the app at http://localhost:5173/. The hash picks the page: `#/` and `#/site/<id>` are the default day, and `#/day/YYYY-MM-DD` and `#/day/YYYY-MM-DD/site/<id>` are that day. `#/kite` and `#/kite/YYYY-MM-DD` are the same lists in Kite mode, which shows only kiting sites. Every other list is Fly mode, and a site's page has no mode in its hash, since it follows the site's `kind`. Every hash ends in `?model=ecmwf` or `?model=rrfs`, the primary forecast model. One with no model, or a bad one, is rewritten in place (no history entry) to the saved default, which is ECMWF until someone uses the model control. Only the control saves the default; opening a link with a model never does. Dev builds honor a few query parameters for checking states by hand. Production builds ignore them.
 
 | Parameter | Effect |
 |---|---|
@@ -63,11 +63,11 @@ The service worker only registers in production builds. To try it, run `npm run 
 The UI loads things in this order, and each step narrows what the next one asks for:
 
 1. The location (or the place the user chose). With no start point nothing else loads.
-2. `withinReach`: sites farther than 80 mph times the chosen hours in a straight line are dropped.
+2. `withinReach`: sites of the other kind, and sites farther than 80 mph times the chosen drive time in a straight line, are dropped.
 3. OSRM drive times for the sites left. Only the sites with no time for this start are asked for, so narrowing the radius asks for nothing and widening asks for the new sites only.
 4. Weather, only for the sites within the drive time. A site's detail page loads just its own site at once, without waiting for 1 to 3.
 
-Only the in-range sites' launch coordinates go to Open-Meteo, and the rounded start point goes only to OSRM. Forecasts are cached per site in `will-it-fly/forecast-v2` in localStorage, keeping the 30 most recently used sites (about 2 MB). Each entry has its own fetch time, so a changed radius fetches only the sites with no fresh entry. The old `forecast-v1` entries are deleted when the cache is created. The radius choices are 1 to 4 h; there is no unlimited option.
+Only the in-range sites' launch coordinates go to Open-Meteo, and the rounded start point goes only to OSRM. Forecasts are cached per site in `will-it-fly/forecast-v2` in localStorage, keeping the 30 most recently used sites (about 2 MB). Each entry has its own fetch time, so a changed radius fetches only the sites with no fresh entry. The old `forecast-v1` entries are deleted when the cache is created. The radius choices are 1 to 4 h in Fly mode and 15 min, 30 min or 1 h in Kite mode, each remembered apart from the other; there is no unlimited option.
 
 ## Scoring
 
@@ -84,7 +84,9 @@ The rules are in `src/core/scoring/hourEvaluator.ts`, and every threshold and we
 
 Sites live in `sites.json`, curated by hand from the guides in its `sources` list. Each source has an `id`, a `name` the footer credits it by, and a `url` whose host matches its sites' `sourceURL`s. The `manual` source is for sites the author added directly. `parseSites` validates the file when it loads, and `test/core/sites/sitesData.test.ts` checks it for plausible values.
 
-Each site has an `id` (`<source>/<slug>`, where the source is a `sources` id), `name`, `sourceURL`, `rating`, `status` (`{"state": "open"}` or `{"state": "closed", "reason": "..."}`), site-level PG `limits` in mph (`minMph`, `idealMph`, `maxMph`, `gustFactorMph`), optional `notes`, and `launches`. Each launch has an `id` (`<site id>/<slug>`), `name`, `coordinate`, `elevationFt`, `directions` and optional `limits` that replace the site's.
+Each site has an `id` (`<source>/<slug>`, where the source is a `sources` id), `name`, optional `kind`, `sourceURL`, optional `rating`, `status` (`{"state": "open"}` or `{"state": "closed", "reason": "..."}`), site-level PG `limits` in mph (`minMph`, `idealMph`, `idealMaxMph`, `maxMph`, `gustFactorMph`), optional `notes`, and `launches`. Each launch has an `id` (`<site id>/<slug>`), `name`, `coordinate`, `elevationFt`, `directions` and optional `limits` that replace the site's.
+
+`kind` is `"flying"` (the default, so most sites leave it out) or `"kiting"`. A kiting site is a park for ground handling. It is scored on surface wind and gusts only, listed only in Kite mode, and has no `soaring` or `xc`. It has no `rating`, which is optional, and the app shows none. `idealMaxMph`, which needs `idealMph` and can't be below it, makes the ideal speed a range, `idealMph` to `idealMaxMph`. Kiting sites use `{ "minMph": 5, "idealMph": 8, "idealMaxMph": 12, "maxMph": 18 }`. `parseSites` rejects any other `kind`.
 
 `directions` holds `ok` and `ideal` lists of arcs, `{"from": 250, "to": 310}` in degrees clockwise. An arc can wrap through north (`{"from": 337.5, "to": 135}`). An empty `ok` means the direction isn't curated, and the launch is then always flyable at best. An empty `ideal` means anywhere in `ok` counts as ideal.
 

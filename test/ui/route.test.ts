@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { MODEL_NAMES } from "../../src/core/scoring/hourEvaluator";
 import type { ModelName } from "../../src/core/scoring/hourEvaluator";
-import { listHref, parseRoute, resolveRoute, routeHref, siteHref } from "../../src/ui/route";
+import { activeMode, listHref, parseRoute, resolveRoute, routeHref, siteHref } from "../../src/ui/route";
+import { testSite } from "../support/builders";
 
 const IDS = ["rmhpa/crested-butte", "a?b", "50%/off", "a?b/c%d", "plain", "a b&c=d#e"];
 
@@ -12,9 +13,9 @@ describe("route", () => {
     expect(parseRoute(href)).toEqual({ page: "site", id: "rmhpa/crested-butte", model: "ecmwf" });
   });
   it("round-trips a day", () => {
-    expect(listHref("rrfs", "2026-11-10")).toBe("#/day/2026-11-10?model=rrfs");
-    expect(parseRoute("#/day/2026-11-10")).toEqual({ page: "list", day: "2026-11-10" });
-    expect(parseRoute("#/day/2026-11-10/")).toEqual({ page: "list", day: "2026-11-10" });
+    expect(listHref("rrfs", "flying", "2026-11-10")).toBe("#/day/2026-11-10?model=rrfs");
+    expect(parseRoute("#/day/2026-11-10")).toEqual({ page: "list", mode: "flying", day: "2026-11-10" });
+    expect(parseRoute("#/day/2026-11-10/")).toEqual({ page: "list", mode: "flying", day: "2026-11-10" });
     const href = siteHref("rmhpa/crested-butte", "rrfs", "2026-11-10");
     expect(href).toBe("#/day/2026-11-10/site/rmhpa%2Fcrested-butte?model=rrfs");
     expect(parseRoute(href)).toEqual({
@@ -25,19 +26,26 @@ describe("route", () => {
     });
   });
   it("falls back to the default day's list", () => {
-    expect(listHref("ecmwf")).toBe("#/?model=ecmwf");
-    expect(parseRoute("")).toEqual({ page: "list" });
-    expect(parseRoute("#/")).toEqual({ page: "list" });
-    expect(parseRoute("#/site/%E0%A4%A")).toEqual({ page: "list" });
-    expect(parseRoute("#/day/2026-02-30")).toEqual({ page: "list" });
-    expect(parseRoute("#/day/tomorrow")).toEqual({ page: "list" });
-    expect(parseRoute("#/day/2026-02-30/site/x")).toEqual({ page: "list" });
-    expect(parseRoute("#/elsewhere")).toEqual({ page: "list" });
+    expect(listHref("ecmwf", "flying")).toBe("#/?model=ecmwf");
+    expect(parseRoute("")).toEqual({ page: "list", mode: "flying" });
+    expect(parseRoute("#/")).toEqual({ page: "list", mode: "flying" });
+    expect(parseRoute("#/site/%E0%A4%A")).toEqual({ page: "list", mode: "flying" });
+    expect(parseRoute("#/day/2026-02-30")).toEqual({ page: "list", mode: "flying" });
+    expect(parseRoute("#/day/tomorrow")).toEqual({ page: "list", mode: "flying" });
+    expect(parseRoute("#/day/2026-02-30/site/x")).toEqual({ page: "list", mode: "flying" });
+    expect(parseRoute("#/elsewhere")).toEqual({ page: "list", mode: "flying" });
   });
   it("round-trips every model, with and without a day, for lists and sites", () => {
     for (const model of MODEL_NAMES) {
-      expect(parseRoute(listHref(model))).toEqual({ page: "list", model });
-      expect(parseRoute(listHref(model, "2026-11-10"))).toEqual({ page: "list", day: "2026-11-10", model });
+      for (const mode of ["flying", "kiting"] as const) {
+        expect(parseRoute(listHref(model, mode))).toEqual({ page: "list", mode, model });
+        expect(parseRoute(listHref(model, mode, "2026-11-10"))).toEqual({
+          page: "list",
+          mode,
+          day: "2026-11-10",
+          model,
+        });
+      }
       for (const id of IDS) {
         expect(parseRoute(siteHref(id, model))).toEqual({ page: "site", id, model });
         expect(parseRoute(siteHref(id, model, "2026-11-10"))).toEqual({
@@ -51,27 +59,91 @@ describe("route", () => {
   });
   it("reads a bad or missing model as undefined", () => {
     for (const hash of ["#/?model=RRFS", "#/?model=", "#/?model=foo", "#/?model", "#/?x=1", "#/?"]) {
-      expect(parseRoute(hash)).toEqual({ page: "list" });
+      expect(parseRoute(hash)).toEqual({ page: "list", mode: "flying" });
       expect(parseRoute(hash).model).toBeUndefined();
     }
     expect(parseRoute("#/site/x")).toEqual({ page: "site", id: "x" });
     expect(parseRoute("#/site/x?model=nope").model).toBeUndefined();
   });
   it("keeps the link's model when the path is not a route", () => {
-    expect(parseRoute("#/elsewhere?model=rrfs")).toEqual({ page: "list", model: "rrfs" });
-    expect(parseRoute("#/day/2026-02-30?model=rrfs")).toEqual({ page: "list", model: "rrfs" });
-    expect(parseRoute("#/site/%E0%A4%A?model=rrfs")).toEqual({ page: "list", model: "rrfs" });
+    expect(parseRoute("#/elsewhere?model=rrfs")).toEqual({ page: "list", mode: "flying", model: "rrfs" });
+    expect(parseRoute("#/day/2026-02-30?model=rrfs")).toEqual({ page: "list", mode: "flying", model: "rrfs" });
+    expect(parseRoute("#/site/%E0%A4%A?model=rrfs")).toEqual({ page: "list", mode: "flying", model: "rrfs" });
   });
   it("reads the model from among other parameters", () => {
-    expect(parseRoute("#/?x=1&model=rrfs&y=2")).toEqual({ page: "list", model: "rrfs" });
+    expect(parseRoute("#/?x=1&model=rrfs&y=2")).toEqual({ page: "list", mode: "flying", model: "rrfs" });
+  });
+});
+
+describe("kite routes", () => {
+  it("reads #/kite and #/kite/ as the Kite list for the default day", () => {
+    expect(parseRoute("#/kite")).toEqual({ page: "list", mode: "kiting" });
+    expect(parseRoute("#/kite/")).toEqual({ page: "list", mode: "kiting" });
+  });
+  it("reads #/kite/<date> as the Kite list for that day", () => {
+    expect(parseRoute("#/kite/2026-11-12")).toEqual({ page: "list", mode: "kiting", day: "2026-11-12" });
+    expect(parseRoute("#/kite/2026-11-12/")).toEqual({ page: "list", mode: "kiting", day: "2026-11-12" });
+  });
+  it("falls back to the Kite list for the default day when the date is bad", () => {
+    expect(parseRoute("#/kite/nope")).toEqual({ page: "list", mode: "kiting" });
+    expect(parseRoute("#/kite/2026-02-30")).toEqual({ page: "list", mode: "kiting" });
+    expect(parseRoute("#/kite/nope?model=rrfs")).toEqual({ page: "list", mode: "kiting", model: "rrfs" });
+  });
+  it("reads the model from the query", () => {
+    expect(parseRoute("#/kite?model=rrfs")).toEqual({ page: "list", mode: "kiting", model: "rrfs" });
+    expect(parseRoute("#/kite/2026-11-12?model=rrfs")).toEqual({
+      page: "list",
+      mode: "kiting",
+      day: "2026-11-12",
+      model: "rrfs",
+    });
+    expect(parseRoute("#/kite?model=foo").model).toBeUndefined();
+  });
+  it("does not take other paths that start with kite", () => {
+    expect(parseRoute("#/kites")).toEqual({ page: "list", mode: "flying" });
+    expect(parseRoute("#/kite/2026-11-12/site/x")).toEqual({ page: "list", mode: "flying" });
+    expect(parseRoute("#/day/2026-11-12/kite")).toEqual({ page: "list", mode: "flying" });
+  });
+  it("gives the Kite hrefs", () => {
+    expect(listHref("ecmwf", "kiting")).toBe("#/kite?model=ecmwf");
+    expect(listHref("rrfs", "kiting", "2026-11-12")).toBe("#/kite/2026-11-12?model=rrfs");
+  });
+  it("keeps site routes without a mode", () => {
+    expect(parseRoute("#/site/a%2Fb")).toEqual({ page: "site", id: "a/b" });
+    expect(parseRoute("#/day/2026-11-12/site/a%2Fb")).toEqual({ page: "site", id: "a/b", day: "2026-11-12" });
+    expect(parseRoute("#/site/a%2Fb")).not.toHaveProperty("mode");
+  });
+});
+
+describe("activeMode", () => {
+  const catalog = [testSite({ id: "fly" }), testSite({ id: "kite", kind: "kiting" })];
+
+  it("is the list's own mode, with or without the catalog", () => {
+    expect(activeMode({ page: "list", mode: "flying" }, catalog)).toBe("flying");
+    expect(activeMode({ page: "list", mode: "kiting" }, catalog)).toBe("kiting");
+    expect(activeMode({ page: "list", mode: "kiting", day: "2026-11-12" }, undefined)).toBe("kiting");
+  });
+  it("is the site's kind on a site's page", () => {
+    expect(activeMode({ page: "site", id: "kite" }, catalog)).toBe("kiting");
+    expect(activeMode({ page: "site", id: "kite", day: "2026-11-12", model: "rrfs" }, catalog)).toBe("kiting");
+    expect(activeMode({ page: "site", id: "fly" }, catalog)).toBe("flying");
+  });
+  it("is Fly for an unknown site and until the catalog is read", () => {
+    expect(activeMode({ page: "site", id: "nope" }, catalog)).toBe("flying");
+    expect(activeMode({ page: "site", id: "kite" }, undefined)).toBe("flying");
+    expect(activeMode({ page: "site", id: "kite" }, [])).toBe("flying");
   });
 });
 
 describe("routeHref", () => {
   it("gives the route's page and day with the given model, ignoring the route's own", () => {
-    expect(routeHref({ page: "list" }, "rrfs")).toBe("#/?model=rrfs");
-    expect(routeHref({ page: "list", day: "2026-11-10", model: "ecmwf" }, "rrfs")).toBe(
+    expect(routeHref({ page: "list", mode: "flying" }, "rrfs")).toBe("#/?model=rrfs");
+    expect(routeHref({ page: "list", mode: "flying", day: "2026-11-10", model: "ecmwf" }, "rrfs")).toBe(
       "#/day/2026-11-10?model=rrfs",
+    );
+    expect(routeHref({ page: "list", mode: "kiting", model: "ecmwf" }, "rrfs")).toBe("#/kite?model=rrfs");
+    expect(routeHref({ page: "list", mode: "kiting", day: "2026-11-10", model: "ecmwf" }, "rrfs")).toBe(
+      "#/kite/2026-11-10?model=rrfs",
     );
     expect(routeHref({ page: "site", id: "a/b", day: "2026-11-10", model: "rrfs" }, "ecmwf")).toBe(
       "#/day/2026-11-10/site/a%2Fb?model=ecmwf",
@@ -90,6 +162,8 @@ describe("resolveRoute's rewrite", () => {
     expect(canonicalHash("", "ecmwf")).toBe("#/?model=ecmwf");
     expect(canonicalHash("", "rrfs")).toBe("#/?model=rrfs");
     expect(canonicalHash("#/site/x", "rrfs")).toBe("#/site/x?model=rrfs");
+    expect(canonicalHash("#/kite", "ecmwf")).toBe("#/kite?model=ecmwf");
+    expect(canonicalHash("#/kite/2026-11-12", "rrfs")).toBe("#/kite/2026-11-12?model=rrfs");
   });
   it("leaves a hash that names a model alone", () => {
     expect(canonicalHash("#/?model=rrfs", "ecmwf")).toBeUndefined();
@@ -109,6 +183,9 @@ describe("resolveRoute's rewrite", () => {
     expect(canonicalHash("#/day/2026-11-11/?model=rrfs", "ecmwf")).toBe("#/day/2026-11-11?model=rrfs");
     expect(canonicalHash("#/elsewhere?model=rrfs", "ecmwf")).toBe("#/?model=rrfs");
     expect(canonicalHash("#/site/a%2fb?model=rrfs", "ecmwf")).toBe("#/site/a%2Fb?model=rrfs");
+    expect(canonicalHash("#/kite/?model=rrfs", "ecmwf")).toBe("#/kite?model=rrfs");
+    expect(canonicalHash("#/kite/2026-11-12/?model=rrfs", "ecmwf")).toBe("#/kite/2026-11-12?model=rrfs");
+    expect(canonicalHash("#/kite/nope?model=rrfs", "ecmwf")).toBe("#/kite?model=rrfs");
   });
   it("keeps an id with ?, / and % intact", () => {
     for (const model of MODEL_NAMES) {
@@ -136,6 +213,11 @@ describe("resolveRoute's rewrite", () => {
       "#/?model=",
       "#/?model=RRFS",
       "#/site/x",
+      "#/kite",
+      "#/kite/",
+      "#/kite/2026-11-12/?model=rrfs",
+      "#/kite/nope",
+      "#/kite?model=foo",
     ];
     for (const h of inputs) {
       for (const d of MODEL_NAMES) {
@@ -147,8 +229,18 @@ describe("resolveRoute's rewrite", () => {
 
 describe("resolveRoute", () => {
   it("gives a missing or bad model the default, with a rewrite", () => {
-    expect(resolveRoute("#/", "rrfs")).toEqual({ route: { page: "list", model: "rrfs" }, rewrite: "#/?model=rrfs" });
-    expect(resolveRoute("", "ecmwf")).toEqual({ route: { page: "list", model: "ecmwf" }, rewrite: "#/?model=ecmwf" });
+    expect(resolveRoute("#/", "rrfs")).toEqual({
+      route: { page: "list", mode: "flying", model: "rrfs" },
+      rewrite: "#/?model=rrfs",
+    });
+    expect(resolveRoute("", "ecmwf")).toEqual({
+      route: { page: "list", mode: "flying", model: "ecmwf" },
+      rewrite: "#/?model=ecmwf",
+    });
+    expect(resolveRoute("#/kite", "ecmwf")).toEqual({
+      route: { page: "list", mode: "kiting", model: "ecmwf" },
+      rewrite: "#/kite?model=ecmwf",
+    });
     expect(resolveRoute("#/day/2026-11-11/site/a%2Fb?model=RRFS", "rrfs")).toEqual({
       route: { page: "site", id: "a/b", day: "2026-11-11", model: "rrfs" },
       rewrite: "#/day/2026-11-11/site/a%2Fb?model=rrfs",
@@ -156,7 +248,7 @@ describe("resolveRoute", () => {
   });
   it("keeps the link's model over the default", () => {
     expect(resolveRoute("#/elsewhere?model=rrfs", "ecmwf")).toEqual({
-      route: { page: "list", model: "rrfs" },
+      route: { page: "list", mode: "flying", model: "rrfs" },
       rewrite: "#/?model=rrfs",
     });
     expect(resolveRoute("#/site/x?model=ecmwf&x=1", "rrfs")).toEqual({
@@ -166,11 +258,25 @@ describe("resolveRoute", () => {
   });
   it("gives no rewrite for a canonical hash", () => {
     const resolved = resolveRoute("#/day/2026-11-11?model=rrfs", "ecmwf");
-    expect(resolved).toEqual({ route: { page: "list", day: "2026-11-11", model: "rrfs" } });
+    expect(resolved).toEqual({ route: { page: "list", mode: "flying", day: "2026-11-11", model: "rrfs" } });
     expect("rewrite" in resolved).toBe(false);
+    const kite = resolveRoute("#/kite/2026-11-11?model=rrfs", "ecmwf");
+    expect(kite).toEqual({ route: { page: "list", mode: "kiting", day: "2026-11-11", model: "rrfs" } });
+    expect("rewrite" in kite).toBe(false);
   });
   it("always gives a route with a model, the one its rewrite names", () => {
-    const hashes = ["", "#/", "#/?model=", "#/site/x", "#/day/2026-02-30", "#/site/%E0%A4%A", "#/?model=rrfs"];
+    const hashes = [
+      "",
+      "#/",
+      "#/?model=",
+      "#/site/x",
+      "#/day/2026-02-30",
+      "#/site/%E0%A4%A",
+      "#/?model=rrfs",
+      "#/kite",
+      "#/kite/nope",
+      "#/kite/2026-11-12?model=rrfs",
+    ];
     for (const hash of hashes) {
       for (const d of MODEL_NAMES) {
         const { route, rewrite } = resolveRoute(hash, d);

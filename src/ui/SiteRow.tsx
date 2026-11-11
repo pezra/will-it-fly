@@ -42,7 +42,7 @@ export function SiteRow({
           <ResultBadge call={rec.call} conditions={best?.window.conditions} />
         </div>
         <div class="row-meta">
-          <span>{site.rating}</span>
+          {site.rating !== undefined && <span>{site.rating}</span>}
           {distance !== undefined && <span>{distance}</span>}
           {best !== undefined && (
             <>

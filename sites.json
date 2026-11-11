@@ -1,5 +1,5 @@
 {
-  "curatedOn": "2026-11-10",
+  "curatedOn": "2026-11-11",
   "sources": [
     { "id": "rmhpa", "name": "RMHPA", "url": "https://www.rmhpa.org/" },
     { "id": "pawnee", "name": "pawneeparagliding.com", "url": "https://pawneeparagliding.com/" },
@@ -1134,6 +1134,78 @@
           "directions": {
             "ok": [ { "from": 225, "to": 315 } ],
             "ideal": [ { "from": 255, "to": 285 } ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "manual/circle-park",
+      "name": "Circle Park",
+      "kind": "kiting",
+      "sourceURL": "https://github.com/pezra/will-it-fly/blob/main/sites.json",
+      "notes": "An open park with a view of the mountains. The berm on the south side can be used for short glides in stronger north wind. Beware of rotor off the buildings to the south and the trees to the east of the park. Curation notes: added by the author (issue #14, 2026-11-11) as a kiting site for ground handling. The author gave the name, the notes above, the directions (ideal W-N, ok WSW-NNE) and the wind limits (5-18 mph, ideal 8-12 mph). The pin is the park's position in OpenStreetMap, where it is named Circle Point Park, and the author confirmed it. Both arcs wrap through north. Kiting sites don't use the gust factor, so none is set. Elevation from Open-Meteo.",
+      "status": { "state": "open" },
+      "limits": { "minMph": 5, "idealMph": 8, "idealMaxMph": 12, "maxMph": 18 },
+      "limitsSource": "author",
+      "launches": [
+        {
+          "id": "manual/circle-park/field",
+          "name": "Field",
+          "coordinate": { "latitude": 39.8972, "longitude": -105.0743 },
+          "elevationFt": 5374,
+          "elevationSource": "open-meteo",
+          "directionsSource": "author: ideal W-N, ok WSW-NNE",
+          "directions": {
+            "ok": [ { "from": 247.5, "to": 22.5 } ],
+            "ideal": [ { "from": 270, "to": 0 } ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "manual/foothills-community-park",
+      "name": "Foothills Community Park",
+      "kind": "kiting",
+      "sourceURL": "https://github.com/pezra/will-it-fly/blob/main/sites.json",
+      "notes": "The park is right next to the mountains. It is the landing zone for Wonderland launches, so watch for pilots landing. Curation notes: added by the author (issue #14, 2026-11-11) as a kiting site for ground handling. The author gave the name, the notes above, the directions (ideal ENE-ESE, ok N-ESE) and the wind limits (5-18 mph, ideal 8-12 mph). The pin is the park's position in OpenStreetMap, and the author confirmed it. Kiting sites don't use the gust factor, so none is set. Elevation from Open-Meteo.",
+      "status": { "state": "open" },
+      "limits": { "minMph": 5, "idealMph": 8, "idealMaxMph": 12, "maxMph": 18 },
+      "limitsSource": "author",
+      "launches": [
+        {
+          "id": "manual/foothills-community-park/field",
+          "name": "Field",
+          "coordinate": { "latitude": 40.057, "longitude": -105.2895 },
+          "elevationFt": 5604,
+          "elevationSource": "open-meteo",
+          "directionsSource": "author: ideal ENE-ESE, ok N-ESE",
+          "directions": {
+            "ok": [ { "from": 0, "to": 112.5 } ],
+            "ideal": [ { "from": 67.5, "to": 112.5 } ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "manual/carstens-park",
+      "name": "Gary A. Carstens Park",
+      "kind": "kiting",
+      "sourceURL": "https://github.com/pezra/will-it-fly/blob/main/sites.json",
+      "notes": "There is a bowl behind the fire station that works well. Curation notes: added by the author (issue #14, 2026-11-11) as a kiting site for ground handling. The author gave the name, the note above, the directions (ideal E-S, ok E-SW) and the wind limits (5-18 mph, ideal 8-12 mph). The issue places the park in Denver, but OpenStreetMap has it in Federal Heights. The pin is the park's position in OpenStreetMap, and the author confirmed it. Kiting sites don't use the gust factor, so none is set. Elevation from Open-Meteo.",
+      "status": { "state": "open" },
+      "limits": { "minMph": 5, "idealMph": 8, "idealMaxMph": 12, "maxMph": 18 },
+      "limitsSource": "author",
+      "launches": [
+        {
+          "id": "manual/carstens-park/bowl",
+          "name": "Bowl",
+          "coordinate": { "latitude": 39.8572, "longitude": -105.0179 },
+          "elevationFt": 5436,
+          "elevationSource": "open-meteo",
+          "directionsSource": "author: ideal E-S, ok E-SW",
+          "directions": {
+            "ok": [ { "from": 90, "to": 225 } ],
+            "ideal": [ { "from": 90, "to": 180 } ]
           }
         }
       ]

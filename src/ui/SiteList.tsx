@@ -5,10 +5,10 @@ import type { ModelName } from "../core/scoring/hourEvaluator";
 import { missingSiteIds } from "../core/travel/inRange";
 import { addDays, denverDayKey } from "../core/time";
 import type { DayKey } from "../core/time";
-import { DayPicker } from "./DayPicker";
 import { ForecastStatus } from "./ForecastStatus";
 import { dayLabel, fallbackLine, forecastAge, hiddenLine, loadingMoreLine, stageMessage } from "./format";
 import { listHref } from "./route";
+import { radiusLabel, radiusMinutes } from "./travelSettings";
 import { SiteRow } from "./SiteRow";
 import { TravelBar } from "./TravelBar";
 
@@ -39,7 +39,7 @@ function ExampleButton({ travel }: { travel: Travel }) {
 
 /**
  * `day` is the route's day, undefined for the default day; `model` is the route's model, kept by
- * every link, and `setModel` switches it. Lists `travel.shown`.
+ * every link, and `setModel` switches it. Lists `travel.shown`, the sites of `travel.mode`.
  */
 export function SiteList({
   travel,
@@ -63,11 +63,11 @@ export function SiteList({
   // With no start, a loaded result can only be a site page's own site, so it is not the list.
   const noStart = travel.stage === "needsStart" || travel.stage === "locating";
   if (state.status !== "loaded" || noStart) {
+    const today = denverDayKey(now());
     const message = stageMessage(travel.stage);
     return (
       <>
         <h1>Will it fly?</h1>
-        <DayPicker today={denverDayKey(now())} shown={day} model={model} />
         {/* The travel bar is the only way to set a start when there is none. The same `key` as the
             loaded view's, so a switch that passes through loading doesn't close its options. */}
         <TravelBar
@@ -75,6 +75,9 @@ export function SiteList({
           travel={travel}
           model={model}
           setModel={setModel}
+          routeDay={day}
+          shownDay={day}
+          today={today}
           openWhen={travel.stage === "needsStart"}
         />
         {state.status === "failed" || (state.status === "loading" && message === undefined) ? (
@@ -99,13 +102,20 @@ export function SiteList({
         </button>
       </header>
       <p class="age">{forecastAge(result.fetchedAt, now())}</p>
-      <DayPicker today={result.today} shown={result.day} model={model} />
-      <TravelBar key="travel" travel={travel} model={model} setModel={setModel} />
+      <TravelBar
+        key="travel"
+        travel={travel}
+        model={model}
+        setModel={setModel}
+        routeDay={day}
+        shownDay={result.day}
+        today={result.today}
+      />
       {fallback !== undefined && !result.dayOver && <p class="note">{fallback}</p>}
       {/* Until routing is done and the in-range sites arrive the hidden count is wrong, so it waits. */}
       {travel.stage === "ready" && missing === 0 && travel.hiddenCount > 0 && !result.dayOver && (
         <p class="hidden-line">
-          {hiddenLine(travel.hiddenCount, travel.settings.maxHours, travel.catalogSize)}
+          {hiddenLine(travel.hiddenCount, radiusLabel(radiusMinutes(travel.settings, travel.mode)), travel.total)}
         </p>
       )}
       {example}
@@ -120,7 +130,7 @@ export function SiteList({
       )}
       {result.dayOver ? (
         <p class="banner">
-          Today's sunset has passed. <a href={listHref(model, addDays(result.today, 1))}>See tomorrow</a>
+          Today's sunset has passed. <a href={listHref(model, travel.mode, addDays(result.today, 1))}>See tomorrow</a>
         </p>
       ) : (
         <ul class="rows">
