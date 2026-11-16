@@ -18,7 +18,7 @@ The list shows the sites within a drive time of your start point, in this order:
 
 Flyable sites show condition labels (Soar, XC or Sledder). A caution line in amber lists any cautions in the best window. See [Condition labels](#condition-labels).
 
-The bar under the heading sums up what the list shows, for example "Tomorrow · Flying ≤ 2 h · RRFS". Tap it to open the choices: Fly or Kite, the day, the drive time, the forecast model and the start point. It stays open until you tap it again, and it starts closed, unless there is no start point yet.
+The bar under the heading sums up what the list shows, for example "Tomorrow · Flying ≤ 2 h · RRFS". The heading is the day shown. Tap it to open Today, Tomorrow and a date picker. Tap the bar to open the other choices: Fly or Kite, the drive time, the forecast model and the start point. It stays open until you tap it again, and it starts closed, unless there is no start point yet.
 
 Fly and Kite switch the list. Fly lists paragliding sites and never lists a kiting park. Kite lists only the parks for kiting (ground handling). Kiting sites are scored on surface wind and gusts only, by the rules in [Kiting sites](#kiting-sites), and an hour that works is labeled Kite. They show no rating. The mode is in the link, so a link to the Kite list opens in Kite mode, and Back and a reload keep it. Opening the app fresh, from the home screen icon too, starts in Fly. A site's page follows the site: a kiting park's page shows its ideal wind range, leaves out the cloud base and thermal index columns, and its back link goes to the Kite list.
 

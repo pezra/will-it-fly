@@ -2,7 +2,6 @@ import { useEffect, useState } from "preact/hooks";
 import { MODEL_LABEL, MODEL_NAMES } from "../core/scoring/hourEvaluator";
 import type { ModelName } from "../core/scoring/hourEvaluator";
 import type { DayKey } from "../core/time";
-import { DayPicker } from "./DayPicker";
 import { dayLabel, statusLine } from "./format";
 import { ModeToggle } from "./ModeToggle";
 import { RADIUS_CHOICES, radiusLabel, radiusMinutes } from "./travelSettings";
@@ -12,7 +11,7 @@ import type { Travel } from "./useTravel";
 const OPTIONS_ID = "travel-options";
 
 /**
- * The one bar for mode, day, start point, drive limit and forecast model: a status line that
+ * The one bar for mode, start point, drive limit and forecast model: a status line that
  * expands to the controls. `routeDay` is the route's day (undefined on the default day) and is what
  * the mode links keep; `shownDay` is the day on screen (the route's while loading, else the result's;
  * undefined while the default day isn't known), labelled in the status line and marked in the picker.
@@ -64,7 +63,6 @@ export function TravelBar({
       {open && (
         <div id={OPTIONS_ID} class="travel-options">
           <ModeToggle mode={travel.mode} day={routeDay} model={model} />
-          <DayPicker today={today} shown={shownDay} model={model} mode={travel.mode} />
           <div class="travel-radius" role="group" aria-label="Drive time">
             {RADIUS_CHOICES[travel.mode].map((choice) => (
               <button

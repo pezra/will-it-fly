@@ -5,8 +5,9 @@ import type { ModelName } from "../core/scoring/hourEvaluator";
 import { missingSiteIds } from "../core/travel/inRange";
 import { addDays, denverDayKey } from "../core/time";
 import type { DayKey } from "../core/time";
+import { DayTitle } from "./DayTitle";
 import { ForecastStatus } from "./ForecastStatus";
-import { dayLabel, fallbackLine, forecastAge, hiddenLine, loadingMoreLine, stageMessage } from "./format";
+import { fallbackLine, forecastAge, hiddenLine, loadingMoreLine, stageMessage } from "./format";
 import { listHref } from "./route";
 import { radiusLabel, radiusMinutes } from "./travelSettings";
 import { SiteRow } from "./SiteRow";
@@ -67,7 +68,7 @@ export function SiteList({
     const message = stageMessage(travel.stage);
     return (
       <>
-        <h1>Will it fly?</h1>
+        <DayTitle key="title" shownDay={day ?? today} today={today} model={model} mode={travel.mode} />
         {/* The travel bar is the only way to set a start when there is none. The same `key` as the
             loaded view's, so a switch that passes through loading doesn't close its options. */}
         <TravelBar
@@ -95,12 +96,11 @@ export function SiteList({
   const fallback = fallbackLine(result.model, travel.shown);
   return (
     <>
-      <header class="list-header">
-        <h1>{dayLabel(result.day, result.today)}</h1>
+      <DayTitle key="title" shownDay={result.day} today={result.today} model={model} mode={travel.mode}>
         <button type="button" onClick={refresh} disabled={state.refreshing}>
           {state.refreshing ? "Refreshing…" : "Refresh"}
         </button>
-      </header>
+      </DayTitle>
       <p class="age">{forecastAge(result.fetchedAt, now())}</p>
       <TravelBar
         key="travel"

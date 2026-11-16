@@ -78,6 +78,16 @@ button:disabled { opacity: 0.6; }
 
 .list-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .list-header h1 { margin: 0; }
+.day-toggle {
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.day-drawer { margin-top: 8px; }
 .age { margin: 4px 0 12px; color: var(--muted); font-size: 14px; }
 .status { color: var(--muted); }
 
