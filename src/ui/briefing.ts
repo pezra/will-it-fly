@@ -52,13 +52,16 @@ export function showsBriefing(site: Site, dayOver: boolean): boolean {
 }
 
 /** What the copy button shows. */
-export type CopyState = "idle" | "copied" | "failed";
+export type CopyState = "idle" | CopyResult;
+
+/** How a copy attempt went. */
+export type CopyResult = "copied" | "failed";
 
 /** Writes `text` to the clipboard. "failed" when there is no clipboard (plain http) or the write is refused. */
 export async function copyPrompt(
   clipboard: Pick<Clipboard, "writeText"> | undefined,
   text: string,
-): Promise<"copied" | "failed"> {
+): Promise<CopyResult> {
   try {
     if (clipboard === undefined) return "failed";
     await clipboard.writeText(text);
