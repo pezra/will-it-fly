@@ -2,6 +2,14 @@
 
 Architectural decisions that would be costly to reverse. Newest first.
 
+## The briefing prompt holds only the guide's site facts (2026-11-16, `27-ai-flight-briefing`)
+
+The conditions briefing hands a site-day to Claude or ChatGPT with a prompt built only from the `Site` and the day, so the app's call and the start point never reach it. Facts are given as the guide states them: curated ideal arcs, uncurated directions marked as such, and placeholder limits flagged, which is the one bit of `limitsSource` that `parseSites` keeps (`limitsDefaulted`). The point is an independent second opinion, and an agent shown our verdict or made-up limits judges against them.
+
+### Rejected
+- Including the app's verdict for the agent to check. It anchors the agent.
+- Detecting placeholder limits by comparing with `DEFAULT_WIND_LIMITS`. A guide can publish the same numbers.
+
 ## Sites have a kind, and Kite mode is in the list URL (2026-11-11, `14-kiting-sites`)
 
 A site in `sites.json` is `"kind": "flying"` (the default) or `"kiting"`, and its kind decides how it is scored, wherever it is shown. Kiting parks are scored on surface wind and gusts only, with the gust rules in `SCORING_DEFAULTS`. The mode only chooses which kind a list shows. Kite lists are `#/kite` and `#/kite/<date>`, and site pages have no mode in their URL, because the site's kind gives it. Nothing saves the mode on the device. The weather load is keyed by the list's mode like the model, and a site page loads with no mode. Kite has its own radius (`kiteMinutes`) in `willItFly.travel.v1`.
