@@ -90,9 +90,10 @@ button:disabled { opacity: 0.6; }
 .day-drawer { margin-top: 8px; }
 .age { margin: 4px 0 12px; color: var(--muted); font-size: 14px; }
 .status { color: var(--muted); }
+.status.prompt { color: var(--text); font-weight: 600; }
 
-.day-picker, .mode-toggle { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; }
-.day-link, .mode-link {
+.day-picker { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; }
+.day-link {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
@@ -103,7 +104,7 @@ button:disabled { opacity: 0.6; }
   color: var(--text);
   text-decoration: none;
 }
-.day-link[aria-current="page"], .mode-link[aria-current="page"] { border-color: currentColor; font-weight: 600; }
+.day-link[aria-current="page"] { border-color: currentColor; font-weight: 600; }
 .day-picker input[type="date"] {
   font: inherit;
   min-height: 44px;
@@ -114,20 +115,10 @@ button:disabled { opacity: 0.6; }
   color: var(--text);
 }
 
-.travel { margin: 0 0 12px; }
-.travel-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  width: 100%;
-  text-align: left;
-}
-.travel-options { display: grid; gap: 10px; margin-top: 8px; }
-.travel-radius, .travel-model { display: flex; flex-wrap: wrap; gap: 8px; }
-.travel button[aria-pressed="true"] { border-color: currentColor; font-weight: 600; }
+.travel { display: grid; gap: 10px; margin: 0 0 12px; }
+.travel-selects { display: flex; flex-wrap: wrap; gap: 8px; }
 .travel-search { display: flex; gap: 8px; }
-.travel-search input {
+.travel-search input, .travel-selects select {
   flex: 1;
   min-width: 0;
   appearance: none;

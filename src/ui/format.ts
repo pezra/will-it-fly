@@ -6,13 +6,11 @@ import type { SiteRecommendation } from "../core/recommendation/types";
 import type { HourCall, HourCondition, ModelName, Reason } from "../core/scoring/hourEvaluator";
 import { SCORING_DEFAULTS } from "../core/scoring/defaults";
 import { CHECK_MODEL, MODEL_LABEL, effectiveIdealArcs } from "../core/scoring/hourEvaluator";
-import type { Coordinate, DegreeArc, Launch, Site, SiteKind } from "../core/sites/site";
+import type { DegreeArc, Launch, Site, SiteKind } from "../core/sites/site";
 import { effectiveLimits } from "../core/sites/site";
 import { addDays, formatDayKey } from "../core/time";
 import type { DayKey } from "../core/time";
-import type { LocationStatus } from "./location";
-import { radiusLabel, radiusMinutes } from "./travelSettings";
-import type { TravelSettings } from "./travelSettings";
+import { radiusLabel } from "./travelSettings";
 
 /** Feet from meters, rounded to the nearest 100 ft, as "≈ 9,200 ft". "n/a" when missing. */
 export function approxFeet(meters: number | undefined): string {
@@ -181,30 +179,6 @@ export function driveLabel(driveTime: DriveTime): string {
   const text =
     hours === 0 ? `${rest}m` : rest === 0 ? `${hours}h` : `${hours}h ${rest}m`;
   return driveTime.source === "estimate" ? `≈ ${text}` : text;
-}
-
-const ACTIVITY_LABEL: Readonly<Record<SiteKind, string>> = { flying: "Flying", kiting: "Kiting" };
-
-/**
- * The bar's closed line: "Tomorrow · Flying ≤ 2 h · RRFS" (`mode`'s radius and the route's model).
- * `day` is the shown day's label, left out while it isn't known yet. With no start it is a prompt
- * instead; while the location is still pending and nothing else is chosen, it says so.
- */
-export function statusLine(
-  day: string | undefined,
-  settings: TravelSettings,
-  effectiveStart: Coordinate | undefined,
-  location: LocationStatus,
-  model: ModelName,
-  mode: SiteKind,
-): string {
-  if (effectiveStart === undefined) {
-    return settings.start.kind === "geolocation" && location === "pending"
-      ? "Finding your location…"
-      : "Set a starting point";
-  }
-  const what = `${ACTIVITY_LABEL[mode]} ≤ ${radiusLabel(radiusMinutes(settings, mode))}`;
-  return [day, what, MODEL_LABEL[model]].filter((part) => part !== undefined).join(" · ");
 }
 
 /**
