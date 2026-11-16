@@ -10,9 +10,8 @@ import type { Coordinate, DegreeArc, Launch, Site, SiteKind } from "../core/site
 import { effectiveLimits } from "../core/sites/site";
 import { addDays, formatDayKey } from "../core/time";
 import type { DayKey } from "../core/time";
-import type { LocationStatus } from "./location";
-import { radiusLabel, radiusMinutes } from "./travelSettings";
-import type { TravelSettings } from "./travelSettings";
+import { radiusLabel } from "./travelSettings";
+import type { TravelStart } from "./travelSettings";
 
 /** Feet from meters, rounded to the nearest 100 ft, as "≈ 9,200 ft". "n/a" when missing. */
 export function approxFeet(meters: number | undefined): string {
@@ -183,30 +182,6 @@ export function driveLabel(driveTime: DriveTime): string {
   return driveTime.source === "estimate" ? `≈ ${text}` : text;
 }
 
-const ACTIVITY_LABEL: Readonly<Record<SiteKind, string>> = { flying: "Flying", kiting: "Kiting" };
-
-/**
- * The bar's closed line: "Tomorrow · Flying ≤ 2 h · RRFS" (`mode`'s radius and the route's model).
- * `day` is the shown day's label, left out while it isn't known yet. With no start it is a prompt
- * instead; while the location is still pending and nothing else is chosen, it says so.
- */
-export function statusLine(
-  day: string | undefined,
-  settings: TravelSettings,
-  effectiveStart: Coordinate | undefined,
-  location: LocationStatus,
-  model: ModelName,
-  mode: SiteKind,
-): string {
-  if (effectiveStart === undefined) {
-    return settings.start.kind === "geolocation" && location === "pending"
-      ? "Finding your location…"
-      : "Set a starting point";
-  }
-  const what = `${ACTIVITY_LABEL[mode]} ≤ ${radiusLabel(radiusMinutes(settings, mode))}`;
-  return [day, what, MODEL_LABEL[model]].filter((part) => part !== undefined).join(" · ");
-}
-
 /**
  * The list's note when RRFS was asked for and some of the shown sites used ECMWF instead. A site
  * counts when any of its launches fell back; sites with no launch evaluations (closed ones) aren't
@@ -310,4 +285,25 @@ export function loadingMoreLine(count: number): string {
 /** The message of an Error, else String(error). */
 export function describeError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * A drive-time option that says where it measures from: "2 h from Boulder", "2 h from you", or
+ * just "2 h" while there is no start yet (`effectiveStart` undefined).
+ */
+export function radiusOptionLabel(
+  minutes: number,
+  start: TravelStart,
+  effectiveStart: Coordinate | undefined,
+): string {
+  const label = radiusLabel(minutes);
+  if (effectiveStart === undefined) return label;
+  return start.kind === "place" ? `${label} from ${start.name}` : `${label} from you`;
+}
+
+/** Identifies a start: "geolocation", or "place|<lat>|<lon>". Differs when the start changes. */
+export function startIdentity(start: TravelStart): string {
+  return start.kind === "geolocation"
+    ? "geolocation"
+    : `place|${start.coordinate.latitude}|${start.coordinate.longitude}`;
 }

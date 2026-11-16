@@ -25,10 +25,11 @@ import {
   loadingMoreLine,
   miles,
   oneDecimal,
+  radiusOptionLabel,
   siteModel,
   sourceLabel,
   stageMessage,
-  statusLine,
+  startIdentity,
   whole,
 } from "../../src/ui/format";
 
@@ -152,59 +153,6 @@ describe("driveLabel", () => {
   });
   it("prefixes estimates with ≈", () => {
     expect(driveLabel({ seconds: 4800, source: "estimate" })).toBe("≈ 1h 20m");
-  });
-});
-
-describe("statusLine", () => {
-  const boulder = { latitude: 40.01, longitude: -105.27 };
-  const place = { kind: "place" as const, name: "Boulder", coordinate: boulder };
-  const here = { kind: "geolocation" as const };
-  it("gives the day, Flying and its radius, then the model", () => {
-    expect(statusLine("Tomorrow", { start: place, maxHours: 2, kiteMinutes: 30 }, boulder, "found", "rrfs", "flying")).toBe(
-      "Tomorrow · Flying ≤ 2 h · RRFS",
-    );
-    expect(statusLine("Today", { start: here, maxHours: 3, kiteMinutes: 30 }, boulder, "found", "ecmwf", "flying")).toBe(
-      "Today · Flying ≤ 3 h · ECMWF",
-    );
-  });
-  it("gives Kiting and the Kite radius in Kite mode", () => {
-    expect(statusLine("Today", { start: place, maxHours: 2, kiteMinutes: 30 }, boulder, "found", "ecmwf", "kiting")).toBe(
-      "Today · Kiting ≤ 30 min · ECMWF",
-    );
-    expect(statusLine("Today", { start: here, maxHours: 4, kiteMinutes: 60 }, boulder, "found", "rrfs", "kiting")).toBe(
-      "Today · Kiting ≤ 1 h · RRFS",
-    );
-  });
-  it("leaves out the day when it isn't known", () => {
-    expect(statusLine(undefined, { start: place, maxHours: 2, kiteMinutes: 30 }, boulder, "found", "rrfs", "flying")).toBe(
-      "Flying ≤ 2 h · RRFS",
-    );
-    expect(statusLine(undefined, { start: here, maxHours: 4, kiteMinutes: 15 }, boulder, "found", "ecmwf", "kiting")).toBe(
-      "Kiting ≤ 15 min · ECMWF",
-    );
-  });
-  it("asks for a start when there is none, without the day or model", () => {
-    for (const model of ["ecmwf", "rrfs"] as const) {
-      for (const mode of ["flying", "kiting"] as const) {
-        for (const day of ["Today", undefined]) {
-          expect(statusLine(day, { start: here, maxHours: 2, kiteMinutes: 30 }, undefined, "denied", model, mode)).toBe(
-            "Set a starting point",
-          );
-          expect(statusLine(day, { start: here, maxHours: 4, kiteMinutes: 15 }, undefined, "unavailable", model, mode)).toBe(
-            "Set a starting point",
-          );
-        }
-      }
-    }
-  });
-  it("says it is finding the location while geolocation is pending", () => {
-    for (const model of ["ecmwf", "rrfs"] as const) {
-      for (const mode of ["flying", "kiting"] as const) {
-        expect(statusLine("Today", { start: here, maxHours: 2, kiteMinutes: 30 }, undefined, "pending", model, mode)).toBe(
-          "Finding your location…",
-        );
-      }
-    }
   });
 });
 
@@ -472,5 +420,31 @@ describe("cautionLine", () => {
     expect(cautionLine([caution("wind 28 mph, gusty"), caution("low cloud")])).toBe(
       "⚠ wind 28 mph, gusty, low cloud",
     );
+  });
+});
+
+describe("radiusOptionLabel", () => {
+  const golden = { latitude: 39.7555, longitude: -105.2211 };
+  const place = { kind: "place", name: "Boulder", coordinate: golden } as const;
+  it("names a place start", () => {
+    expect(radiusOptionLabel(120, place, golden)).toBe("2 h from Boulder");
+    expect(radiusOptionLabel(30, place, golden)).toBe("30 min from Boulder");
+  });
+  it("says \"you\" for the location", () => {
+    expect(radiusOptionLabel(120, { kind: "geolocation" }, golden)).toBe("2 h from you");
+  });
+  it("is just the time when there is no start yet", () => {
+    expect(radiusOptionLabel(120, { kind: "geolocation" }, undefined)).toBe("2 h");
+  });
+});
+
+describe("startIdentity", () => {
+  const at = (latitude: number, longitude: number) =>
+    ({ kind: "place", name: "x", coordinate: { latitude, longitude } }) as const;
+  it("is the same for the same start and differs between starts", () => {
+    expect(startIdentity({ kind: "geolocation" })).toBe("geolocation");
+    expect(startIdentity(at(40, -105))).toBe(startIdentity(at(40, -105)));
+    expect(startIdentity(at(40, -105))).not.toBe(startIdentity(at(39, -105)));
+    expect(startIdentity(at(40, -105))).not.toBe(startIdentity({ kind: "geolocation" }));
   });
 });

@@ -1,94 +1,98 @@
 import { useEffect, useState } from "preact/hooks";
-import { MODEL_LABEL, MODEL_NAMES } from "../core/scoring/hourEvaluator";
+import { MODEL_LABEL, MODEL_NAMES, isModelName } from "../core/scoring/hourEvaluator";
 import type { ModelName } from "../core/scoring/hourEvaluator";
+import { SITE_KINDS, isSiteKind } from "../core/sites/site";
+import type { SiteKind } from "../core/sites/site";
 import type { DayKey } from "../core/time";
-import { DayPicker } from "./DayPicker";
-import { dayLabel, statusLine } from "./format";
-import { ModeToggle } from "./ModeToggle";
-import { RADIUS_CHOICES, radiusLabel, radiusMinutes } from "./travelSettings";
+import { radiusOptionLabel, startIdentity } from "./format";
+import { listHref } from "./route";
+import { RADIUS_CHOICES, radiusMinutes } from "./travelSettings";
 import { placeStart } from "./useTravel";
 import type { Travel } from "./useTravel";
 
-const OPTIONS_ID = "travel-options";
+const MODE_LABEL: Readonly<Record<SiteKind, string>> = { flying: "Fly", kiting: "Kite" };
 
 /**
- * The one bar for mode, day, start point, drive limit and forecast model: a status line that
- * expands to the controls. `routeDay` is the route's day (undefined on the default day) and is what
- * the mode links keep; `shownDay` is the day on screen (the route's while loading, else the result's;
- * undefined while the default day isn't known), labelled in the status line and marked in the picker.
- * `today` anchors the picker and the label.
- * `openWhen` opens them when it turns true (no start yet, so the search is the next step); the user
- * can still close them. `model` is the route's model and `setModel` switches it.
+ * The controls for mode, drive limit and forecast model, as selects. The drive-time select's last
+ * option, "Change start…", opens the start panel (search box, results, "Use my location", privacy
+ * note), which is always open while there is no start. The panel remembers which start it was
+ * opened for, so any change of start closes it with no effect, as in DayTitle. `routeDay` is the
+ * route's day (undefined on the default day), which a mode change keeps. `model` is the route's
+ * model and `setModel` switches it.
  */
 export function TravelBar({
   travel,
   model,
   setModel,
   routeDay,
-  shownDay,
-  today,
-  openWhen = false,
 }: {
   travel: Travel;
   model: ModelName;
   setModel: (model: ModelName) => void;
   routeDay: DayKey | undefined;
-  shownDay: DayKey | undefined;
-  today: DayKey;
-  openWhen?: boolean;
 }) {
-  const [open, setOpen] = useState(openWhen);
-  useEffect(() => {
-    if (openWhen) setOpen(true);
-  }, [openWhen]);
   const { settings, searchState } = travel;
   // The box shows the chosen place's name, and follows the start when it changes.
   const startText = settings.start.kind === "place" ? settings.start.name : "";
   const [query, setQuery] = useState(startText);
   useEffect(() => setQuery(startText), [startText]);
-  const dayText = shownDay === undefined ? undefined : dayLabel(shownDay, today);
+  const noStart = travel.effectiveStart === undefined;
+  const [openFor, setOpenFor] = useState<string | undefined>(undefined);
+  const open = noStart || openFor === startIdentity(settings.start);
+  const radius = radiusMinutes(settings, travel.mode);
   const searching = searchState.status === "searching";
 
   return (
-    <section class="travel" aria-label="Mode, day, start point, drive time and forecast model">
-      <button
-        type="button"
-        class="travel-toggle"
-        aria-expanded={open}
-        aria-controls={OPTIONS_ID}
-        onClick={() => setOpen(!open)}
-      >
-        <span>{statusLine(dayText, settings, travel.effectiveStart, travel.recs.location, model, travel.mode)}</span>
-        <span aria-hidden="true">{open ? "▴" : "▾"}</span>
-      </button>
+    <section class="travel" aria-label="Mode, drive time, start point and forecast model">
+      <div class="travel-selects">
+        <select
+          aria-label="Mode"
+          value={travel.mode}
+          onChange={(event) => {
+            const kind = event.currentTarget.value;
+            if (isSiteKind(kind)) window.location.hash = listHref(model, kind, routeDay);
+          }}
+        >
+          {SITE_KINDS.map((kind) => (
+            <option key={kind} value={kind}>{MODE_LABEL[kind]}</option>
+          ))}
+        </select>
+        <select
+          aria-label="Drive time"
+          value={String(radius)}
+          onChange={(event) => {
+            const value = event.currentTarget.value;
+            if (value === "start") {
+              // The value prop doesn't change, so Preact won't reset the select; do it here.
+              event.currentTarget.value = String(radius);
+              setOpenFor(startIdentity(settings.start));
+            } else {
+              travel.setRadius(Number(value));
+            }
+          }}
+        >
+          {RADIUS_CHOICES[travel.mode].map((choice) => (
+            <option key={choice} value={String(choice)}>
+              {radiusOptionLabel(choice, settings.start, travel.effectiveStart)}
+            </option>
+          ))}
+          <option value="start">Change start…</option>
+        </select>
+        <select
+          aria-label="Forecast model"
+          value={model}
+          onChange={(event) => {
+            const value = event.currentTarget.value;
+            if (isModelName(value)) setModel(value);
+          }}
+        >
+          {MODEL_NAMES.map((choice) => (
+            <option key={choice} value={choice}>{MODEL_LABEL[choice]}</option>
+          ))}
+        </select>
+      </div>
       {open && (
-        <div id={OPTIONS_ID} class="travel-options">
-          <ModeToggle mode={travel.mode} day={routeDay} model={model} />
-          <DayPicker today={today} shown={shownDay} model={model} mode={travel.mode} />
-          <div class="travel-radius" role="group" aria-label="Drive time">
-            {RADIUS_CHOICES[travel.mode].map((choice) => (
-              <button
-                key={choice}
-                type="button"
-                aria-pressed={radiusMinutes(settings, travel.mode) === choice}
-                onClick={() => travel.setRadius(choice)}
-              >
-                {radiusLabel(choice)}
-              </button>
-            ))}
-          </div>
-          <div class="travel-model" role="group" aria-label="Forecast model">
-            {MODEL_NAMES.map((choice) => (
-              <button
-                key={choice}
-                type="button"
-                aria-pressed={model === choice}
-                onClick={() => setModel(choice)}
-              >
-                {MODEL_LABEL[choice]}
-              </button>
-            ))}
-          </div>
+        <div class="travel-start" id="travel-start">
           <form
             class="travel-search"
             onSubmit={(event) => {
@@ -146,6 +150,9 @@ export function TravelBar({
             Your start point, rounded to about 1 km, goes to OpenStreetMap's routing service; what
             you type in search goes to Nominatim.
           </p>
+          {!noStart && (
+            <button type="button" onClick={() => setOpenFor(undefined)}>Done</button>
+          )}
         </div>
       )}
     </section>
