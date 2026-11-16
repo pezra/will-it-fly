@@ -17,7 +17,14 @@ const COPY_LABEL: Readonly<Record<CopyState, string>> = {
 export function BriefingSection({ site, day }: { site: Site; day: DayKey }) {
   const [copy, setCopy] = useState<CopyState>("idle");
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  useEffect(() => () => clearTimeout(timer.current), []);
+  const mounted = useRef(true);
+  useEffect(
+    () => () => {
+      mounted.current = false;
+      clearTimeout(timer.current);
+    },
+    [],
+  );
   const prompt = briefingPrompt(site, day);
   const links = briefingLinks(prompt);
 
@@ -25,7 +32,10 @@ export function BriefingSection({ site, day }: { site: Site; day: DayKey }) {
     clearTimeout(timer.current);
     // navigator.clipboard is undefined on plain http.
     const clipboard = navigator.clipboard as Clipboard | undefined;
-    setCopy(await copyPrompt(clipboard, prompt));
+    const result = await copyPrompt(clipboard, prompt);
+    // The section can unmount while the clipboard write is pending.
+    if (!mounted.current) return;
+    setCopy(result);
     timer.current = setTimeout(() => setCopy("idle"), 2000);
   };
 
