@@ -456,7 +456,7 @@ function surfaceReasons(
     } else if (arcsContain(effectiveIdealArcs(launch, defaults), wind.dirDeg)) {
       inIdeal = true;
     } else {
-      reasons.push(reason("directionNotIdeal", `wind from ${compass(wind.dirDeg)}, not ideal`));
+      reasons.push(reason("directionNotIdeal", "wind direction only OK"));
     }
   }
 
