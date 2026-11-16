@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { addDays, denverDayKey, denverHour, formatDayKey, formatDenverTime, isDayKey } from "../../src/core/time";
+import {
+  addDays,
+  denverDayKey,
+  denverHour,
+  formatDayKey,
+  formatDenverTime,
+  formatLongDayKey,
+  isDayKey,
+} from "../../src/core/time";
 
 const at = (iso: string) => Date.parse(iso);
 
@@ -64,5 +72,10 @@ describe("day keys", () => {
   it("formats a day key without shifting it", () => {
     expect(formatDayKey("2026-11-10")).toBe("Tue, Nov 10");
     expect(formatDayKey("2027-01-01")).toBe("Fri, Jan 1");
+  });
+  it("writes a day key out in full", () => {
+    expect(formatLongDayKey("2026-11-16")).toBe("Monday, November 16, 2026");
+    expect(formatLongDayKey("2027-01-01")).toBe("Friday, January 1, 2027");
+    expect(() => formatLongDayKey("2026-02-30")).toThrow();
   });
 });

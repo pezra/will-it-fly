@@ -89,3 +89,18 @@ export function formatDayKey(key: DayKey): string {
   if (noon === undefined) throw new Error(`not a day key: ${key}`);
   return dayLabelFormat.format(noon);
 }
+
+const longDayLabelFormat = new Intl.DateTimeFormat("en-US", {
+  timeZone: "UTC",
+  weekday: "long",
+  month: "long",
+  day: "numeric",
+  year: "numeric",
+});
+
+/** "Monday, November 16, 2026" for a day key. */
+export function formatLongDayKey(key: DayKey): string {
+  const noon = utcNoon(key);
+  if (noon === undefined) throw new Error(`not a day key: ${key}`);
+  return longDayLabelFormat.format(noon);
+}
