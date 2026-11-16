@@ -51,7 +51,7 @@ describe("evaluateForecast", () => {
       ecmwf: [0, 1, 2, 3].map(hour),
       rrfs: [hour(0), stormHour(2), hour(3)],
     });
-    const { ecmwf, rrfs } = evaluateForecast(site, launch, f);
+    const { ecmwf, rrfs } = evaluateForecast(site, launch, f, "ecmwf");
     expect(ecmwf.map((r) => r.time)).toEqual([t(0), t(1), t(2), t(3)]);
     expect(rrfs.map((r) => r.time)).toEqual([t(0), t(2), t(3)]);
     expect(ecmwf.map((r) => kinds(r).includes("rrfsSeesStorms"))).toEqual([false, false, true, false]);
@@ -60,7 +60,7 @@ describe("evaluateForecast", () => {
   it("runsTheStormLookaheadByTimeAcrossAGap", () => {
     // RRFS has no hour 1. The storm at hour 2 is two hours after hour 0, so hour 0 is warned.
     const f = forecast({ rrfs: [hour(0), stormHour(2), hour(3)] });
-    const { rrfs } = evaluateForecast(site, launch, f);
+    const { rrfs } = evaluateForecast(site, launch, f, "ecmwf");
     expect(rrfs.map((r) => r.time)).toEqual([t(0), t(2), t(3)]);
     expect(rrfs.map((r) => r.call)).toEqual(["flyable", "noGo", "good"]);
     expect(rrfs[0]?.reasons.find((x) => x.kind === "stormsComing")?.text).toBe(
@@ -71,13 +71,13 @@ describe("evaluateForecast", () => {
   it("aGapDoesNotMakeADistantStormLookAdjacent", () => {
     // The storm is three hours after hour 0 (look-ahead is two), though it is the next result.
     const f = forecast({ rrfs: [hour(0), stormHour(3)] });
-    const { rrfs } = evaluateForecast(site, launch, f);
+    const { rrfs } = evaluateForecast(site, launch, f, "ecmwf");
     expect(rrfs.map((r) => r.call)).toEqual(["good", "noGo"]);
   });
 
   it("appliesTheStormLookaheadWithinAStretch", () => {
     const f = forecast({ ecmwf: [hour(0), hour(1), stormHour(2)] });
-    const { ecmwf } = evaluateForecast(site, launch, f);
+    const { ecmwf } = evaluateForecast(site, launch, f, "ecmwf");
     // Hour 1 is already a no-go (precipitation is the max of the hour and the next), hour 2 is the storm.
     expect(ecmwf.map((r) => r.call)).toEqual(["flyable", "noGo", "noGo"]);
     expect(kinds(ecmwf[0] as HourResult)).toContain("stormsComing");
@@ -94,13 +94,13 @@ describe("evaluateForecast", () => {
         { bearingDeg: 90, ecmwf: east, rrfs: [] },
       ],
     });
-    const { ecmwf } = evaluateForecast(site, launch, f);
+    const { ecmwf } = evaluateForecast(site, launch, f, "ecmwf");
     expect(ecmwf.map((r) => kinds(r).includes("neighborWindStrong"))).toEqual([false, false, true, false]);
   });
 
   it("sortsUnorderedInputAndEvaluatesEveryHour", () => {
     const f = forecast({ ecmwf: [hour(2), hour(0), hour(1)] });
-    const { ecmwf, rrfs } = evaluateForecast(site, launch, f);
+    const { ecmwf, rrfs } = evaluateForecast(site, launch, f, "ecmwf");
     expect(ecmwf.map((r) => r.time)).toEqual([t(0), t(1), t(2)]);
     expect(rrfs).toEqual([]);
   });
@@ -112,7 +112,7 @@ describe("evaluateLaunch", () => {
   it("joinsEachDaylightHourWithBothModelsByTime", () => {
     const f = forecast({ ecmwf: [0, 1, 2, 3, 4].map(hour), rrfs: [0, 2, 3, 4].map(hour), days: [day] });
     const e = evaluateLaunch(site, launch, f, denverDayKey(t(0)), t(0), "ecmwf");
-    const { ecmwf, rrfs } = evaluateForecast(site, launch, f);
+    const { ecmwf, rrfs } = evaluateForecast(site, launch, f, "ecmwf");
     expect(e.model).toBe("ecmwf");
     expect(e.fellBack).toBe(false);
     expect(e.daylight.map((row) => row.time)).toEqual([t(0), t(1), t(2), t(3)]);

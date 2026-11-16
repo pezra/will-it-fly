@@ -5,8 +5,8 @@ import { mapStore } from "../support/builders";
 afterEach(() => vi.restoreAllMocks());
 
 describe("loadDefaultModel and saveDefaultModel", () => {
-  it("is ECMWF when nothing is saved", () => {
-    expect(loadDefaultModel(mapStore())).toBe("ecmwf");
+  it("is RRFS when nothing is saved", () => {
+    expect(loadDefaultModel(mapStore())).toBe("rrfs");
   });
 
   it("round-trips each model", () => {
@@ -25,21 +25,21 @@ describe("loadDefaultModel and saveDefaultModel", () => {
   });
 
   it.each([
-    ["unquoted", "rrfs"],
-    ["upper case", '"RRFS"'],
+    ["unquoted", "ecmwf"],
+    ["upper case", '"ECMWF"'],
     ["an unknown model", '"gfs"'],
     ["null", "null"],
     ["a number", "42"],
     ["an array", "[]"],
-    ["an object", '{"model":"rrfs"}'],
+    ["an object", '{"model":"ecmwf"}'],
     ["an empty string", '""'],
     ["empty text", ""],
-  ])("reads %s as ECMWF", (_name, text) => {
+  ])("reads %s as RRFS", (_name, text) => {
     vi.spyOn(console, "warn").mockImplementation(() => {});
-    expect(loadDefaultModel(mapStore(new Map([[MODEL_SETTINGS_KEY, text]])))).toBe("ecmwf");
+    expect(loadDefaultModel(mapStore(new Map([[MODEL_SETTINGS_KEY, text]])))).toBe("rrfs");
   });
 
-  it("reads ECMWF and warns when reading the store throws", () => {
+  it("reads RRFS and warns when reading the store throws", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const store = {
       get: () => {
@@ -47,7 +47,7 @@ describe("loadDefaultModel and saveDefaultModel", () => {
       },
       set: () => {},
     };
-    expect(loadDefaultModel(store)).toBe("ecmwf");
+    expect(loadDefaultModel(store)).toBe("rrfs");
     expect(warn).toHaveBeenCalled();
   });
 
@@ -67,9 +67,9 @@ describe("loadDefaultModel and saveDefaultModel", () => {
 describe("switchModel", () => {
   it("saves the model and returns the route's hash with it", () => {
     const store = mapStore();
-    const hash = switchModel(store, { page: "list", mode: "flying", model: "ecmwf" }, "rrfs");
-    expect(hash).toBe("#/?model=rrfs");
-    expect(loadDefaultModel(store)).toBe("rrfs");
+    const hash = switchModel(store, { page: "list", mode: "flying", model: "rrfs" }, "ecmwf");
+    expect(hash).toBe("#/?model=ecmwf");
+    expect(loadDefaultModel(store)).toBe("ecmwf");
   });
 
   it("keeps the Kite list and its day", () => {

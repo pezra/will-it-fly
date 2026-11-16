@@ -7,11 +7,11 @@ import type { Route } from "./route";
 /** The `localStorage` key the saved default model is stored under. */
 export const MODEL_SETTINGS_KEY = "willItFly.model.v1";
 /** The model used when nothing valid is saved. */
-const DEFAULT_MODEL: ModelName = "ecmwf";
+const DEFAULT_MODEL: ModelName = "rrfs";
 
 /**
- * The saved default model, the one a URL with no model gets. It is ECMWF when nothing valid is
- * saved. Never throws.
+ * The saved default model, the one a URL with no model gets. It is `DEFAULT_MODEL` when nothing
+ * valid is saved. Never throws.
  */
 export function loadDefaultModel(store: KeyValueStore): ModelName {
   try {
