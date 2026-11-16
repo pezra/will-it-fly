@@ -5,8 +5,8 @@ import { mapStore } from "../support/builders";
 afterEach(() => vi.restoreAllMocks());
 
 describe("loadDefaultModel and saveDefaultModel", () => {
-  it("is ECMWF when nothing is saved", () => {
-    expect(loadDefaultModel(mapStore())).toBe("ecmwf");
+  it("is RRFS when nothing is saved", () => {
+    expect(loadDefaultModel(mapStore())).toBe("rrfs");
   });
 
   it("round-trips each model", () => {
@@ -34,12 +34,12 @@ describe("loadDefaultModel and saveDefaultModel", () => {
     ["an object", '{"model":"rrfs"}'],
     ["an empty string", '""'],
     ["empty text", ""],
-  ])("reads %s as ECMWF", (_name, text) => {
+  ])("reads %s as RRFS", (_name, text) => {
     vi.spyOn(console, "warn").mockImplementation(() => {});
-    expect(loadDefaultModel(mapStore(new Map([[MODEL_SETTINGS_KEY, text]])))).toBe("ecmwf");
+    expect(loadDefaultModel(mapStore(new Map([[MODEL_SETTINGS_KEY, text]])))).toBe("rrfs");
   });
 
-  it("reads ECMWF and warns when reading the store throws", () => {
+  it("reads RRFS and warns when reading the store throws", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const store = {
       get: () => {
@@ -47,7 +47,7 @@ describe("loadDefaultModel and saveDefaultModel", () => {
       },
       set: () => {},
     };
-    expect(loadDefaultModel(store)).toBe("ecmwf");
+    expect(loadDefaultModel(store)).toBe("rrfs");
     expect(warn).toHaveBeenCalled();
   });
 

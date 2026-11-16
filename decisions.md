@@ -94,7 +94,7 @@ Use Open-Meteo for all weather forecast data and RRFS for cross checks.
 
 ### Motivation
 
-Windy's point forecast API doesn't include ECMWF because of licensing, and ECMWF is the default model. Open-Meteo is free for non-commercial use and has the models we need. HRRR on Open-Meteo is discontinued at the end of November 2026, and RRFS is NOAA's replacement, so use RRFS forcross checks.
+Windy's point forecast API doesn't include ECMWF because of licensing, and ECMWF is needed as the check model and for days past RRFS's range. Open-Meteo is free for non-commercial use and has the models we need. HRRR on Open-Meteo is discontinued at the end of November 2026, and RRFS is NOAA's replacement, so use RRFS forcross checks.
 
 ### Rejected
 - Using Windy.com with HRRR as primary and some other weak model for cross checks.
