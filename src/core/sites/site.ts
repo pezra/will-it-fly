@@ -78,6 +78,8 @@ export interface Site {
   status: SiteStatus;
   launches: Launch[];
   limits: WindLimits;
+  /** The source lists no PG limits, so `limits` are the curator's placeholder defaults. */
+  limitsDefaulted?: true;
 }
 
 /** Limits with every default filled in. */

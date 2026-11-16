@@ -30,6 +30,8 @@ When sites are hidden, the list says how many (for example "3 sites hidden (over
 
 Tap a site to see its launches, the hour by hour conditions from both models (the one making the call first), and the reasons for each hour's call. Refresh fetches a new forecast, unless the last one is under 5 minutes old. Each site's forecast is reused for an hour, and the age shown is that of the oldest one on screen.
 
+A flying site's page also has a "Conditions briefing". "Brief with Claude" and "Brief with ChatGPT" open a new tab with a prompt filled in, and "Copy briefing prompt" copies it for another AI chat. The prompt holds the date and the site's public facts, and asks the AI for its own weather briefing. It leaves out this app's call. It isn't offered for kiting parks, closed sites or today after sunset. The briefing comes from a third-party AI that this app doesn't check. It can be wrong or out of date, so treat it as one more input and not a go/no-go.
+
 If you allow location access, the drive times and distances are measured from where you are. Without it everything still works, but you must manually specify a start point.
 
 ## Data
@@ -40,6 +42,7 @@ If you allow location access, the drive times and distances are measured from wh
 - Open-Meteo gets the launch coordinates of the sites in drive range, or of the one site whose page you open. It never gets your start point.
 - Forecasts are cached on your device per site, for the 30 most recently used sites.
 - Your last forecast model choice is saved on your device.
+- The briefing prompt goes to Anthropic (claude.ai) or OpenAI (chatgpt.com) only when you tap one of those links. It holds the site's public facts and the date, and no start point or location.
 - Site information from the club guides and maps credited in the app's footer, curated by hand into `sites.json`. Each site links to its source. Verify before flying.
 
 ## How sites are scored

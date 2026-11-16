@@ -90,7 +90,7 @@ Each site has an `id` (`<source>/<slug>`, where the source is a `sources` id), `
 
 `directions` holds `ok` and `ideal` lists of arcs, `{"from": 250, "to": 310}` in degrees clockwise. An arc can wrap through north (`{"from": 337.5, "to": 135}`). An empty `ok` means the direction isn't curated, and the launch is then always flyable at best. An empty `ideal` means anywhere in `ok` counts as ideal.
 
-The `*Source` fields (`elevationSource`, `limitsSource`, `directionsSource`) and `landingZones` are notes for curators, and the app ignores them.
+The `*Source` fields (`elevationSource`, `limitsSource`, `directionsSource`) and `landingZones` are notes for curators. The app reads only whether `limitsSource` starts with "default", to tell the briefing prompt the limits are placeholders; it ignores the rest.
 
 How to read a site guide and turn it into these fields is in the `add-sites` skill, `.agents/skills/add-sites/SKILL.md`.
 

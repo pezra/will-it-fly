@@ -150,6 +150,7 @@ function parseSite(v: unknown, where: string): Site {
     launches: arr(o, "launches", w).map((l, i) => parseLaunch(l, `${w}.launches[${i}]`)),
     limits: parseLimits(o["limits"], `${w}.limits`),
   };
+  if (optStr(o, "limitsSource", w)?.startsWith("default") === true) site.limitsDefaulted = true;
   const rating = optStr(o, "rating", w);
   if (rating !== undefined) site.rating = rating;
   const notes = optStr(o, "notes", w);
@@ -165,8 +166,9 @@ function parseSite(v: unknown, where: string): Site {
 
 /**
  * Validates a `{ curatedOn?, sites }` catalog and returns fresh Site objects.
- * JSON-only fields (elevationSource, limitsSource, directionsSource,
- * landingZones) are dropped. Throws SiteDataError on a malformed record.
+ * JSON-only fields (elevationSource, directionsSource, landingZones) are dropped, and
+ * limitsSource is kept only as `limitsDefaulted`, set when it starts with "default".
+ * Throws SiteDataError on a malformed record.
  */
 export function parseSites(json: unknown): Site[] {
   const top = obj(json, "catalog");

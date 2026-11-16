@@ -64,6 +64,13 @@ function utcNoon(key: string): number | undefined {
   return ms;
 }
 
+/** `utcNoon`, throwing when `key` isn't a day key. */
+function dayKeyNoon(key: DayKey): number {
+  const noon = utcNoon(key);
+  if (noon === undefined) throw new Error(`not a day key: ${key}`);
+  return noon;
+}
+
 /** True for a real calendar date written as "YYYY-MM-DD". */
 export function isDayKey(key: string): boolean {
   return utcNoon(key) !== undefined;
@@ -71,9 +78,7 @@ export function isDayKey(key: string): boolean {
 
 /** The day key `days` calendar days after `key` (calendar arithmetic, so DST never shifts it). */
 export function addDays(key: DayKey, days: number): DayKey {
-  const noon = utcNoon(key);
-  if (noon === undefined) throw new Error(`not a day key: ${key}`);
-  return new Date(noon + days * 24 * HOUR_MS).toISOString().slice(0, 10);
+  return new Date(dayKeyNoon(key) + days * 24 * HOUR_MS).toISOString().slice(0, 10);
 }
 
 const dayLabelFormat = new Intl.DateTimeFormat("en-US", {
@@ -85,7 +90,18 @@ const dayLabelFormat = new Intl.DateTimeFormat("en-US", {
 
 /** "Tue, Nov 10" for a day key. */
 export function formatDayKey(key: DayKey): string {
-  const noon = utcNoon(key);
-  if (noon === undefined) throw new Error(`not a day key: ${key}`);
-  return dayLabelFormat.format(noon);
+  return dayLabelFormat.format(dayKeyNoon(key));
+}
+
+const longDayLabelFormat = new Intl.DateTimeFormat("en-US", {
+  timeZone: "UTC",
+  weekday: "long",
+  month: "long",
+  day: "numeric",
+  year: "numeric",
+});
+
+/** "Monday, November 16, 2026" for a day key. */
+export function formatLongDayKey(key: DayKey): string {
+  return longDayLabelFormat.format(dayKeyNoon(key));
 }

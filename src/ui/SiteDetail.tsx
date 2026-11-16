@@ -3,6 +3,8 @@ import { MODEL_LABEL } from "../core/scoring/hourEvaluator";
 import type { ModelName } from "../core/scoring/hourEvaluator";
 import { windowLabel } from "../core/scoring/windowFinder";
 import type { Site, SiteKind } from "../core/sites/site";
+import { BriefingSection } from "./BriefingSection";
+import { showsBriefing } from "./briefing";
 import { ResultBadge } from "./CallBadge";
 import { ForecastStatus } from "./ForecastStatus";
 import { arcsLabel, cautionLine, confidenceLabel, dayLabel, driveLabel, feet, idealLabel, launchFallbackNote, limitsLine, miles, siteModel, sourceLabel } from "./format";
@@ -147,6 +149,9 @@ export function SiteDetail({
         best === undefined &&
         rec.mainReason !== undefined && (
         <p class="banner">No flyable window: {rec.mainReason.text}</p>
+      )}
+      {showsBriefing(site, state.result.dayOver) && (
+        <BriefingSection key={`${site.id} ${state.result.day}`} site={site} day={state.result.day} />
       )}
       {site.notes !== undefined && (
         <details class="notes">

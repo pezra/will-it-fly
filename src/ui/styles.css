@@ -194,6 +194,7 @@ button:disabled { opacity: 0.6; }
 .facts { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 8px 0 12px; }
 .facts dt { color: var(--muted); }
 .facts dd { margin: 0; }
+.briefing-links { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 8px 0; }
 .notes { margin: 8px 0; font-size: 14px; }
 .notes summary { min-height: 32px; cursor: pointer; }
 
