@@ -10,7 +10,6 @@ import type { DegreeArc, Launch, Site, SiteKind } from "../core/sites/site";
 import { effectiveLimits } from "../core/sites/site";
 import { addDays, formatDayKey } from "../core/time";
 import type { DayKey } from "../core/time";
-import { radiusLabel } from "./travelSettings";
 
 /** Feet from meters, rounded to the nearest 100 ft, as "≈ 9,200 ft". "n/a" when missing. */
 export function approxFeet(meters: number | undefined): string {

@@ -7,8 +7,7 @@ import { listHref } from "./route";
 
 /**
  * Today and Tomorrow links, plus a date input for any day up to `MAX_DAYS_AHEAD` days out. `shown`
- * is the day on screen (undefined while the default day is still loading). The links keep `model`
- * and `mode`.
+ * is the day on screen. The links keep `model` and `mode`.
  */
 export function DayPicker({
   today,
@@ -17,7 +16,7 @@ export function DayPicker({
   mode,
 }: {
   today: DayKey;
-  shown: DayKey | undefined;
+  shown: DayKey;
   model: ModelName;
   mode: SiteKind;
 }) {
@@ -36,7 +35,7 @@ export function DayPicker({
         aria-label="Pick a day"
         min={today}
         max={addDays(today, MAX_DAYS_AHEAD)}
-        value={shown ?? ""}
+        value={shown}
         onChange={(event) => {
           const value = event.currentTarget.value;
           if (value !== "") window.location.hash = listHref(model, mode, value);
