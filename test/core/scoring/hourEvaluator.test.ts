@@ -506,6 +506,11 @@ describe("boundaries", () => {
     }
   });
 
+  it("not-ideal says the direction is only OK", () => {
+    const r = evalWith({ hour: hourWith((h) => (h.windDir = 240)) });
+    expect(r.reasons.find((reason) => reason.kind === "directionNotIdeal")?.text).toBe("wind direction only OK");
+  });
+
   it("at light wind, ideal gets the bonus and not-ideal is a caution", () => {
     const inIdeal = windAt(3.9, 270);
     const notIdeal = windAt(3.9, 240);
