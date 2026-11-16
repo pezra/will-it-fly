@@ -11,7 +11,7 @@
       "id": "rmhpa/boulder-wonderland",
       "name": "Boulder - Wonderland",
       "sourceURL": "https://www.rmhpa.org/flying-sites/boulder---wonderland",
-      "notes": "Mid-day: H3/P3/M2 or higher recommended, with TUR special skill for PG; only advanced pilots should launch midday. High Altitude special skill required. Tree on Upper launch can cause rotor in NNE wind. Lee-side site: don't get caught in west winds; look for winds aloft <20 mph at 14,000'. Upper/Halfway/Three-Quarter: page gives only 'NE to SE' (used as ok, no ideal). South Wonderland Lake: page gives only 'works best with E to NE' (used as ideal 45-90; ok = 67.5 +/-45 per design fallback). Halfway Bench and Three-Quarter are primarily used by students. Elevations from Open-Meteo.",
+      "notes": "Mid-day: H3/P3/M2 or higher recommended, with TUR special skill for PG; only advanced pilots should launch midday. High Altitude special skill required. Tree on Upper launch can cause rotor in NNE wind. Lee-side site: don't get caught in west winds; look for winds aloft <20 mph at 14,000'. Upper: page gives only 'NE to SE' (used as ok, no ideal). South Wonderland Lake: page gives only 'works best with E to NE' (used as ideal 45-90; ok = 67.5 +/-45 per design fallback). Elevations from Open-Meteo.",
       "rating": "P2",
       "status": { "state": "open" },
       "limits": { "minMph": 0, "maxMph": 15, "idealMph": 8, "gustFactorMph": 5 },
@@ -40,30 +40,6 @@
           "directions": {
             "ok": [ { "from": 22.5, "to": 112.5 } ],
             "ideal": [ { "from": 45, "to": 90 } ]
-          }
-        },
-        {
-          "id": "rmhpa/boulder-wonderland/halfway-bench",
-          "name": "Halfway Bench Launch",
-          "coordinate": { "latitude": 40.0559, "longitude": -105.2982 },
-          "elevationFt": 6060,
-          "elevationSource": "open-meteo",
-          "directionsSource": "explicit-ok-only: 'NE to SE'",
-          "directions": {
-            "ok": [ { "from": 45, "to": 135 } ],
-            "ideal": []
-          }
-        },
-        {
-          "id": "rmhpa/boulder-wonderland/three-quarter",
-          "name": "Three-Quarter Launch",
-          "coordinate": { "latitude": 40.0553, "longitude": -105.2998 },
-          "elevationFt": 6240,
-          "elevationSource": "open-meteo",
-          "directionsSource": "explicit-ok-only: 'NE to SE'",
-          "directions": {
-            "ok": [ { "from": 45, "to": 135 } ],
-            "ideal": []
           }
         }
       ],
