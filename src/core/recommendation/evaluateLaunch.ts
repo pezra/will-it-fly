@@ -29,7 +29,7 @@ export function evaluateForecast(
   site: Site,
   launch: Launch,
   forecast: LaunchForecast,
-  primary: ModelName = "ecmwf",
+  primary: ModelName,
   defaults: ScoringDefaults = SCORING_DEFAULTS,
 ): Record<ModelName, HourResult[]> {
   return evaluateForecastIndexed(site, launch, forecast, primary, defaults).results;
