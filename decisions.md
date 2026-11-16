@@ -32,7 +32,7 @@ Every app URL carries `?model=` in the hash, and a URL without one is rewritten 
 A shared link, Back and a reload must keep the model, and the home screen icon has no model in its URL. Unlike the start point, the model isn't private, so the URL is fine for it. Opening someone else's link shouldn't change what your app opens with.
 
 ### Rejected
-- Model only in the URL. The home screen icon would always open on ECMWF.
+- Model only in the URL. The home screen icon would always open on the built-in default.
 - Model only on the device. Links couldn't share it and Back couldn't undo a switch.
 - Any URL with a model updating the default. A friend's link would change your default.
 - Keeping the previous result on screen during a switch. It would briefly label one model's calls as the other's.
@@ -90,11 +90,11 @@ The first version fetched every site's weather and hid the far ones afterwards. 
 
 ## Get weather forecasts from Open-Meteo
 
-Use Open-Meteo for all weather forecast data and RRFS for cross checks.
+Use Open-Meteo for all weather forecast data, with ECMWF and RRFS as the two models.
 
 ### Motivation
 
-Windy's point forecast API doesn't include ECMWF because of licensing, and ECMWF is needed as the check model and for days past RRFS's range. Open-Meteo is free for non-commercial use and has the models we need. HRRR on Open-Meteo is discontinued at the end of November 2026, and RRFS is NOAA's replacement, so use RRFS forcross checks.
+Windy's point forecast API doesn't include ECMWF because of licensing, and ECMWF is needed as the check model and for days past RRFS's range. Open-Meteo is free for non-commercial use and has the models we need. HRRR on Open-Meteo is discontinued at the end of November 2026, and RRFS is NOAA's replacement, so use RRFS.
 
 ### Rejected
 - Using Windy.com with HRRR as primary and some other weak model for cross checks.

@@ -25,13 +25,13 @@ describe("loadDefaultModel and saveDefaultModel", () => {
   });
 
   it.each([
-    ["unquoted", "rrfs"],
-    ["upper case", '"RRFS"'],
+    ["unquoted", "ecmwf"],
+    ["upper case", '"ECMWF"'],
     ["an unknown model", '"gfs"'],
     ["null", "null"],
     ["a number", "42"],
     ["an array", "[]"],
-    ["an object", '{"model":"rrfs"}'],
+    ["an object", '{"model":"ecmwf"}'],
     ["an empty string", '""'],
     ["empty text", ""],
   ])("reads %s as RRFS", (_name, text) => {
@@ -67,9 +67,9 @@ describe("loadDefaultModel and saveDefaultModel", () => {
 describe("switchModel", () => {
   it("saves the model and returns the route's hash with it", () => {
     const store = mapStore();
-    const hash = switchModel(store, { page: "list", mode: "flying", model: "ecmwf" }, "rrfs");
-    expect(hash).toBe("#/?model=rrfs");
-    expect(loadDefaultModel(store)).toBe("rrfs");
+    const hash = switchModel(store, { page: "list", mode: "flying", model: "rrfs" }, "ecmwf");
+    expect(hash).toBe("#/?model=ecmwf");
+    expect(loadDefaultModel(store)).toBe("ecmwf");
   });
 
   it("keeps the Kite list and its day", () => {
