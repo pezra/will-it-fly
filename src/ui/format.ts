@@ -6,10 +6,12 @@ import type { SiteRecommendation } from "../core/recommendation/types";
 import type { HourCall, HourCondition, ModelName, Reason } from "../core/scoring/hourEvaluator";
 import { SCORING_DEFAULTS } from "../core/scoring/defaults";
 import { CHECK_MODEL, MODEL_LABEL, effectiveIdealArcs } from "../core/scoring/hourEvaluator";
-import type { DegreeArc, Launch, Site, SiteKind } from "../core/sites/site";
+import type { Coordinate, DegreeArc, Launch, Site, SiteKind } from "../core/sites/site";
 import { effectiveLimits } from "../core/sites/site";
 import { addDays, formatDayKey } from "../core/time";
 import type { DayKey } from "../core/time";
+import { radiusLabel } from "./travelSettings";
+import type { TravelStart } from "./travelSettings";
 
 /** Feet from meters, rounded to the nearest 100 ft, as "≈ 9,200 ft". "n/a" when missing. */
 export function approxFeet(meters: number | undefined): string {
@@ -283,4 +285,25 @@ export function loadingMoreLine(count: number): string {
 /** The message of an Error, else String(error). */
 export function describeError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * A drive-time option that says where it measures from: "2 h from Boulder", "2 h from you", or
+ * just "2 h" while there is no start yet (`effectiveStart` undefined).
+ */
+export function radiusOptionLabel(
+  minutes: number,
+  start: TravelStart,
+  effectiveStart: Coordinate | undefined,
+): string {
+  const label = radiusLabel(minutes);
+  if (effectiveStart === undefined) return label;
+  return start.kind === "place" ? `${label} from ${start.name}` : `${label} from you`;
+}
+
+/** Identifies a start: "geolocation", or "place|<lat>|<lon>". Differs when the start changes. */
+export function startIdentity(start: TravelStart): string {
+  return start.kind === "geolocation"
+    ? "geolocation"
+    : `place|${start.coordinate.latitude}|${start.coordinate.longitude}`;
 }

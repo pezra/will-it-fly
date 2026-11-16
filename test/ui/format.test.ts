@@ -25,9 +25,11 @@ import {
   loadingMoreLine,
   miles,
   oneDecimal,
+  radiusOptionLabel,
   siteModel,
   sourceLabel,
   stageMessage,
+  startIdentity,
   whole,
 } from "../../src/ui/format";
 
@@ -418,5 +420,31 @@ describe("cautionLine", () => {
     expect(cautionLine([caution("wind 28 mph, gusty"), caution("low cloud")])).toBe(
       "⚠ wind 28 mph, gusty, low cloud",
     );
+  });
+});
+
+describe("radiusOptionLabel", () => {
+  const golden = { latitude: 39.7555, longitude: -105.2211 };
+  const place = { kind: "place", name: "Boulder", coordinate: golden } as const;
+  it("names a place start", () => {
+    expect(radiusOptionLabel(120, place, golden)).toBe("2 h from Boulder");
+    expect(radiusOptionLabel(30, place, golden)).toBe("30 min from Boulder");
+  });
+  it("says \"you\" for the location", () => {
+    expect(radiusOptionLabel(120, { kind: "geolocation" }, golden)).toBe("2 h from you");
+  });
+  it("is just the time when there is no start yet", () => {
+    expect(radiusOptionLabel(120, { kind: "geolocation" }, undefined)).toBe("2 h");
+  });
+});
+
+describe("startIdentity", () => {
+  const at = (latitude: number, longitude: number) =>
+    ({ kind: "place", name: "x", coordinate: { latitude, longitude } }) as const;
+  it("is the same for the same start and differs between starts", () => {
+    expect(startIdentity({ kind: "geolocation" })).toBe("geolocation");
+    expect(startIdentity(at(40, -105))).toBe(startIdentity(at(40, -105)));
+    expect(startIdentity(at(40, -105))).not.toBe(startIdentity(at(39, -105)));
+    expect(startIdentity(at(40, -105))).not.toBe(startIdentity({ kind: "geolocation" }));
   });
 });
