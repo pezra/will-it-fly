@@ -66,10 +66,19 @@ export function briefingPrompt(site: Site, day: DayKey): string {
   return lines.join("\n");
 }
 
+/**
+ * The Claude model the Claude link asks for. claude.ai doesn't document `model`, so it may be
+ * ignored, and the id needs updating when a newer Opus ships.
+ */
+export const BRIEFING_CLAUDE_MODEL = "claude-opus-5-5";
+
 /** The Claude and ChatGPT links that open a chat with `prompt` filled in. */
 export function briefingLinks(prompt: string): { claude: string; chatgpt: string } {
   const q = encodeURIComponent(prompt);
-  return { claude: `https://claude.ai/new?q=${q}`, chatgpt: `https://chatgpt.com/?q=${q}` };
+  return {
+    claude: `https://claude.ai/new?model=${BRIEFING_CLAUDE_MODEL}&q=${q}`,
+    chatgpt: `https://chatgpt.com/?q=${q}`,
+  };
 }
 
 /** True for an open flying site on a day that isn't over. */

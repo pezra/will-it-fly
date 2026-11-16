@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { testLaunch, testSite } from "../support/builders";
 import type { Site } from "../../src/core/sites/site";
-import { briefingLinks, briefingPrompt, copyPrompt, showsBriefing } from "../../src/ui/briefing";
+import {
+  BRIEFING_CLAUDE_MODEL,
+  briefingLinks,
+  briefingPrompt,
+  copyPrompt,
+  showsBriefing,
+} from "../../src/ui/briefing";
 
 const lookout = testLaunch({
   name: "Lookout",
@@ -108,13 +114,18 @@ describe("briefingLinks", () => {
   const links = briefingLinks(tricky);
 
   it("points at each service's prefill URL", () => {
-    expect(links.claude.startsWith("https://claude.ai/new?q=")).toBe(true);
+    expect(links.claude.startsWith("https://claude.ai/new?")).toBe(true);
     expect(links.chatgpt.startsWith("https://chatgpt.com/?q=")).toBe(true);
+  });
+
+  it("asks claude.ai for Opus", () => {
+    expect(BRIEFING_CLAUDE_MODEL).toBe("claude-opus-5-5");
+    expect(new URL(links.claude).searchParams.get("model")).toBe(BRIEFING_CLAUDE_MODEL);
   });
 
   it("encodes the prompt so it decodes back whole", () => {
     for (const url of [links.claude, links.chatgpt]) {
-      const query = url.slice(url.indexOf("?q=") + 3);
+      const query = url.slice(url.indexOf("q=") + 2);
       expect(query).not.toMatch(/[&#? \n]/);
       expect(decodeURIComponent(query)).toBe(tricky);
     }
