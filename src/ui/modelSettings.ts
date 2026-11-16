@@ -10,8 +10,8 @@ export const MODEL_SETTINGS_KEY = "willItFly.model.v1";
 const DEFAULT_MODEL: ModelName = "rrfs";
 
 /**
- * The saved default model, the one a URL with no model gets. It is RRFS when nothing valid is
- * saved. Never throws.
+ * The saved default model, the one a URL with no model gets. It is `DEFAULT_MODEL` when nothing
+ * valid is saved. Never throws.
  */
 export function loadDefaultModel(store: KeyValueStore): ModelName {
   try {
