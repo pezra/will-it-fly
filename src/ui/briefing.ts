@@ -1,7 +1,33 @@
-import type { Site } from "../core/sites/site";
+import type { DegreeArc, Launch, Site } from "../core/sites/site";
 import { formatLongDayKey } from "../core/time";
 import type { DayKey } from "../core/time";
-import { arcsLabel, feet, idealLabel, limitsLine } from "./format";
+import { compass } from "../core/units";
+import { arcLabel, arcsLabel, feet, limitsLine } from "./format";
+
+const PLACEHOLDER_NOTE = " (the site guide publishes no limits; these are this app's placeholder defaults)";
+
+/** The guide's ideal arcs as written: a zero-width arc is one heading, an empty list means any OK direction. */
+function guideIdealLabel(ideal: readonly DegreeArc[]): string {
+  if (ideal.length === 0) return "anywhere in the OK range";
+  return ideal
+    .map((a) => {
+      if (a.from !== a.to) return arcLabel(a);
+      const h = Math.round(a.from);
+      return `${h}° (${compass(h)})`;
+    })
+    .join(", ");
+}
+
+/** The launch's wind limits, flagged when they're the curator's placeholder defaults. */
+function launchLimits(site: Site, l: Launch): string {
+  const note = l.limits === undefined && site.limitsDefaulted === true ? PLACEHOLDER_NOTE : "";
+  return `Wind limits ${limitsLine(site, l)}${note}.`;
+}
+
+function launchDirections(l: Launch): string {
+  if (l.directions.ok.length === 0) return "Directions: not curated.";
+  return `Works best ${guideIdealLabel(l.directions.ideal)}. OK ${arcsLabel(l.directions.ok)}.`;
+}
 
 /**
  * The prompt that asks an AI chat for its own conditions briefing for a site and day. It takes only
@@ -11,7 +37,7 @@ export function briefingPrompt(site: Site, day: DayKey): string {
   const launches = site.launches.map(
     (l) =>
       `- ${l.name}: ${l.coordinate.latitude.toFixed(5)}, ${l.coordinate.longitude.toFixed(5)}, ${feet(l.elevationFt)}. ` +
-      `Works best ${idealLabel(l)}. OK ${arcsLabel(l.directions.ok)}. Wind limits ${limitsLine(site, l)}.`,
+      `${launchDirections(l)} ${launchLimits(site, l)}`,
   );
   const lines = [
     `I'm a paraglider pilot planning to fly ${site.name} on ${formatLongDayKey(day)}. Give me a weather and conditions briefing for that site and day.`,

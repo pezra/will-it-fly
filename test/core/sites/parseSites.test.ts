@@ -200,6 +200,20 @@ describe("parseSites", () => {
   });
 });
 
+describe("parseSites limitsSource", () => {
+  const flagged = (source?: string) => parseSites(broken(["sites", 0, "limitsSource"], source))[0]!.limitsDefaulted;
+
+  it("flags limits the curator defaulted", () => {
+    expect(flagged("default")).toBe(true);
+    expect(flagged("default, ideal from terrain (OpenTopoMap contours)")).toBe(true);
+  });
+
+  it("leaves limits from the source unflagged", () => {
+    expect(flagged("page")).toBeUndefined();
+    expect(flagged(undefined)).toBeUndefined();
+  });
+});
+
 describe("parseSources", () => {
   it("decodes the sources", () => {
     expect(parseSources(sampleJson)).toEqual([{ id: "rmhpa", name: "RMHPA", url: "https://www.rmhpa.org/" }]);

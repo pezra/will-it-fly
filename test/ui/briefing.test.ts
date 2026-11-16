@@ -40,9 +40,33 @@ describe("briefingPrompt", () => {
 
   it("gives each launch its own limits and handles missing directions", () => {
     const line = prompt.split("\n").find((l) => l.startsWith("- Meadow:"));
-    expect(line).toContain("Works best anywhere in the OK range");
-    expect(line).toContain("OK none");
+    expect(line).toContain("Directions: not curated.");
+    expect(line).not.toContain("OK none");
+    expect(line).not.toContain("Works best");
     expect(line).toContain("Wind limits 8–20 mph, gust factor 5 mph");
+  });
+
+  it("prints a zero-width ideal arc as a single heading", () => {
+    const one = testSite({
+      launches: [testLaunch({ name: "Spike", directions: { ok: [{ from: 250, to: 310 }], ideal: [{ from: 270, to: 270 }] } })],
+    });
+    expect(briefingPrompt(one, "2026-11-16")).toContain("Works best 270° (W). OK 250–310° (WSW–NW).");
+  });
+
+  it("says anywhere in the OK range for an empty ideal", () => {
+    const any = testSite({
+      launches: [testLaunch({ name: "Wide", directions: { ok: [{ from: 250, to: 310 }], ideal: [] } })],
+    });
+    expect(briefingPrompt(any, "2026-11-16")).toContain("Works best anywhere in the OK range. OK 250–310°");
+  });
+
+  it("notes placeholder limits on a launch that uses defaulted site limits", () => {
+    const d = testSite({ limitsDefaulted: true, launches: [testLaunch({ name: "Plain" }), meadow] });
+    const lines = briefingPrompt(d, "2026-11-16").split("\n");
+    const plain = lines.find((l) => l.startsWith("- Plain:"));
+    expect(plain).toMatch(/Wind limits .+ mph \(the site guide publishes no limits; these are this app's placeholder defaults\)\.$/);
+    const own = lines.find((l) => l.startsWith("- Meadow:"));
+    expect(own).not.toContain("placeholder");
   });
 
   it("asks for current forecasts and the briefing items", () => {

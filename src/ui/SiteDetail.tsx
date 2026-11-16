@@ -140,9 +140,6 @@ export function SiteDetail({
           <a href={site.sourceURL} rel="noopener noreferrer">{sourceLabel(site.sourceURL)}</a>
         </dd>
       </dl>
-      {showsBriefing(site, state.result.dayOver) && (
-        <BriefingSection key={`${site.id} ${state.result.day}`} site={site} day={state.result.day} />
-      )}
       {closedReason !== undefined && <p class="banner">Closed: {closedReason}</p>}
       {closedReason === undefined && state.result.dayOver && (
         <p class="banner">Today's sunset has passed.</p>
@@ -152,6 +149,9 @@ export function SiteDetail({
         best === undefined &&
         rec.mainReason !== undefined && (
         <p class="banner">No flyable window: {rec.mainReason.text}</p>
+      )}
+      {showsBriefing(site, state.result.dayOver) && (
+        <BriefingSection key={`${site.id} ${state.result.day}`} site={site} day={state.result.day} />
       )}
       {site.notes !== undefined && (
         <details class="notes">
