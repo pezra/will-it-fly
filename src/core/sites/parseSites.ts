@@ -1,5 +1,5 @@
 import { isRecord } from "../isRecord";
-import { SITE_KINDS } from "./site";
+import { isSiteKind } from "./site";
 import type {
   DegreeArc,
   DirectionRanges,
@@ -118,9 +118,8 @@ function parseLaunch(v: unknown, where: string): Launch {
 function parseKind(o: Obj, where: string): SiteKind {
   if (!present(o, "kind")) return "flying";
   const kind = o["kind"];
-  const known = SITE_KINDS.find((k) => k === kind);
-  if (known === undefined) fail(`${where}.kind`, `unknown site kind '${String(kind)}'`);
-  return known;
+  if (!isSiteKind(kind)) fail(`${where}.kind`, `unknown site kind '${String(kind)}'`);
+  return kind;
 }
 
 function parseSoaring(v: unknown, where: string): SiteSoaring {

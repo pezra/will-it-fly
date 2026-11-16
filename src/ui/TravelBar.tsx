@@ -1,7 +1,7 @@
 import { useEffect, useState } from "preact/hooks";
 import { MODEL_LABEL, MODEL_NAMES, isModelName } from "../core/scoring/hourEvaluator";
 import type { ModelName } from "../core/scoring/hourEvaluator";
-import { SITE_KINDS } from "../core/sites/site";
+import { SITE_KINDS, isSiteKind } from "../core/sites/site";
 import type { SiteKind } from "../core/sites/site";
 import type { DayKey } from "../core/time";
 import { listHref } from "./route";
@@ -41,8 +41,8 @@ export function TravelBar({
           aria-label="Mode"
           value={travel.mode}
           onChange={(event) => {
-            const kind = SITE_KINDS.find((k) => k === event.currentTarget.value);
-            if (kind !== undefined) window.location.hash = listHref(model, kind, routeDay);
+            const kind = event.currentTarget.value;
+            if (isSiteKind(kind)) window.location.hash = listHref(model, kind, routeDay);
           }}
         >
           {SITE_KINDS.map((kind) => (

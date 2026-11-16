@@ -61,6 +61,10 @@ export interface SiteSource {
 export const SITE_KINDS = ["flying", "kiting"] as const;
 export type SiteKind = (typeof SITE_KINDS)[number];
 
+export function isSiteKind(value: unknown): value is SiteKind {
+  return (SITE_KINDS as readonly unknown[]).includes(value);
+}
+
 export interface Site {
   id: string; // "rmhpa/crested-butte"
   name: string;
