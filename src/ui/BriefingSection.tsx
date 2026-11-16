@@ -42,7 +42,7 @@ export function BriefingSection({ site, day }: { site: Site; day: DayKey }) {
   return (
     <section class="briefing">
       <h2>Conditions briefing</h2>
-      <p class="note">Ask an AI chat for its own briefing for this site and day. It doesn't see this app's call.</p>
+      <p class="note">Ask an AI chat for its own briefing for this site and day. It works best with a weather forecast plugin.</p>
       <p class="briefing-links">
         <a href={links.claude} target="_blank" rel="noopener noreferrer">Brief with Claude</a>
         <a href={links.chatgpt} target="_blank" rel="noopener noreferrer">Brief with ChatGPT</a>
