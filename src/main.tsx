@@ -1,7 +1,10 @@
 import { render } from "preact";
 import { App } from "./ui/App";
 import { currentDebugParams } from "./ui/debugParams";
+import { initErrorReporting } from "./ui/sentry";
 import "./ui/styles.css";
+
+initErrorReporting();
 
 const debug = currentDebugParams();
 render(<App debug={debug} />, document.getElementById("app")!);
