@@ -1,3 +1,4 @@
+import { useEffect } from "preact/hooks";
 import type { KeyValueStore } from "../core/keyValueStore";
 import type { ModelName } from "../core/scoring/hourEvaluator";
 import type { SiteKind } from "../core/sites/site";
@@ -9,6 +10,8 @@ import { localStorageStore } from "./storage";
 
 /** GoatCounter's count endpoint for this app's site. */
 const COUNT_BASE = "https://will-it-fly.goatcounter.com/count";
+/** The one host that counts, so dev servers, LAN previews and forks never do. */
+const PRODUCTION_HOST = "pezra.github.io";
 /** Keeps a junk `#/site/...` hash from flooding the dashboard with long paths. */
 const MAX_PATH_LENGTH = 200;
 
@@ -44,26 +47,26 @@ export function driveEventName(mode: SiteKind, minutes: number): UsageEvent {
   return mode === "kiting" ? `drive/kite/${minutes}m` : `drive/fly/${minutes / MINUTES_PER_HOUR}h`;
 }
 
-/** `referrer` reduced to its origin and path, or "" when it isn't a URL. */
+/** An http(s) `referrer` reduced to its origin and path, or "" for anything else (app referrers have no origin). */
 export function referrerForCount(referrer: string): string {
   try {
     const url = new URL(referrer);
-    return url.origin + url.pathname;
+    return url.protocol === "http:" || url.protocol === "https:" ? url.origin + url.pathname : "";
   } catch {
     return "";
   }
 }
 
-/** Whether usage is sent: only from a production build, and never from this machine. */
+/** Whether usage is sent: only from a production build on the production host. */
 export function sendsUsage(prod: boolean, hostname: string): boolean {
-  return prod && !["localhost", "127.0.0.1", "[::1]"].includes(hostname);
+  return prod && hostname === PRODUCTION_HOST;
 }
 
 /** What the tracker needs from the browser, injected so tests can fake it. */
 export interface TrackerDeps {
   enabled: () => boolean;
-  /** `navigator.sendBeacon`, or undefined where there is none. Returns false when it didn't queue the send. */
-  beacon: ((url: string) => boolean) | undefined;
+  /** `navigator.sendBeacon`. Returns false when it didn't queue the send (or there is none). */
+  beacon: (url: string) => boolean;
   /** The fallback: loads `url` as an image. */
   image: (url: string) => void;
   store: KeyValueStore;
@@ -80,11 +83,21 @@ export function createTracker(deps: TrackerDeps): {
   checkActive(): void;
 } {
   let firstPageview = true;
+  // The markers also live in memory, so a device whose store can't be written counts each period
+  // once per page load, not again on every return to the tab.
+  const memory = new Map<string, string>();
+  const markers: KeyValueStore = {
+    get: (key) => deps.store.get(key) ?? memory.get(key),
+    set: (key, value) => {
+      memory.set(key, value);
+      deps.store.set(key, value);
+    },
+  };
 
   function send(hit: Hit): void {
     const url = countURL(COUNT_BASE, hit, deps.rnd());
     try {
-      if (deps.beacon?.(url) === true) return;
+      if (deps.beacon(url)) return;
     } catch (error) {
       console.warn("Could not send a usage beacon", error);
     }
@@ -117,7 +130,7 @@ export function createTracker(deps: TrackerDeps): {
     checkActive() {
       try {
         if (!deps.enabled()) return;
-        for (const period of newPeriods(deps.store, deps.now())) event(`active/${period}`);
+        for (const period of newPeriods(markers, deps.now())) event(`active/${period}`);
       } catch (error) {
         console.warn("Could not check usage periods", error);
       }
@@ -139,6 +152,24 @@ const tracker = createTracker({
   rnd: () => Math.random().toString(36).slice(2),
 });
 
-export const trackPageview = tracker.pageview;
 export const trackEvent = tracker.event;
-export const checkActive = tracker.checkActive;
+
+/**
+ * Counts a page view for each new normalized path of `route`, so a model rewrite or a day change
+ * doesn't count again. A new day, week or month is checked with each page view and on each return
+ * to the app, so a tab left open across midnight still counts the new day.
+ */
+export function useUsage(route: Route): void {
+  const path = usagePath(route);
+  useEffect(() => {
+    tracker.pageview(path);
+    tracker.checkActive();
+  }, [path]);
+  useEffect(() => {
+    const onVisible = (): void => {
+      if (document.visibilityState === "visible") tracker.checkActive();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, []);
+}

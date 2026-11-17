@@ -3,6 +3,7 @@ import {
   addDays,
   denverDayKey,
   denverHour,
+  denverMonthKey,
   denverWeekKey,
   formatDayKey,
   formatDenverTime,
@@ -78,6 +79,13 @@ describe("day keys", () => {
     expect(formatLongDayKey("2026-11-16")).toBe("Monday, November 16, 2026");
     expect(formatLongDayKey("2027-01-01")).toBe("Friday, January 1, 2027");
     expect(() => formatLongDayKey("2026-02-30")).toThrow();
+  });
+});
+
+describe("denverMonthKey", () => {
+  it("is the Denver month, not UTC's, on the evening of the last day", () => {
+    expect(denverMonthKey(at("2026-12-01T05:30:00Z"))).toBe("2026-11"); // Nov 30 22:30 MST
+    expect(denverMonthKey(at("2026-12-01T07:30:00Z"))).toBe("2026-12"); // Dec 1 00:30 MST
   });
 });
 

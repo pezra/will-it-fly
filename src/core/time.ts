@@ -88,6 +88,11 @@ export function denverWeekKey(ms: number): DayKey {
   return addDays(key, -sinceMonday);
 }
 
+/** The Denver calendar month containing ms, as "YYYY-MM". */
+export function denverMonthKey(ms: number): string {
+  return denverDayKey(ms).slice(0, 7);
+}
+
 const dayLabelFormat = new Intl.DateTimeFormat("en-US", {
   timeZone: "UTC",
   weekday: "short",

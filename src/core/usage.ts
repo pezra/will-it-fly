@@ -1,7 +1,7 @@
 import { isRecord } from "./isRecord";
 import { tryParseJSON } from "./json";
 import type { KeyValueStore } from "./keyValueStore";
-import { denverDayKey, denverWeekKey } from "./time";
+import { denverDayKey, denverMonthKey, denverWeekKey } from "./time";
 
 /** A calendar period (Denver time, ISO weeks starting Monday) a device is counted active in once. */
 export type Period = "day" | "week" | "month";
@@ -35,8 +35,11 @@ const PERIODS: readonly Period[] = ["day", "week", "month"];
  * and ignored, so the periods are still reported.
  */
 export function newPeriods(store: KeyValueStore, now: number): Period[] {
-  const day = denverDayKey(now);
-  const current: Record<Period, string> = { day, week: denverWeekKey(now), month: day.slice(0, 7) };
+  const current: Record<Period, string> = {
+    day: denverDayKey(now),
+    week: denverWeekKey(now),
+    month: denverMonthKey(now),
+  };
 
   const raw = store.get(USAGE_KEY);
   const parsed = raw === undefined ? undefined : tryParseJSON(raw);

@@ -66,10 +66,15 @@ describe("referrerForCount", () => {
     expect(referrerForCount("")).toBe("");
     expect(referrerForCount("not a url")).toBe("");
   });
+
+  it("is empty for a referrer that isn't http(s), such as an Android app", () => {
+    expect(referrerForCount("android-app://com.google.android.gm/")).toBe("");
+    expect(referrerForCount("about:blank")).toBe("");
+  });
 });
 
 describe("sendsUsage", () => {
-  it("sends from a production build on a real host", () => {
+  it("sends from a production build on the production host", () => {
     expect(sendsUsage(true, "pezra.github.io")).toBe(true);
   });
 
@@ -77,7 +82,7 @@ describe("sendsUsage", () => {
     expect(sendsUsage(false, "pezra.github.io")).toBe(false);
   });
 
-  it.each(["localhost", "127.0.0.1", "[::1]"])("never sends from %s", (host) => {
+  it.each(["localhost", "127.0.0.1", "[::1]", "192.168.1.20", "someone-else.github.io"])("never sends from %s", (host) => {
     expect(sendsUsage(true, host)).toBe(false);
   });
 });
@@ -150,12 +155,6 @@ describe("createTracker", () => {
     expect(params(images[0]!).get("p")).toBe("refresh");
   });
 
-  it("falls back to the image when there is no beacon", () => {
-    const { deps, images } = fakeDeps({ beacon: undefined });
-    createTracker(deps).pageview("/");
-    expect(images).toHaveLength(1);
-  });
-
   it("falls back to the image when the beacon throws, without throwing", () => {
     const { deps, images } = fakeDeps({
       beacon: () => {
@@ -169,7 +168,7 @@ describe("createTracker", () => {
 
   it("never throws when the image fails too", () => {
     const { deps } = fakeDeps({
-      beacon: undefined,
+      beacon: () => false,
       image: () => {
         throw new Error("no image");
       },
@@ -207,6 +206,21 @@ describe("createTracker", () => {
     vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const { deps, beacons } = fakeDeps({ store });
     expect(() => createTracker(deps).checkActive()).not.toThrow();
+    expect(beacons).toHaveLength(3);
+  });
+
+  it("counts each period once per page load when the store can't be read or written", () => {
+    const store = {
+      get: () => undefined,
+      set: () => {
+        throw new Error("blocked");
+      },
+    };
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const { deps, beacons } = fakeDeps({ store });
+    const tracker = createTracker(deps);
+    tracker.checkActive();
+    tracker.checkActive();
     expect(beacons).toHaveLength(3);
   });
 });
