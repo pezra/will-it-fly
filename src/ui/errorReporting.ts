@@ -15,6 +15,10 @@ export function reportingEnabled(opts: { prod: boolean; hostname: string; dsn: s
   return opts.prod && !isLocalHost(opts.hostname) && opts.dsn !== "";
 }
 
+export function isSuccess(status: number): boolean {
+  return status >= 200 && status <= 299;
+}
+
 export type ApiOutcome = { status: number } | { error: unknown };
 export type ApiFailure = { host: string; path: string; kind: string };
 
@@ -28,7 +32,7 @@ const PATH_WORD = /^[A-Za-z][A-Za-z0-9_-]*$/;
 export function apiFailure(url: string, outcome: ApiOutcome): ApiFailure | undefined {
   let kind: string;
   if ("status" in outcome) {
-    if (outcome.status >= 200 && outcome.status <= 299) return undefined;
+    if (isSuccess(outcome.status)) return undefined;
     kind = `http ${outcome.status}`;
   } else {
     // Read off any object: DOMException is not always an Error, depending on the runtime.
@@ -56,11 +60,10 @@ export function withoutQuery(url: string): string {
   }
 }
 
-/** Reports each host and kind of failure once per page load, and nothing while offline. */
-export function createApiFailureFilter(): (failure: ApiFailure, online: boolean) => boolean {
+/** Passes each host and kind of failure once per page load. */
+export function createApiFailureFilter(): (failure: ApiFailure) => boolean {
   const seen = new Set<string>();
-  return (failure, online) => {
-    if (!online) return false;
+  return (failure) => {
     const key = `${failure.host} ${failure.kind}`;
     if (seen.has(key)) return false;
     seen.add(key);
@@ -83,7 +86,7 @@ export function makeBeforeSend(
   };
 }
 
-export interface CaptureOptions {
+interface CaptureOptions {
   level: "error";
   fingerprint: string[];
   tags: Record<string, string>;
@@ -97,7 +100,8 @@ export function makeApiFailureReporter(deps: {
   const shouldReport = createApiFailureFilter();
   return (url, outcome) => {
     const failure = apiFailure(url, outcome);
-    if (!failure || !shouldReport(failure, deps.isOnline())) return;
+    // Offline is checked first, so a failure seen offline is still reported once back online.
+    if (!failure || !deps.isOnline() || !shouldReport(failure)) return;
     const { host, path, kind } = failure;
     deps.capture(`${host} ${kind}`, {
       level: "error",

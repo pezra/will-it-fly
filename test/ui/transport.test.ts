@@ -59,6 +59,11 @@ describe("fetchTransportWithTimeout", () => {
 
 describe("reportingTransport", () => {
   const url = "https://example.com/x";
+  const rejecting =
+    (error: unknown): Transport =>
+    async () => {
+      throw error;
+    };
 
   it("doesNotReportASuccessfulResponse", async () => {
     const listener = vi.fn<FailureListener>();
@@ -79,10 +84,7 @@ describe("reportingTransport", () => {
   it("reportsARejectionAndRethrowsTheSameError", async () => {
     const listener = vi.fn<FailureListener>();
     const failure = new TypeError("Failed to fetch");
-    const inner: Transport = async () => {
-      throw failure;
-    };
-    const caught = await reportingTransport(inner, () => listener)(url).catch((e: unknown) => e);
+    const caught = await reportingTransport(rejecting(failure), () => listener)(url).catch((e: unknown) => e);
     expect(caught).toBe(failure);
     expect(listener).toHaveBeenCalledExactlyOnceWith(url, { error: failure });
   });
@@ -96,12 +98,7 @@ describe("reportingTransport", () => {
       const failure = new Error("down");
       const ok = reportingTransport(async () => ({ status: 500, body: "x" }), () => listener);
       expect(await ok(url)).toEqual({ status: 500, body: "x" });
-      const bad = reportingTransport(
-        async () => {
-          throw failure;
-        },
-        () => listener,
-      );
+      const bad = reportingTransport(rejecting(failure), () => listener);
       expect(await bad(url).catch((e: unknown) => e)).toBe(failure);
       expect(warn).toHaveBeenCalledTimes(2);
     } finally {
@@ -111,12 +108,7 @@ describe("reportingTransport", () => {
 
   it("anUndefinedListenerIsANoOp", async () => {
     const failure = new Error("down");
-    const bad = reportingTransport(
-      async () => {
-        throw failure;
-      },
-      () => undefined,
-    );
+    const bad = reportingTransport(rejecting(failure), () => undefined);
     expect(await bad(url).catch((e: unknown) => e)).toBe(failure);
     const busy = reportingTransport(async () => ({ status: 503, body: "" }), () => undefined);
     expect(await busy(url)).toEqual({ status: 503, body: "" });

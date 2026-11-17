@@ -97,18 +97,13 @@ describe("createApiFailureFilter", () => {
   const failure = { host: "a.test", path: "/x", kind: "network" };
   it("passesTheFirstFailureOnly", () => {
     const filter = createApiFailureFilter();
-    expect(filter(failure, true)).toBe(true);
-    expect(filter(failure, true)).toBe(false);
+    expect(filter(failure)).toBe(true);
+    expect(filter(failure)).toBe(false);
   });
   it("passesAnotherKindOnTheSameHost", () => {
     const filter = createApiFailureFilter();
-    filter(failure, true);
-    expect(filter({ ...failure, kind: "timeout" }, true)).toBe(true);
-  });
-  it("blocksOfflineWithoutRememberingTheKey", () => {
-    const filter = createApiFailureFilter();
-    expect(filter(failure, false)).toBe(false);
-    expect(filter(failure, true)).toBe(true);
+    filter(failure);
+    expect(filter({ ...failure, kind: "timeout" })).toBe(true);
   });
 });
 
@@ -143,11 +138,12 @@ describe("makeApiFailureReporter", () => {
   const url = "https://api.open-meteo.com/v1/forecast?latitude=40.1";
   function setup(online = true) {
     const calls: Array<[string, unknown]> = [];
+    const network = { online };
     const report = makeApiFailureReporter({
       capture: (message, options) => calls.push([message, options]),
-      isOnline: () => online,
+      isOnline: () => network.online,
     });
-    return { calls, report };
+    return { calls, network, report };
   }
   it("capturesAFailureWithTheExactOptions", () => {
     const { calls, report } = setup();
@@ -179,6 +175,13 @@ describe("makeApiFailureReporter", () => {
     const { calls, report } = setup(false);
     report(url, { error: new TypeError("Failed to fetch") });
     expect(calls).toEqual([]);
+  });
+  it("reportsAFailureFirstSeenOfflineOnceBackOnline", () => {
+    const { calls, network, report } = setup(false);
+    report(url, { status: 503 });
+    network.online = true;
+    report(url, { status: 503 });
+    expect(calls).toHaveLength(1);
   });
   it("capturesTwoKindsOnOneHost", () => {
     const { calls, report } = setup();

@@ -1,4 +1,5 @@
 import type { Transport } from "../core/forecast/openMeteoClient";
+import { isSuccess } from "./errorReporting";
 import type { ApiOutcome } from "./errorReporting";
 
 export const REQUEST_TIMEOUT_MS = 20_000;
@@ -35,7 +36,7 @@ export function reportingTransport(
       notify(url, { error });
       throw error;
     }
-    if (response.status < 200 || response.status > 299) notify(url, { status: response.status });
+    if (!isSuccess(response.status)) notify(url, { status: response.status });
     return response;
   };
 }
