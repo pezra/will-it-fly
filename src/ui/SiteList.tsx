@@ -12,6 +12,7 @@ import { listHref } from "./route";
 import { radiusLabel, radiusMinutes } from "./travelSettings";
 import { SiteRow } from "./SiteRow";
 import { TravelBar } from "./TravelBar";
+import { trackEvent } from "./usage";
 
 function LocationNote({ location }: { location: Recommendations["location"] }) {
   if (location === "denied") {
@@ -31,7 +32,13 @@ function LocationNote({ location }: { location: Recommendations["location"] }) {
 function ExampleButton({ travel }: { travel: Travel }) {
   return (
     <p class="note">
-      <button type="button" onClick={() => travel.setPlace(EXAMPLE_PLACE)}>
+      <button
+        type="button"
+        onClick={() => {
+          trackEvent("example/boulder");
+          travel.setPlace(EXAMPLE_PLACE);
+        }}
+      >
         Check out how this looks for a location with sites
       </button>
     </p>
@@ -94,7 +101,14 @@ export function SiteList({
   return (
     <>
       <DayTitle key="title" shownDay={result.day} today={result.today} model={model} mode={travel.mode}>
-        <button type="button" onClick={refresh} disabled={state.refreshing}>
+        <button
+          type="button"
+          onClick={() => {
+            trackEvent("refresh");
+            refresh();
+          }}
+          disabled={state.refreshing}
+        >
           {state.refreshing ? "Refreshing…" : "Refresh"}
         </button>
       </DayTitle>

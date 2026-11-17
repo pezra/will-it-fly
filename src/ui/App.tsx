@@ -14,6 +14,7 @@ import { localStorageStore } from "./storage";
 import { useCatalog } from "./useCatalog";
 import { useRecommendations } from "./useRecommendations";
 import { useTravel, useTravelView } from "./useTravel";
+import { checkActive, trackPageview, usagePath } from "./usage";
 
 /**
  * The route for the current hash. A hash that isn't canonical (no model, say) is rewritten in
@@ -69,6 +70,17 @@ function useHashRoute(): CanonicalRoute {
 export function App({ debug }: { debug: DebugParams }) {
   const route = useHashRoute();
   const { model } = route;
+  // The normalized path, so a model rewrite or a day change doesn't count as a new page view.
+  const usage = usagePath(route);
+  useEffect(() => trackPageview(usage), [usage]);
+  useEffect(() => {
+    checkActive();
+    const onVisible = (): void => {
+      if (document.visibilityState === "visible") checkActive();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, []);
   const catalog = useCatalog();
   const catalogIds = useMemo(() => catalog && new Set(catalog.map((s) => s.id)), [catalog]);
   // A list's own mode, else the site's kind on its page (Fly until the catalog is read).
