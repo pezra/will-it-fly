@@ -8,11 +8,18 @@ import { bundledSiteProvider } from "../core/sites/siteProvider";
 import { containsSites, weatherLoadKey } from "../core/travel/inRange";
 import type { DayKey } from "../core/time";
 import type { DebugParams } from "./debugParams";
+import { once } from "./errorReporting";
 import { describeError } from "./format";
 import type { LocationResult, LocationStatus } from "./location";
 import { reportError } from "./sentry";
 import { localStorageStore } from "./storage";
 import { fetchTransport } from "./transport";
+
+/**
+ * The first failed load of a page load is reported; retries during an outage would only repeat it,
+ * and the transport has already reported the API failure underneath.
+ */
+const reportLoadFailure = once(reportError);
 
 export type RecommendationsState =
   | { status: "loading" }
@@ -239,7 +246,7 @@ export function useRecommendations(
           pending.current = undefined;
           console.error("Could not load recommendations", error);
           // A day out of range comes from an old link, not a bug, and the page already says so.
-          if (!(error instanceof DayOutOfRangeError)) reportError(error);
+          if (!(error instanceof DayOutOfRangeError)) reportLoadFailure(error);
           setBase((prev) =>
             prev.status === "loaded"
               ? { ...prev, refreshing: false, refreshError: describeError(error) }

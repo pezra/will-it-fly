@@ -18,7 +18,7 @@ export class ErrorBoundary extends Component<{ children: ComponentChildren }, { 
       <div class="error" role="alert">
         <p>
           <strong>Something went wrong.</strong>
-          {isReporting() ? " The error has been reported." : ""}
+          {isReporting() && navigator.onLine ? " The error has been reported." : ""}
         </p>
         <button type="button" onClick={() => location.reload()}>
           Reload

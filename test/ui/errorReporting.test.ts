@@ -6,6 +6,7 @@ import {
   isLocalHost,
   makeApiFailureReporter,
   makeBeforeSend,
+  once,
   MAX_EVENTS_PER_LOAD,
   reportingEnabled,
 } from "../../src/ui/errorReporting";
@@ -101,6 +102,16 @@ describe("createEventCap", () => {
     expect(MAX_EVENTS_PER_LOAD).toBe(25);
     for (let i = 0; i < 25; i++) expect(cap()).toBe(true);
     expect(cap()).toBe(false);
+  });
+});
+
+describe("once", () => {
+  it("callsTheFunctionTheFirstTimeOnly", () => {
+    const calls: string[] = [];
+    const report = once((s: string) => calls.push(s));
+    report("a");
+    report("b");
+    expect(calls).toEqual(["a"]);
   });
 });
 

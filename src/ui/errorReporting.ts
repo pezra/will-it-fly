@@ -61,6 +61,16 @@ export function createApiFailureFilter(): (failure: ApiFailure) => boolean {
   };
 }
 
+/** Calls `fn` the first time only; later calls do nothing. */
+export function once<A extends unknown[]>(fn: (...args: A) => void): (...args: A) => void {
+  let called = false;
+  return (...args) => {
+    if (called) return;
+    called = true;
+    fn(...args);
+  };
+}
+
 export function createEventCap(max: number): () => boolean {
   let count = 0;
   return () => count++ < max;
