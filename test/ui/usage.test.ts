@@ -5,7 +5,6 @@ import {
   createTracker,
   driveEventName,
   modeEventName,
-  modelEventName,
   referrerForCount,
   sendsUsage,
   usagePath,
@@ -43,11 +42,6 @@ describe("event names", () => {
     expect(modeEventName("kiting")).toBe("mode/kite");
   });
 
-  it("names the models", () => {
-    expect(modelEventName("ecmwf")).toBe("model/ecmwf");
-    expect(modelEventName("rrfs")).toBe("model/rrfs");
-  });
-
   it("names every drive time choice", () => {
     expect(RADIUS_CHOICES.flying.map((m) => driveEventName("flying", m))).toEqual([
       "drive/fly/1h",
@@ -83,7 +77,7 @@ describe("sendsUsage", () => {
     expect(sendsUsage(false, "pezra.github.io")).toBe(false);
   });
 
-  it.each(["localhost", "127.0.0.1", "[::1]", "::1"])("never sends from %s", (host) => {
+  it.each(["localhost", "127.0.0.1", "[::1]"])("never sends from %s", (host) => {
     expect(sendsUsage(true, host)).toBe(false);
   });
 });

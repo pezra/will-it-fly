@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { KeyValueStore } from "../../src/core/keyValueStore";
 import { USAGE_KEY, countURL, newPeriods } from "../../src/core/usage";
+import { mapStore } from "../support/builders";
 
 const at = (iso: string) => Date.parse(iso);
 const BASE = "https://example.goatcounter.com/count";
@@ -39,14 +40,8 @@ describe("countURL", () => {
   });
 });
 
-function memoryStore(initial?: string): KeyValueStore & { set: ReturnType<typeof vi.fn> } {
-  const data = new Map<string, string>();
-  if (initial !== undefined) data.set(USAGE_KEY, initial);
-  return {
-    get: (key: string) => data.get(key),
-    set: vi.fn((key: string, value: string) => void data.set(key, value)),
-  };
-}
+const memoryStore = (initial?: string) =>
+  mapStore(new Map(initial === undefined ? [] : [[USAGE_KEY, initial]]));
 
 const stored = (store: KeyValueStore): unknown => JSON.parse(store.get(USAGE_KEY) ?? "null");
 
@@ -62,9 +57,9 @@ describe("newPeriods", () => {
   it("reports nothing the second time and doesn't write", () => {
     const store = memoryStore();
     newPeriods(store, tue);
-    store.set.mockClear();
+    const set = vi.spyOn(store, "set");
     expect(newPeriods(store, tue)).toEqual([]);
-    expect(store.set).not.toHaveBeenCalled();
+    expect(set).not.toHaveBeenCalled();
   });
 
   it("reports only the day on the next day of the same week and month", () => {

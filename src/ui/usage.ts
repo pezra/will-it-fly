@@ -39,11 +39,6 @@ export function modeEventName(kind: SiteKind): UsageEvent {
   return kind === "kiting" ? "mode/kite" : "mode/fly";
 }
 
-/** The event for choosing `model` in the Forecast model select. */
-export function modelEventName(model: ModelName): UsageEvent {
-  return `model/${model}`;
-}
-
 /** The event for choosing a drive limit of `minutes` in `mode`: hours when flying, minutes when kiting. */
 export function driveEventName(mode: SiteKind, minutes: number): UsageEvent {
   return mode === "kiting" ? `drive/kite/${minutes}m` : `drive/fly/${minutes / MINUTES_PER_HOUR}h`;
@@ -61,7 +56,7 @@ export function referrerForCount(referrer: string): string {
 
 /** Whether usage is sent: only from a production build, and never from this machine. */
 export function sendsUsage(prod: boolean, hostname: string): boolean {
-  return prod && !["localhost", "127.0.0.1", "[::1]", "::1"].includes(hostname);
+  return prod && !["localhost", "127.0.0.1", "[::1]"].includes(hostname);
 }
 
 /** What the tracker needs from the browser, injected so tests can fake it. */
@@ -113,7 +108,7 @@ export function createTracker(deps: TrackerDeps): {
   return {
     pageview(path) {
       guarded(() => {
-        const referrer = firstPageview ? referrerForCount(deps.referrer()) : "";
+        const referrer = firstPageview ? referrerForCount(deps.referrer()) : undefined;
         firstPageview = false;
         return { kind: "pageview", path, referrer, screen: deps.screen() };
       });

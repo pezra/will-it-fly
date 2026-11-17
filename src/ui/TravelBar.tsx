@@ -9,7 +9,7 @@ import { listHref } from "./route";
 import { RADIUS_CHOICES, radiusMinutes } from "./travelSettings";
 import { placeStart } from "./useTravel";
 import type { Travel } from "./useTravel";
-import { driveEventName, modeEventName, modelEventName, trackEvent } from "./usage";
+import { driveEventName, modeEventName, trackEvent } from "./usage";
 
 const MODE_LABEL: Readonly<Record<SiteKind, string>> = { flying: "Fly", kiting: "Kite" };
 
@@ -89,7 +89,7 @@ export function TravelBar({
           onChange={(event) => {
             const value = event.currentTarget.value;
             if (isModelName(value)) {
-              trackEvent(modelEventName(value));
+              trackEvent(`model/${value}`);
               setModel(value);
             }
           }}
