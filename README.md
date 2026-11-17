@@ -43,6 +43,7 @@ If you allow location access, the drive times and distances are measured from wh
 - Forecasts are cached on your device per site, for the 30 most recently used sites.
 - Your last forecast model choice is saved on your device.
 - The briefing prompt goes to Anthropic (claude.ai) or OpenAI (chatgpt.com) only when you tap one of those links. It holds the site's public facts and the date, and no start point or location.
+- Errors and failed weather, routing or search requests are reported to [Sentry](https://sentry.io/). A report holds the error and its stack, the browser and OS, the page's route, the app version, and for a failed request the service's host and kind of failure. It holds no coordinates, search text or IP address.
 - Site information from the club guides and maps credited in the app's footer, curated by hand into `sites.json`. Each site links to its source. Verify before flying.
 
 ## How sites are scored

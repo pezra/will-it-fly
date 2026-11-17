@@ -46,6 +46,7 @@ function serviceWorkerManifest(): Plugin {
 
 export default defineConfig({
   base: "./",
+  build: { sourcemap: true },
   plugins: [preact(), serviceWorkerManifest()],
   test: {
     environment: "node",
