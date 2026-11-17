@@ -45,6 +45,8 @@ npm run build                # production build into dist/
 
 Tests read fixture files with Vite's `?raw` import rather than `node:fs`.
 
+`bash scripts/e2e-error-reporting/run.sh` checks what a production build actually sends to Sentry. It builds the app with a fake DSN, opens it in headless Chrome with the weather and routing APIs unreachable, and asserts on the events a fake Sentry server receives: the API-failure fields, the per-load limits, and that nothing personal (coordinates, the page's query string, cookies, a user) is in them. It needs Chrome (`CHROME=/path/to/chrome` overrides the macOS default), takes about 20 seconds, and uses ports 4173, 9333 and 9999. It isn't part of `npm test`, and `npm run check` doesn't type-check `.mjs` scripts.
+
 ## Running it
 
 `npm run dev` serves the app at http://localhost:5173/. The hash picks the page: `#/` and `#/site/<id>` are the default day, and `#/day/YYYY-MM-DD` and `#/day/YYYY-MM-DD/site/<id>` are that day. `#/kite` and `#/kite/YYYY-MM-DD` are the same lists in Kite mode, which shows only kiting sites. Every other list is Fly mode, and a site's page has no mode in its hash, since it follows the site's `kind`. Every hash ends in `?model=ecmwf` or `?model=rrfs`, the primary forecast model. One with no model, or a bad one, is rewritten in place (no history entry) to the saved default, which is RRFS until someone uses the model control. Only the control saves the default; opening a link with a model never does. Dev builds honor a few query parameters for checking states by hand. Production builds ignore them. Only a production build served from pezra.github.io sends usage counts to GoatCounter, so dev servers, previews and forks never do.
