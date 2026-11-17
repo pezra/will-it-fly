@@ -14,6 +14,7 @@ import { localStorageStore } from "./storage";
 import { useCatalog } from "./useCatalog";
 import { useRecommendations } from "./useRecommendations";
 import { useTravel, useTravelView } from "./useTravel";
+import { useUsage } from "./usage";
 
 /**
  * The route for the current hash. A hash that isn't canonical (no model, say) is rewritten in
@@ -69,6 +70,7 @@ function useHashRoute(): CanonicalRoute {
 export function App({ debug }: { debug: DebugParams }) {
   const route = useHashRoute();
   const { model } = route;
+  useUsage(route);
   const catalog = useCatalog();
   const catalogIds = useMemo(() => catalog && new Set(catalog.map((s) => s.id)), [catalog]);
   // A list's own mode, else the site's kind on its page (Fly until the catalog is read).
@@ -106,7 +108,8 @@ export function App({ debug }: { debug: DebugParams }) {
         <a href="https://project-osrm.org/">OSRM</a> and place search by{" "}
         <a href="https://nominatim.org/">Nominatim</a>, ©{" "}
         <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors · Drive times send your start point, rounded to about 1 km,
-        to OSRM.
+        to OSRM · Usage is counted by{" "}
+        <a href="https://www.goatcounter.com/">GoatCounter</a>, with no cookie.
       </footer>
     </>
   );

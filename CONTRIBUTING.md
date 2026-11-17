@@ -21,6 +21,7 @@ src/core/            all logic, with no DOM or browser globals
   travel/            straight-line prefilter, drive times (OSRM, with estimates), place search,
                      which sites are in range
   time.ts            America/Denver calendar helpers
+  usage.ts           GoatCounter URLs, first-open-of-day/week/month markers
 src/ui/              Preact components, location, storage, debug params
 sites.json           the curated site catalog
 public/              manifest, icons, service worker template
@@ -46,7 +47,7 @@ Tests read fixture files with Vite's `?raw` import rather than `node:fs`.
 
 ## Running it
 
-`npm run dev` serves the app at http://localhost:5173/. The hash picks the page: `#/` and `#/site/<id>` are the default day, and `#/day/YYYY-MM-DD` and `#/day/YYYY-MM-DD/site/<id>` are that day. `#/kite` and `#/kite/YYYY-MM-DD` are the same lists in Kite mode, which shows only kiting sites. Every other list is Fly mode, and a site's page has no mode in its hash, since it follows the site's `kind`. Every hash ends in `?model=ecmwf` or `?model=rrfs`, the primary forecast model. One with no model, or a bad one, is rewritten in place (no history entry) to the saved default, which is RRFS until someone uses the model control. Only the control saves the default; opening a link with a model never does. Dev builds honor a few query parameters for checking states by hand. Production builds ignore them.
+`npm run dev` serves the app at http://localhost:5173/. The hash picks the page: `#/` and `#/site/<id>` are the default day, and `#/day/YYYY-MM-DD` and `#/day/YYYY-MM-DD/site/<id>` are that day. `#/kite` and `#/kite/YYYY-MM-DD` are the same lists in Kite mode, which shows only kiting sites. Every other list is Fly mode, and a site's page has no mode in its hash, since it follows the site's `kind`. Every hash ends in `?model=ecmwf` or `?model=rrfs`, the primary forecast model. One with no model, or a bad one, is rewritten in place (no history entry) to the saved default, which is RRFS until someone uses the model control. Only the control saves the default; opening a link with a model never does. Dev builds honor a few query parameters for checking states by hand. Production builds ignore them. Only a production build served from pezra.github.io sends usage counts to GoatCounter, so dev servers, previews and forks never do.
 
 | Parameter | Effect |
 |---|---|

@@ -9,6 +9,7 @@ import { listHref } from "./route";
 import { RADIUS_CHOICES, radiusMinutes } from "./travelSettings";
 import { placeStart } from "./useTravel";
 import type { Travel } from "./useTravel";
+import { driveEventName, modeEventName, trackEvent } from "./usage";
 
 const MODE_LABEL: Readonly<Record<SiteKind, string>> = { flying: "Fly", kiting: "Kite" };
 
@@ -50,7 +51,10 @@ export function TravelBar({
           value={travel.mode}
           onChange={(event) => {
             const kind = event.currentTarget.value;
-            if (isSiteKind(kind)) window.location.hash = listHref(model, kind, routeDay);
+            if (isSiteKind(kind)) {
+              trackEvent(modeEventName(kind));
+              window.location.hash = listHref(model, kind, routeDay);
+            }
           }}
         >
           {SITE_KINDS.map((kind) => (
@@ -67,6 +71,7 @@ export function TravelBar({
               event.currentTarget.value = String(radius);
               setOpenFor(startIdentity(settings.start));
             } else {
+              trackEvent(driveEventName(travel.mode, Number(value)));
               travel.setRadius(Number(value));
             }
           }}
@@ -83,7 +88,10 @@ export function TravelBar({
           value={model}
           onChange={(event) => {
             const value = event.currentTarget.value;
-            if (isModelName(value)) setModel(value);
+            if (isModelName(value)) {
+              trackEvent(`model/${value}`);
+              setModel(value);
+            }
           }}
         >
           {MODEL_NAMES.map((choice) => (
@@ -119,6 +127,7 @@ export function TravelBar({
                   <button
                     type="button"
                     onClick={() => {
+                      trackEvent("start/search");
                       const start = placeStart(place);
                       if (start.kind === "place") setQuery(start.name);
                       travel.setPlace(place);

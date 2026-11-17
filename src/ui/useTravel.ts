@@ -26,6 +26,7 @@ import {
 } from "./travelSettings";
 import type { TravelSettings, TravelStart } from "./travelSettings";
 import type { ForecastLoad, Recommendations } from "./useRecommendations";
+import { trackEvent } from "./usage";
 
 /** A place search: `results` holds at least one place; `none` is an empty answer. */
 type SearchState =
@@ -288,6 +289,8 @@ export function useTravel(
       if (id !== locateRequest.current) return;
       setLocating(false);
       if (result.status === "found") {
+        // The only caller is the "Use my location" button; the initial geolocation doesn't come through here.
+        trackEvent("start/location");
         relocate(result);
         setSettings((s) => ({ ...s, start: { kind: "geolocation" } }));
       } else {

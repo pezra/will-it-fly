@@ -81,6 +81,18 @@ export function addDays(key: DayKey, days: number): DayKey {
   return new Date(dayKeyNoon(key) + days * 24 * HOUR_MS).toISOString().slice(0, 10);
 }
 
+/** The Monday of the Denver week (ISO, Monday start) containing ms, as a day key. */
+export function denverWeekKey(ms: number): DayKey {
+  const key = denverDayKey(ms);
+  const sinceMonday = (new Date(dayKeyNoon(key)).getUTCDay() + 6) % 7;
+  return addDays(key, -sinceMonday);
+}
+
+/** The Denver calendar month containing ms, as "YYYY-MM". */
+export function denverMonthKey(ms: number): string {
+  return denverDayKey(ms).slice(0, 7);
+}
+
 const dayLabelFormat = new Intl.DateTimeFormat("en-US", {
   timeZone: "UTC",
   weekday: "short",

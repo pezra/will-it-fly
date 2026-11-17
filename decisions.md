@@ -2,6 +2,18 @@
 
 Architectural decisions that would be costly to reverse. Newest first.
 
+## Usage is counted with GoatCounter, with no identifier sent (2026-11-17, `usage-analytics`)
+
+The app reports page views and events straight to GoatCounter's `/count` endpoint (`sendBeacon`, image fallback), only from a production build on `pezra.github.io`. Pages are normalized to `/`, `/kite` and `/site/<id>`, and events are path-style names from one typed union (`mode/kite`, `drive/fly/3h`). Weekly and monthly unique devices come from markers in `willItFly.usage.v1`: the device remembers the last Denver day, ISO week and month it was counted, and sends `active/day|week|month` on the first open of each.
+
+The app is a static site with no logs, so counting needs a hosted service that handles hash routes and custom events. Without a stored ID GoatCounter can't link visits across days, and the markers fix that without sending one. Paths and event names are the keys of the collected history, so renaming them splits it. Allowing one host keeps dev, LAN previews and forks out of the counts.
+
+### Rejected
+- Cloudflare Web Analytics. No hash-route support, no custom events, and it reports visits, not unique visitors.
+- `count.js`. Third-party code in the page for what one request does.
+- A random device ID sent with each hit. It's an identifier, and the markers give the same counts.
+- Blocking only localhost. Forks and LAN previews of a production build would count as real use.
+
 ## The briefing prompt holds only the guide's site facts (2026-11-16, `27-ai-flight-briefing`)
 
 The conditions briefing hands a site-day to Claude or ChatGPT with a prompt built only from the `Site` and the day, so the app's call and the start point never reach it. Facts are given as the guide states them: curated ideal arcs, uncurated directions marked as such, and placeholder limits flagged, which is the one bit of `limitsSource` that `parseSites` keeps (`limitsDefaulted`). The point is an independent second opinion, and an agent shown our verdict or made-up limits judges against them.

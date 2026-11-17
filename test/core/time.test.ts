@@ -3,6 +3,8 @@ import {
   addDays,
   denverDayKey,
   denverHour,
+  denverMonthKey,
+  denverWeekKey,
   formatDayKey,
   formatDenverTime,
   formatLongDayKey,
@@ -77,5 +79,41 @@ describe("day keys", () => {
     expect(formatLongDayKey("2026-11-16")).toBe("Monday, November 16, 2026");
     expect(formatLongDayKey("2027-01-01")).toBe("Friday, January 1, 2027");
     expect(() => formatLongDayKey("2026-02-30")).toThrow();
+  });
+});
+
+describe("denverMonthKey", () => {
+  it("is the Denver month, not UTC's, on the evening of the last day", () => {
+    expect(denverMonthKey(at("2026-12-01T05:30:00Z"))).toBe("2026-11"); // Nov 30 22:30 MST
+    expect(denverMonthKey(at("2026-12-01T07:30:00Z"))).toBe("2026-12"); // Dec 1 00:30 MST
+  });
+});
+
+describe("denverWeekKey", () => {
+  it("gives the Monday of a midweek day", () => {
+    expect(denverWeekKey(at("2026-10-28T18:00:00Z"))).toBe("2026-10-26"); // Wed
+  });
+
+  it("gives the same day for a Monday just after local midnight", () => {
+    expect(denverWeekKey(at("2026-11-16T07:30:00Z"))).toBe("2026-11-16"); // Mon 00:30 MST
+  });
+
+  it("gives the previous Monday late on a Sunday, even when UTC is already Monday", () => {
+    const t = at("2026-11-16T06:30:00Z"); // Sun 2026-11-15 23:30 MST
+    expect(new Date(t).getUTCDay()).toBe(1);
+    expect(denverWeekKey(t)).toBe("2026-11-09");
+  });
+
+  it("crosses a year boundary", () => {
+    expect(denverWeekKey(at("2026-01-01T19:00:00Z"))).toBe("2025-12-29"); // Thu
+  });
+
+  it("handles the fall-back week", () => {
+    expect(denverWeekKey(at("2026-11-02T06:30:00Z"))).toBe("2026-10-26"); // Sun 11-01 23:30 MST
+    expect(denverWeekKey(at("2026-11-02T07:30:00Z"))).toBe("2026-11-02"); // Mon 00:30 MST
+  });
+
+  it("handles the spring-forward Sunday", () => {
+    expect(denverWeekKey(at("2026-03-08T18:00:00Z"))).toBe("2026-03-02"); // Sun 12:00 MDT
   });
 });

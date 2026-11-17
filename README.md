@@ -42,6 +42,7 @@ If you allow location access, the drive times and distances are measured from wh
 - Open-Meteo gets the launch coordinates of the sites in drive range, or of the one site whose page you open. It never gets your start point.
 - Forecasts are cached on your device per site, for the 30 most recently used sites.
 - Your last forecast model choice is saved on your device.
+- Usage is counted with [GoatCounter](https://www.goatcounter.com/), with no cookie. It gets your IP address, browser and screen size, the page you're on (a list or a site, without the date or model), the web page that linked you here (without its query), and which controls you use, such as the mode, model, drive time and briefing links. Your device remembers the last day, week and month it was counted, so each counts once. GoatCounter never gets your start point, location or search text.
 - The briefing prompt goes to Anthropic (claude.ai) or OpenAI (chatgpt.com) only when you tap one of those links. It holds the site's public facts and the date, and no start point or location.
 - Site information from the club guides and maps credited in the app's footer, curated by hand into `sites.json`. Each site links to its source. Verify before flying.
 

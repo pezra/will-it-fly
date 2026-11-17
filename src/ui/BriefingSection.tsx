@@ -3,6 +3,7 @@ import type { Site } from "../core/sites/site";
 import type { DayKey } from "../core/time";
 import { briefingLinks, briefingPrompt, copyPrompt } from "./briefing";
 import type { CopyState } from "./briefing";
+import { trackEvent } from "./usage";
 
 const COPY_LABEL: Readonly<Record<CopyState, string>> = {
   idle: "Copy briefing prompt",
@@ -29,6 +30,7 @@ export function BriefingSection({ site, day }: { site: Site; day: DayKey }) {
   const links = briefingLinks(prompt);
 
   const onCopy = async () => {
+    trackEvent("briefing/copy");
     clearTimeout(timer.current);
     // navigator.clipboard is undefined on plain http.
     const clipboard = navigator.clipboard as Clipboard | undefined;
@@ -44,8 +46,8 @@ export function BriefingSection({ site, day }: { site: Site; day: DayKey }) {
       <h2>Conditions briefing</h2>
       <p class="note">Ask an AI chat for its own briefing for this site and day. It works best with a weather forecast plugin.</p>
       <p class="briefing-links">
-        <a href={links.claude} target="_blank" rel="noopener noreferrer">Brief with Claude</a>
-        <a href={links.chatgpt} target="_blank" rel="noopener noreferrer">Brief with ChatGPT</a>
+        <a href={links.claude} onClick={() => trackEvent("briefing/claude")} target="_blank" rel="noopener noreferrer">Brief with Claude</a>
+        <a href={links.chatgpt} onClick={() => trackEvent("briefing/chatgpt")} target="_blank" rel="noopener noreferrer">Brief with ChatGPT</a>
         <button type="button" onClick={onCopy}>{COPY_LABEL[copy]}</button>
       </p>
     </section>
