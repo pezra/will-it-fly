@@ -2,6 +2,20 @@
 
 Architectural decisions that would be costly to reverse. Newest first.
 
+## Errors go to Sentry, with nothing personal in them (2026-11-17, `error-tracking`)
+
+Production builds on a real host report uncaught errors, render crashes, failed recommendations loads, and failed Open-Meteo, OSRM and Nominatim requests to Sentry, through `@sentry/browser` bundled from npm and started before the first render. Default integrations are off, so nothing records breadcrumbs or wraps `fetch`, and `dataCollection` keeps out user info, cookies, page queries and headers other than User-Agent. Failed requests are reported from the one fetch transport in `src/ui`, through a listener hook so neither the transport nor `src/core` imports the SDK. A request is described only by its host, the leading words of its path and the kind of failure, because OSRM puts the start point in the path. Each host and kind is sent once per page load, nothing is sent offline, and a page load sends at most 25 events, which keeps an outage inside the free quota. Source maps are public, since the source is.
+
+The app had no way to learn it was broken for someone. The privacy limits follow from what the app already promises in the README: the start point and search text never leave the device except to the services that need them. Sentry's server stores the request IP unless the project's "Prevent Storing of IP Addresses" setting is on, so that setting is part of this decision.
+
+### Rejected
+- GlitchTip, Bugsnag, Rollbar or Honeybadger. Similar free tiers, and Sentry is the usual choice for browser JS. GlitchTip takes the same SDK, so it stays a drop-in option.
+- Sentry's CDN loader. It's third-party code loaded at runtime, and it can miss errors from the first render.
+- Uploading private source maps from CI. It needs a token in GitHub secrets to hide source that's already public.
+- Reporting from inside `src/core`. Core can't import UI or SDK code, and the transport already sees every request.
+- Reporting the `console.warn` recoveries too. They're mostly the same network failures the transport already reports.
+- Sending errors to GoatCounter as events. Counts only, no stack, and usage analytics and error tracking are kept apart.
+
 ## Usage is counted with GoatCounter, with no identifier sent (2026-11-17, `usage-analytics`)
 
 The app reports page views and events straight to GoatCounter's `/count` endpoint (`sendBeacon`, image fallback), only from a production build on `pezra.github.io`. Pages are normalized to `/`, `/kite` and `/site/<id>`, and events are path-style names from one typed union (`mode/kite`, `drive/fly/3h`). Weekly and monthly unique devices come from markers in `willItFly.usage.v1`: the device remembers the last Denver day, ISO week and month it was counted, and sends `active/day|week|month` on the first open of each.

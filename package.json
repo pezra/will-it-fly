@@ -15,6 +15,7 @@
     "check": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.core.json && tsc --noEmit -p tsconfig.node.json"
   },
   "dependencies": {
+    "@sentry/browser": "11.10.0",
     "preact": "11.2.0"
   },
   "devDependencies": {
