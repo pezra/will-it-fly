@@ -10,6 +10,7 @@ import type { DayKey } from "../core/time";
 import type { DebugParams } from "./debugParams";
 import { describeError } from "./format";
 import type { LocationResult, LocationStatus } from "./location";
+import { reportError } from "./sentry";
 import { localStorageStore } from "./storage";
 import { fetchTransport } from "./transport";
 
@@ -237,6 +238,7 @@ export function useRecommendations(
           if (id !== requestId.current) return;
           pending.current = undefined;
           console.error("Could not load recommendations", error);
+          reportError(error);
           setBase((prev) =>
             prev.status === "loaded"
               ? { ...prev, refreshing: false, refreshError: describeError(error) }

@@ -1,13 +1,19 @@
 import { render } from "preact";
 import { App } from "./ui/App";
 import { currentDebugParams } from "./ui/debugParams";
+import { ErrorBoundary } from "./ui/ErrorBoundary";
 import { initErrorReporting } from "./ui/sentry";
 import "./ui/styles.css";
 
 initErrorReporting();
 
 const debug = currentDebugParams();
-render(<App debug={debug} />, document.getElementById("app")!);
+render(
+  <ErrorBoundary>
+    <App debug={debug} />
+  </ErrorBoundary>,
+  document.getElementById("app")!,
+);
 
 if (import.meta.env.PROD && "serviceWorker" in navigator) {
   window.addEventListener("load", () => {

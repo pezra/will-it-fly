@@ -1,6 +1,7 @@
 import { useEffect, useState } from "preact/hooks";
 import type { Site } from "../core/sites/site";
 import { bundledSiteProvider } from "../core/sites/siteProvider";
+import { reportError } from "./sentry";
 
 let catalog: Promise<Site[]> | undefined;
 
@@ -24,7 +25,10 @@ export function useCatalog(): Site[] | undefined {
       (all) => {
         if (!cancelled) setSites(all);
       },
-      (error: unknown) => console.error("Could not read the site catalog", error),
+      (error: unknown) => {
+        console.error("Could not read the site catalog", error);
+        reportError(error);
+      },
     );
     return () => {
       cancelled = true;
