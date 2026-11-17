@@ -2,6 +2,20 @@
 
 Architectural decisions that would be costly to reverse. Newest first.
 
+## Errors go to Sentry, with nothing personal in them (2026-11-17, `error-tracking`)
+
+Production builds on a real host report uncaught errors, render crashes, failed recommendations loads, and failed Open-Meteo, OSRM and Nominatim requests to Sentry, through `@sentry/browser` bundled from npm and started before the first render. Default integrations are off, so nothing records breadcrumbs or wraps `fetch`, and `dataCollection` keeps out user info, cookies, page queries and headers other than User-Agent. Failed requests are reported from the one fetch transport in `src/ui`, through a listener hook so neither the transport nor `src/core` imports the SDK. A request is described only by its host, the leading words of its path and the kind of failure, because OSRM puts the start point in the path. Each host and kind is sent once per page load, nothing is sent offline, and a page load sends at most 25 events, which keeps an outage inside the free quota. Source maps are public, since the source is.
+
+The app had no way to learn it was broken for someone. The privacy limits follow from what the app already promises in the README: the start point and search text never leave the device except to the services that need them. Sentry's server stores the request IP unless the project's "Prevent Storing of IP Addresses" setting is on, so that setting is part of this decision.
+
+### Rejected
+- GlitchTip, Bugsnag, Rollbar or Honeybadger. Similar free tiers, and Sentry is the usual choice for browser JS. GlitchTip takes the same SDK, so it stays a drop-in option.
+- Sentry's CDN loader. It's third-party code loaded at runtime, and it can miss errors from the first render.
+- Uploading private source maps from CI. It needs a token in GitHub secrets to hide source that's already public.
+- Reporting from inside `src/core`. Core can't import UI or SDK code, and the transport already sees every request.
+- Reporting the `console.warn` recoveries too. They're mostly the same network failures the transport already reports.
+- Sending errors to GoatCounter as events. Counts only, no stack, and usage analytics and error tracking are kept apart.
+
 ## The briefing prompt holds only the guide's site facts (2026-11-16, `27-ai-flight-briefing`)
 
 The conditions briefing hands a site-day to Claude or ChatGPT with a prompt built only from the `Site` and the day, so the app's call and the start point never reach it. Facts are given as the guide states them: curated ideal arcs, uncurated directions marked as such, and placeholder limits flagged, which is the one bit of `limitsSource` that `parseSites` keeps (`limitsDefaulted`). The point is an independent second opinion, and an agent shown our verdict or made-up limits judges against them.
