@@ -2,6 +2,7 @@ import * as Sentry from "@sentry/browser";
 import {
   MAX_EVENTS_PER_LOAD,
   createEventCap,
+  createVisibilityTracker,
   makeApiFailureReporter,
   makeBeforeSend,
   reportingEnabled,
@@ -46,10 +47,20 @@ export function initErrorReporting(): void {
       beforeSend: makeBeforeSend(createEventCap(MAX_EVENTS_PER_LOAD)),
     });
     reporting = true;
+    // The same clock as the transport's request times.
+    const visibility = createVisibilityTracker(document.visibilityState === "hidden");
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") visibility.hidden(performance.now());
+      else visibility.visible(performance.now());
+    });
     setApiFailureListener(
       makeApiFailureReporter({
         capture: (message, options) => Sentry.captureMessage(message, options),
         isOnline: () => navigator.onLine,
+        // Only Chromium has it.
+        connection: () => (navigator as { connection?: { effectiveType?: string } }).connection?.effectiveType,
+        hiddenBetween: visibility.hiddenBetween,
+        hiddenNow: () => document.visibilityState === "hidden",
       }),
     );
   } catch (error) {

@@ -1,43 +1,55 @@
 import type { Transport } from "../core/forecast/openMeteoClient";
-import { isSuccess } from "./errorReporting";
-import type { ApiOutcome } from "./errorReporting";
+import type { RequestReport } from "./errorReporting";
 
 export const REQUEST_TIMEOUT_MS = 20_000;
 
-export type FailureListener = (url: string, outcome: ApiOutcome) => void;
+export type FailureListener = (report: RequestReport) => void;
+
+/** A thin `fetch`: the status arrives first, and the body is read separately. */
+export type Fetcher = (url: string) => Promise<{ status: number; text(): Promise<string> }>;
 
 let apiFailureListener: FailureListener | undefined;
 
-/** Sets who hears about failed requests. Read on each failure, so it can be set after the transports exist. */
+/** Sets who hears about requests. Read on each report, so it can be set after the transports exist. */
 export function setApiFailureListener(fn: FailureListener | undefined): void {
   apiFailureListener = fn;
 }
 
 /**
- * Tells the current listener about non-2xx responses and rejections, then gives the caller exactly
- * what `inner` produced. A listener that throws is logged and ignored.
+ * Tells the current listener how every request ended, with its timing and the stage a rejection
+ * came at, then gives the caller exactly what `fetcher` produced. The listener decides what counts
+ * as a failure. A listener that throws is logged and ignored.
  */
 export function reportingTransport(
-  inner: Transport,
-  onFailure: () => FailureListener | undefined,
+  fetcher: Fetcher,
+  onReport: () => FailureListener | undefined,
+  now: () => number = () => performance.now(),
 ): Transport {
-  const notify = (url: string, outcome: ApiOutcome) => {
-    try {
-      onFailure()?.(url, outcome);
-    } catch (e) {
-      console.warn("Could not report a failed request", e);
-    }
-  };
   return async (url) => {
+    const startedAt = now();
+    const notify = (outcome: RequestReport["outcome"]) => {
+      try {
+        onReport()?.({ url, startedAt, endedAt: now(), outcome });
+      } catch (e) {
+        console.warn("Could not report a request", e);
+      }
+    };
     let response;
     try {
-      response = await inner(url);
+      response = await fetcher(url);
     } catch (error) {
-      notify(url, { error });
+      notify({ error, stage: "request" });
       throw error;
     }
-    if (!isSuccess(response.status)) notify(url, { status: response.status });
-    return response;
+    let body;
+    try {
+      body = await response.text();
+    } catch (error) {
+      notify({ error, stage: "body" });
+      throw error;
+    }
+    notify({ status: response.status });
+    return { status: response.status, body };
   };
 }
 
@@ -47,10 +59,7 @@ export function reportingTransport(
  */
 export function fetchTransportWithTimeout(ms: number): Transport {
   return reportingTransport(
-    async (url) => {
-      const response = await fetch(url, { signal: AbortSignal.timeout(ms) });
-      return { status: response.status, body: await response.text() };
-    },
+    (url) => fetch(url, { signal: AbortSignal.timeout(ms) }),
     () => apiFailureListener,
   );
 }
