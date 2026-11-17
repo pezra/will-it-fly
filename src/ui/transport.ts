@@ -3,16 +3,16 @@ import type { RequestReport } from "./errorReporting";
 
 export const REQUEST_TIMEOUT_MS = 20_000;
 
-export type FailureListener = (report: RequestReport) => void;
+export type RequestListener = (report: RequestReport) => void;
 
 /** A thin `fetch`: the status arrives first, and the body is read separately. */
 export type Fetcher = (url: string) => Promise<{ status: number; text(): Promise<string> }>;
 
-let apiFailureListener: FailureListener | undefined;
+let requestListener: RequestListener | undefined;
 
 /** Sets who hears about requests. Read on each report, so it can be set after the transports exist. */
-export function setApiFailureListener(fn: FailureListener | undefined): void {
-  apiFailureListener = fn;
+export function setRequestListener(fn: RequestListener | undefined): void {
+  requestListener = fn;
 }
 
 /**
@@ -22,7 +22,7 @@ export function setApiFailureListener(fn: FailureListener | undefined): void {
  */
 export function reportingTransport(
   fetcher: Fetcher,
-  onReport: () => FailureListener | undefined,
+  onReport: () => RequestListener | undefined,
   now: () => number = () => performance.now(),
 ): Transport {
   return async (url) => {
@@ -60,7 +60,7 @@ export function reportingTransport(
 export function fetchTransportWithTimeout(ms: number): Transport {
   return reportingTransport(
     (url) => fetch(url, { signal: AbortSignal.timeout(ms) }),
-    () => apiFailureListener,
+    () => requestListener,
   );
 }
 

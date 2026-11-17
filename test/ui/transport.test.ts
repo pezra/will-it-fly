@@ -2,14 +2,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   fetchTransportWithTimeout,
   reportingTransport,
-  setApiFailureListener,
+  setRequestListener,
   type Fetcher,
-  type FailureListener,
+  type RequestListener,
 } from "../../src/ui/transport";
 
 afterEach(() => {
   vi.unstubAllGlobals();
-  setApiFailureListener(undefined);
+  setRequestListener(undefined);
 });
 
 /** A `fetch` that never answers and rejects with the signal's reason once it aborts. */
@@ -74,7 +74,7 @@ describe("reportingTransport", () => {
   };
 
   it("reportsA2xxAndReturnsTheResponse", async () => {
-    const listener = vi.fn<FailureListener>();
+    const listener = vi.fn<RequestListener>();
     const response = await reportingTransport(answering(200, "ok"), () => listener, clock(1, 2))(url);
     expect(response).toEqual({ status: 200, body: "ok" });
     expect(listener).toHaveBeenCalledExactlyOnceWith({
@@ -86,7 +86,7 @@ describe("reportingTransport", () => {
   });
 
   it("reportsANon2xxStatusAndReturnsTheResponse", async () => {
-    const listener = vi.fn<FailureListener>();
+    const listener = vi.fn<RequestListener>();
     const response = await reportingTransport(answering(503, "busy"), () => listener)(url);
     expect(response).toEqual({ status: 503, body: "busy" });
     expect(listener).toHaveBeenCalledExactlyOnceWith(
@@ -95,7 +95,7 @@ describe("reportingTransport", () => {
   });
 
   it("reportsARejectionAtTheRequestStageAndRethrowsTheSameError", async () => {
-    const listener = vi.fn<FailureListener>();
+    const listener = vi.fn<RequestListener>();
     const failure = new TypeError("Failed to fetch");
     const caught = await reportingTransport(rejecting(failure), () => listener, clock(10, 35))(url).catch(
       (e: unknown) => e,
@@ -110,7 +110,7 @@ describe("reportingTransport", () => {
   });
 
   it("reportsABodyFailureAtTheBodyStageAndRethrowsTheSameError", async () => {
-    const listener = vi.fn<FailureListener>();
+    const listener = vi.fn<RequestListener>();
     const failure = new TypeError("terminated");
     const fetcher: Fetcher = async () => ({
       status: 200,
@@ -131,7 +131,7 @@ describe("reportingTransport", () => {
   });
 
   it("takesTheStartTimeBeforeTheRequestAndTheEndTimeAfterTheBody", async () => {
-    const listener = vi.fn<FailureListener>();
+    const listener = vi.fn<RequestListener>();
     const events: string[] = [];
     const fetcher: Fetcher = async () => {
       events.push("fetch");
@@ -154,7 +154,7 @@ describe("reportingTransport", () => {
   it("aThrowingListenerChangesNothingForTheCaller", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     try {
-      const listener: FailureListener = () => {
+      const listener: RequestListener = () => {
         throw new Error("listener broke");
       };
       const failure = new Error("down");
@@ -181,8 +181,8 @@ describe("fetchTransportWithTimeout reporting", () => {
   it("reportsANon2xxStatusToTheCurrentListener", async () => {
     vi.stubGlobal("fetch", vi.fn<typeof fetch>(async () => new Response("busy", { status: 503 })));
     const transport = fetchTransportWithTimeout(1_000);
-    const spy = vi.fn<FailureListener>();
-    setApiFailureListener(spy);
+    const spy = vi.fn<RequestListener>();
+    setRequestListener(spy);
     await transport("https://example.com/x");
     expect(spy).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({ url: "https://example.com/x", outcome: { status: 503 } }),
@@ -191,8 +191,8 @@ describe("fetchTransportWithTimeout reporting", () => {
 
   it("reportsATimeoutWithATimeoutError", async () => {
     vi.stubGlobal("fetch", hangingFetch());
-    const spy = vi.fn<FailureListener>();
-    setApiFailureListener(spy);
+    const spy = vi.fn<RequestListener>();
+    setRequestListener(spy);
     await expect(fetchTransportWithTimeout(20)("https://example.com/slow")).rejects.toMatchObject({
       name: "TimeoutError",
     });

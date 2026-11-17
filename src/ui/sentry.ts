@@ -7,7 +7,7 @@ import {
   makeBeforeSend,
   reportingEnabled,
 } from "./errorReporting";
-import { setApiFailureListener } from "./transport";
+import { setRequestListener } from "./transport";
 
 /** A DSN is public by design. Sentry's Allowed Domains setting keeps other sites from using it. */
 const SENTRY_DSN =
@@ -53,7 +53,7 @@ export function initErrorReporting(): void {
       if (document.visibilityState === "hidden") visibility.hidden(performance.now());
       else visibility.visible(performance.now());
     });
-    setApiFailureListener(
+    setRequestListener(
       makeApiFailureReporter({
         capture: (message, options) => Sentry.captureMessage(message, options),
         isOnline: () => navigator.onLine,
