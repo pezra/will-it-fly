@@ -1,5 +1,5 @@
 import { readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
-import { join, relative, sep } from "node:path";
+import { join, relative, resolve, sep } from "node:path";
 import { defineConfig } from "vitest/config";
 import type { Plugin } from "vite";
 import preact from "@preact/preset-vite";
@@ -24,7 +24,7 @@ function serviceWorkerManifest(): Plugin {
     name: "sw-precache-manifest",
     apply: "build",
     configResolved(config) {
-      outDir = join(config.root, config.build.outDir);
+      outDir = resolve(config.root, config.build.outDir);
     },
     closeBundle() {
       const files = listFiles(outDir).filter((f) => f !== "sw.js" && !f.endsWith(".map"));

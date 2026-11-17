@@ -48,7 +48,7 @@ export function initErrorReporting(): void {
     });
     reporting = true;
     // The same clock as the transport's request times.
-    const visibility = createVisibilityTracker(document.visibilityState === "hidden");
+    const visibility = createVisibilityTracker();
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "hidden") visibility.hidden(performance.now());
       else visibility.visible(performance.now());

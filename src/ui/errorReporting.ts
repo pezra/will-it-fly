@@ -19,8 +19,14 @@ export function isSuccess(status: number): boolean {
   return status >= 200 && status <= 299;
 }
 
-/** How a request ended: a status arrived, or a rejection at the request or while reading the body. */
-export type ApiOutcome = { status: number } | { error: unknown; stage: "request" | "body" };
+/**
+ * How a request ended: a status arrived, or a rejection at the request, or a rejection while reading
+ * the body of a response whose status had arrived.
+ */
+export type ApiOutcome =
+  | { status: number }
+  | { error: unknown; stage: "request" }
+  | { error: unknown; stage: "body"; status: number };
 /** Times are `performance.now()` milliseconds. */
 export type RequestReport = { url: string; startedAt: number; endedAt: number; outcome: ApiOutcome };
 export type ApiFailure = { host: string; path: string; kind: string };
@@ -52,27 +58,25 @@ export function redactMessage(error: unknown): string | undefined {
 /**
  * Remembers when the page was last hidden and last shown, to tell whether it was hidden at any time
  * since a request started. Asked at failure time the rule is exact, because every earlier hidden
- * interval ended before the last one began. Times share a clock with the requests'.
+ * interval ended before the last one began. Whether it is hidden right now is the caller's to read.
+ * Times share a clock with the requests'.
  */
-export function createVisibilityTracker(hiddenNow: boolean): {
+export function createVisibilityTracker(): {
   hidden: (at: number) => void;
   visible: (at: number) => void;
   hiddenBetween: (start: number) => boolean;
 } {
-  let currentlyHidden = hiddenNow;
   let lastHidden = -Infinity;
   let lastVisible = -Infinity;
   return {
     hidden: (at) => {
-      currentlyHidden = true;
       lastHidden = at;
     },
     visible: (at) => {
-      currentlyHidden = false;
       lastVisible = at;
     },
-    // Hidden now, or went hidden after the start, or came back after it (so it was hidden at the start).
-    hiddenBetween: (start) => currentlyHidden || lastHidden >= start || lastVisible > start,
+    // Went hidden after the start, or came back after it (so it was hidden at the start).
+    hiddenBetween: (start) => lastHidden >= start || lastVisible > start,
   };
 }
 
@@ -83,11 +87,11 @@ export function createVisibilityTracker(hiddenNow: boolean): {
  */
 export function apiFailure(url: string, outcome: ApiOutcome): ApiFailure | undefined {
   let kind: string;
-  if ("status" in outcome) {
+  if ("error" in outcome) {
+    kind = errorKind(outcome.error);
+  } else {
     if (isSuccess(outcome.status)) return undefined;
     kind = `http ${outcome.status}`;
-  } else {
-    kind = errorKind(outcome.error);
   }
 
   const parsed = new URL(url);
@@ -150,7 +154,7 @@ export function makeApiFailureReporter(deps: {
   const okByHost = new Map<string, number>();
   return ({ url, startedAt, endedAt, outcome }) => {
     // Successes are counted before the offline and repeat checks, so the count covers them all.
-    if ("status" in outcome && isSuccess(outcome.status)) {
+    if (!("error" in outcome) && isSuccess(outcome.status)) {
       const host = new URL(url).host;
       okByHost.set(host, (okByHost.get(host) ?? 0) + 1);
       return;
@@ -162,7 +166,7 @@ export function makeApiFailureReporter(deps: {
     const tags: Record<string, string> = {
       api_host: host,
       api_kind: kind,
-      stage: "status" in outcome ? "response" : outcome.stage,
+      stage: "error" in outcome ? outcome.stage : "response",
       // Also read now, in case the rejection fires before `visibilitychange` is delivered.
       visibility: deps.hiddenNow() || deps.hiddenBetween(startedAt) ? "hidden" : "visible",
     };
@@ -175,8 +179,12 @@ export function makeApiFailureReporter(deps: {
       // Rounded up, so a search query's length is not given away.
       url_length: Math.ceil(url.length / 100) * 100,
     };
-    const message = "status" in outcome ? undefined : redactMessage(outcome.error);
-    if (message !== undefined) extra.error_message = message;
+    if ("error" in outcome) {
+      const message = redactMessage(outcome.error);
+      if (message !== undefined) extra.error_message = message;
+      // A body that failed after a status arrived keeps the status, so a server error still shows.
+      if (outcome.stage === "body") extra.http_status = outcome.status;
+    }
     deps.capture(`${host} ${kind}`, { level: "error", fingerprint: ["api", host, kind], tags, extra });
   };
 }

@@ -7,32 +7,35 @@ set -euo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 root="$(cd "$here/../.." && pwd)"
 chrome="${CHROME:-/Applications/Google Chrome.app/Contents/MacOS/Google Chrome}"
-tmp="$(mktemp -d)"
 pids=()
 
-# Stop everything this run started, Chrome (found by its profile directory) included.
+for port in 4173 9999 9333; do
+  if lsof -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1; then echo "port $port is in use" >&2; exit 1; fi
+done
+
+# Stop everything this run started, Chrome (found by its profile directory) included. Set only
+# after the port check, so a run that refuses to start never touches anyone else's server.
 cleanup() {
   for pid in ${pids[@]+"${pids[@]}"}; do
     kill "$pid" 2>/dev/null || true
     wait "$pid" 2>/dev/null || true
   done
   pkill -f -- "--user-data-dir=$tmp/profile" 2>/dev/null || true
-  # `npx` starts vite as a child, so stop whatever still holds the preview port.
-  lsof -ti :4173 2>/dev/null | xargs kill 2>/dev/null || true
+  # `npx` starts vite as a child. Nothing listened on the port before this run, so this is ours.
+  lsof -tiTCP:4173 -sTCP:LISTEN 2>/dev/null | xargs kill 2>/dev/null || true
   rm -rf "$tmp"
 }
+tmp="$(mktemp -d)"
 trap cleanup EXIT
 
-for port in 4173 9999 9333; do
-  if lsof -i ":$port" >/dev/null 2>&1; then echo "port $port is in use" >&2; exit 1; fi
-done
 [ -x "$chrome" ] || { echo "Chrome not found at $chrome (set CHROME)" >&2; exit 1; }
 
 cd "$root"
-VITE_RELEASE=e2e VITE_SENTRY_DSN=http://public@sentry.test:9999/1 npm run build
+# Built into the temp dir, so the repo's dist/ never holds a build with the fake DSN.
+VITE_RELEASE=e2e VITE_SENTRY_DSN=http://public@sentry.test:9999/1 npx vite build --outDir "$tmp/dist" --emptyOutDir
 
 node "$here/fake-sentry.mjs" "$tmp/events.jsonl" "$tmp/raw.log" & pids+=($!)
-npx vite preview --host 127.0.0.1 --port 4173 --strictPort --config "$here/vite.preview.config.mjs" >"$tmp/preview.log" 2>&1 & pids+=($!)
+npx vite preview --host 127.0.0.1 --port 4173 --strictPort --outDir "$tmp/dist" --config "$here/vite.preview.config.mjs" >"$tmp/preview.log" 2>&1 & pids+=($!)
 
 for _ in $(seq 50); do curl -sf http://127.0.0.1:4173/ >/dev/null && break; sleep 0.2; done
 

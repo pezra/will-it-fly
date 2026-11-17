@@ -45,7 +45,7 @@ export function reportingTransport(
     try {
       body = await response.text();
     } catch (error) {
-      notify({ error, stage: "body" });
+      notify({ error, stage: "body", status: response.status });
       throw error;
     }
     notify({ status: response.status });

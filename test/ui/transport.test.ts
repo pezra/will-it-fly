@@ -126,7 +126,7 @@ describe("reportingTransport", () => {
       url,
       startedAt: 5,
       endedAt: 9,
-      outcome: { error: failure, stage: "body" },
+      outcome: { error: failure, stage: "body", status: 200 },
     });
   });
 

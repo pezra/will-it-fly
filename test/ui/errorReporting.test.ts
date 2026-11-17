@@ -64,7 +64,7 @@ describe("apiFailure", () => {
     expect(apiFailure(url, rejected({ name: "AbortError" }))?.kind).toBe("AbortError");
   });
   it("callsAThrownValueWithoutANameUnknown", () => {
-    expect(apiFailure(url, { error: "x", stage: "body" })?.kind).toBe("unknown");
+    expect(apiFailure(url, { error: "x", stage: "body", status: 200 })?.kind).toBe("unknown");
   });
   it("keepsOnlyTheHostAndPath", () => {
     expect(apiFailure(url, { status: 500 })).toEqual({
@@ -157,53 +157,45 @@ describe("redactMessage", () => {
 
 describe("createVisibilityTracker", () => {
   it("isVisibleWhenNeverHidden", () => {
-    expect(createVisibilityTracker(false).hiddenBetween(10)).toBe(false);
+    expect(createVisibilityTracker().hiddenBetween(10)).toBe(false);
   });
   it("isVisibleWhenHiddenOnlyBeforeTheRequestStarted", () => {
-    const tracker = createVisibilityTracker(false);
+    const tracker = createVisibilityTracker();
     tracker.hidden(1);
     tracker.visible(2);
     expect(tracker.hiddenBetween(5)).toBe(false);
   });
-  it("isHiddenWhenHiddenAtTheStartAndStillHidden", () => {
-    const tracker = createVisibilityTracker(false);
-    tracker.hidden(1);
-    expect(tracker.hiddenBetween(5)).toBe(true);
-  });
   it("isHiddenWhenItBecameHiddenDuringTheRequest", () => {
-    const tracker = createVisibilityTracker(false);
+    const tracker = createVisibilityTracker();
     tracker.hidden(7);
     expect(tracker.hiddenBetween(5)).toBe(true);
   });
   it("isHiddenWhenHiddenAtTheStartAndBackBeforeTheEnd", () => {
-    const tracker = createVisibilityTracker(false);
+    const tracker = createVisibilityTracker();
     tracker.hidden(1);
     tracker.visible(8);
     expect(tracker.hiddenBetween(5)).toBe(true);
   });
   it("isHiddenWhenItWentHiddenAndCameBackDuringTheRequest", () => {
-    const tracker = createVisibilityTracker(false);
+    const tracker = createVisibilityTracker();
     tracker.hidden(6);
     tracker.visible(8);
     expect(tracker.hiddenBetween(5)).toBe(true);
   });
   it("countsBecomingHiddenExactlyAtTheStart", () => {
-    const tracker = createVisibilityTracker(false);
+    const tracker = createVisibilityTracker();
     tracker.hidden(5);
     tracker.visible(5.5);
     expect(tracker.hiddenBetween(5)).toBe(true);
   });
   it("doesNotCountBecomingVisibleExactlyAtTheStart", () => {
-    const tracker = createVisibilityTracker(false);
+    const tracker = createVisibilityTracker();
     tracker.hidden(1);
     tracker.visible(5);
     expect(tracker.hiddenBetween(5)).toBe(false);
   });
-  it("isHiddenWhenCreatedWhileHidden", () => {
-    expect(createVisibilityTracker(true).hiddenBetween(5)).toBe(true);
-  });
-  it("isVisibleOnceACreatedHiddenPageComesBackBeforeTheStart", () => {
-    const tracker = createVisibilityTracker(true);
+  it("isVisibleOnceAPageThatStartedHiddenComesBackBeforeTheStart", () => {
+    const tracker = createVisibilityTracker();
     tracker.visible(2);
     expect(tracker.hiddenBetween(5)).toBe(false);
   });
@@ -257,10 +249,7 @@ describe("makeBeforeSend", () => {
 
 describe("makeApiFailureReporter", () => {
   const url = "https://api.open-meteo.com/v1/forecast?latitude=40.1";
-  const rejection = (error: unknown, stage: "request" | "body" = "request"): ApiOutcome => ({
-    error,
-    stage,
-  });
+  const rejection = (error: unknown): ApiOutcome => ({ error, stage: "request" });
   const requestReport = (outcome: ApiOutcome, over: Partial<RequestReport> = {}): RequestReport => ({
     url,
     startedAt: 1_000,
@@ -340,8 +329,11 @@ describe("makeApiFailureReporter", () => {
   });
   it("tagsABodyFailureWithItsStage", () => {
     const { calls, report } = setup();
-    report(requestReport(rejection(new TypeError("terminated"), "body")));
-    expect(calls[0]![1]).toMatchObject({ tags: { stage: "body", api_kind: "TypeError" } });
+    report(requestReport({ error: new TypeError("terminated"), stage: "body", status: 503 }));
+    expect(calls[0]![1]).toMatchObject({
+      tags: { stage: "body", api_kind: "TypeError" },
+      extra: { http_status: 503 },
+    });
   });
   it("leavesOutTheConnectionWhenTheBrowserHasNone", () => {
     const { calls, report } = setup();
