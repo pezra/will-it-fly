@@ -30,10 +30,13 @@ export type UsageEvent =
   | "briefing/copy"
   | `active/${Period}`;
 
-/** The page a route counts as: the list or the site, never the day or the model. */
+/**
+ * The page a route counts as: the list or the site, never the day or the model. The site id goes
+ * as is, so the dashboard reads `/site/rmhpa/lookout`; `countURL` encodes the whole path.
+ */
 export function usagePath(route: Route): string {
   const path =
-    route.page === "site" ? `/site/${encodeURIComponent(route.id)}` : route.mode === "kiting" ? "/kite" : "/";
+    route.page === "site" ? `/site/${route.id}` : route.mode === "kiting" ? "/kite" : "/";
   return path.slice(0, MAX_PATH_LENGTH);
 }
 

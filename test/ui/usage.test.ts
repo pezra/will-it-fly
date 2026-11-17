@@ -25,9 +25,9 @@ describe("usagePath", () => {
     expect(usagePath({ page: "list", mode: "kiting", day: "2026-11-18" })).toBe("/kite");
   });
 
-  it("is /site/<encoded id> for a site, ignoring day and model", () => {
+  it("is /site/<id> for a site, ignoring day and model", () => {
     expect(usagePath({ page: "site", id: "rmhpa/lookout", day: "2026-11-18", model: "rrfs" })).toBe(
-      "/site/rmhpa%2Flookout",
+      "/site/rmhpa/lookout",
     );
   });
 

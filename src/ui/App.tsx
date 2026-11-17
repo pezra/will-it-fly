@@ -108,7 +108,8 @@ export function App({ debug }: { debug: DebugParams }) {
         <a href="https://project-osrm.org/">OSRM</a> and place search by{" "}
         <a href="https://nominatim.org/">Nominatim</a>, ©{" "}
         <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors · Drive times send your start point, rounded to about 1 km,
-        to OSRM.
+        to OSRM · Usage is counted by{" "}
+        <a href="https://www.goatcounter.com/">GoatCounter</a>, with no cookie.
       </footer>
     </>
   );
