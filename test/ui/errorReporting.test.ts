@@ -8,7 +8,6 @@ import {
   makeBeforeSend,
   MAX_EVENTS_PER_LOAD,
   reportingEnabled,
-  withoutQuery,
 } from "../../src/ui/errorReporting";
 
 describe("isLocalHost", () => {
@@ -81,17 +80,6 @@ describe("apiFailure", () => {
   });
 });
 
-describe("withoutQuery", () => {
-  it("removesTheQueryAndKeepsTheHash", () => {
-    expect(withoutQuery("https://x.io/a?b=1#/site/foo")).toBe("https://x.io/a#/site/foo");
-  });
-  it("keepsTheQueryInsideTheHashRoute", () => {
-    expect(withoutQuery("https://x.io/a?now=1#/?model=rrfs")).toBe("https://x.io/a#/?model=rrfs");
-  });
-  it("returnsAnUnparseableStringUnchanged", () => {
-    expect(withoutQuery("not a url")).toBe("not a url");
-  });
-});
 
 describe("createApiFailureFilter", () => {
   const failure = { host: "a.test", path: "/x", kind: "network" };
@@ -117,13 +105,8 @@ describe("createEventCap", () => {
 });
 
 describe("makeBeforeSend", () => {
-  it("stripsTheQueryFromTheRequestUrl", () => {
-    const beforeSend = makeBeforeSend(() => true);
-    const event = beforeSend({ request: { url: "https://x.io/a?b=1#/site/foo" } });
-    expect(event?.request?.url).toBe("https://x.io/a#/site/foo");
-  });
-  it("passesAnEventWithNoRequest", () => {
-    const event: { message: string; request?: { url?: string } } = { message: "m" };
+  it("passesTheEventItself", () => {
+    const event = { message: "m" };
     expect(makeBeforeSend(() => true)(event)).toBe(event);
   });
   it("dropsEventsOverTheCap", () => {

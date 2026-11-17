@@ -49,16 +49,6 @@ export function apiFailure(url: string, outcome: ApiOutcome): ApiFailure | undef
   return { host: parsed.host, path: "/" + words.join("/"), kind };
 }
 
-/** The URL without its query. The hash stays: it is the route, and its query is part of the route. */
-export function withoutQuery(url: string): string {
-  try {
-    const parsed = new URL(url);
-    parsed.search = "";
-    return parsed.href;
-  } catch {
-    return url;
-  }
-}
 
 /** Passes each host and kind of failure once per page load. */
 export function createApiFailureFilter(): (failure: ApiFailure) => boolean {
@@ -76,14 +66,9 @@ export function createEventCap(max: number): () => boolean {
   return () => count++ < max;
 }
 
-export function makeBeforeSend(
-  cap: () => boolean,
-): <E extends { request?: { url?: string } }>(event: E) => E | null {
-  return (event) => {
-    if (!cap()) return null;
-    if (event.request?.url) event.request.url = withoutQuery(event.request.url);
-    return event;
-  };
+/** Drops events once the cap is used up. The SDK's `urlQueryParams: false` already strips page queries. */
+export function makeBeforeSend(cap: () => boolean): <E>(event: E) => E | null {
+  return (event) => (cap() ? event : null);
 }
 
 interface CaptureOptions {

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { createSiteForecastCache } from "../core/forecast/siteForecastCache";
-import { getRecommendations } from "../core/recommendation/recommendationService";
+import { DayOutOfRangeError, getRecommendations } from "../core/recommendation/recommendationService";
 import type { RecommendationResult } from "../core/recommendation/types";
 import type { ModelName } from "../core/scoring/hourEvaluator";
 import type { SiteKind } from "../core/sites/site";
@@ -238,7 +238,8 @@ export function useRecommendations(
           if (id !== requestId.current) return;
           pending.current = undefined;
           console.error("Could not load recommendations", error);
-          reportError(error);
+          // A day out of range comes from an old link, not a bug, and the page already says so.
+          if (!(error instanceof DayOutOfRangeError)) reportError(error);
           setBase((prev) =>
             prev.status === "loaded"
               ? { ...prev, refreshing: false, refreshError: describeError(error) }
