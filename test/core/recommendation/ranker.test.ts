@@ -120,7 +120,7 @@ describe("withDistances", () => {
     today: "2026-11-08",
     dayOver: false,
     fetchedAt: T0,
-    isOffline: false,
+    fallback: undefined,
     sites,
   });
 
@@ -344,7 +344,7 @@ describe("recommendSite", () => {
       today: "2026-11-08",
       dayOver: false,
       fetchedAt: 0,
-      isOffline: false,
+      fallback: undefined,
       sites: [r],
     };
     expect(withDistances(result, where).sites[0]?.distanceM).toBe(0);

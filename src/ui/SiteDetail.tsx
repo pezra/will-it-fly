@@ -88,7 +88,7 @@ export function SiteDetail({
     return (
       <>
         {back}
-        <ForecastStatus state={status} retry={recs.retry} />
+        <ForecastStatus state={status} retry={recs.retry} retryAt={recs.retryAt} />
       </>
     );
   }

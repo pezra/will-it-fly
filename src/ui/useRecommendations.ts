@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
+import { fetchFailureKind } from "../core/forecast/fetchFailure";
+import type { FetchFailureKind } from "../core/forecast/fetchFailure";
 import { createSiteForecastCache } from "../core/forecast/siteForecastCache";
 import { DayOutOfRangeError, getRecommendations } from "../core/recommendation/recommendationService";
 import type { RecommendationResult } from "../core/recommendation/types";
@@ -8,8 +10,8 @@ import { bundledSiteProvider } from "../core/sites/siteProvider";
 import { containsSites, weatherLoadKey } from "../core/travel/inRange";
 import type { DayKey } from "../core/time";
 import type { DebugParams } from "./debugParams";
-import { once } from "./errorReporting";
-import { describeError } from "./format";
+import { createVisibilityTracker, once } from "./errorReporting";
+import { isHeld, loadFailureMessage } from "./format";
 import type { LocationResult, LocationStatus } from "./location";
 import { reportError } from "./sentry";
 import { localStorageStore } from "./storage";
@@ -45,6 +47,11 @@ export interface ForecastLoad {
   /** A forced reload of the same sites. */
   refresh: () => void;
   retry: () => void;
+  /**
+   * Until when Retry and Refresh are held after a rate limit, on the `performance.now()` clock: it
+   * runs under a debug `now` and doesn't jump when the device's clock is set.
+   */
+  retryAt: number | undefined;
 }
 
 /** The load with the location from `useTravel`, as the pages use it. */
@@ -177,6 +184,60 @@ export function visibleState(
     : state;
 }
 
+/** How a load settled: a result, with the cause if it fell back to the cache, or a failure's kind. */
+export type LoadOutcome =
+  | { ok: true; fallback: FetchFailureKind | undefined }
+  | { ok: false; kind: FetchFailureKind };
+
+/** How long Retry and Refresh stay held after a rate limit. */
+export const RATE_LIMIT_HOLD_MS = 90_000;
+
+/**
+ * The end of the hold after a load that settled as `outcome` at `now`, given the hold `prev`. A rate
+ * limit (as a failure or as the cause of a fallback) starts one; any other failure or fallback ends
+ * it, so a later server error enables Retry at once; a clean success leaves it as it was.
+ */
+export function nextRetryAt(outcome: LoadOutcome, now: number, prev: number | undefined): number | undefined {
+  const kind = outcome.ok ? outcome.fallback : outcome.kind;
+  if (kind === undefined) return prev;
+  return kind === "rateLimited" ? now + RATE_LIMIT_HOLD_MS : undefined;
+}
+
+/**
+ * What to do with a finished load: show it, retry now, or retry when the page is next visible.
+ * A network failure is retried once, since a request frozen with the page or a dropped connection
+ * usually works the second time. A network fallback is retried only if the page was hidden during
+ * the load, as the freeze is then the likely cause; one seen while visible is a real outage, and
+ * the cached result is the best there is. A retry's outcome is always shown, so there is never a
+ * second one.
+ */
+export function afterLoad(o: {
+  outcome: LoadOutcome;
+  isRetry: boolean;
+  /** Whether the page was hidden at any time during the load. */
+  hiddenDuring: boolean;
+  hiddenNow: boolean;
+}): "show" | "retry" | "retryWhenVisible" {
+  if (o.isRetry) return "show";
+  const { outcome } = o;
+  const retriable = outcome.ok ? outcome.fallback === "network" && o.hiddenDuring : outcome.kind === "network";
+  if (!retriable) return "show";
+  return o.hiddenNow ? "retryWhenVisible" : "retry";
+}
+
+/**
+ * What coming back to the page loads, given the retry remembered for when it is visible and the
+ * loads in flight: the remembered retry if there is one (its load has settled, though a newer one
+ * may be in flight), else a plain load if none is in flight, else nothing.
+ */
+export function resumeAction(
+  retryOnVisible: { forceRefresh: boolean } | undefined,
+  inFlight: number,
+): { load: true; forceRefresh: boolean; isRetry: boolean } | { load: false } {
+  if (retryOnVisible !== undefined) return { load: true, forceRefresh: retryOnVisible.forceRefresh, isRetry: true };
+  return inFlight === 0 ? { load: true, forceRefresh: false, isRetry: false } : { load: false };
+}
+
 /**
  * Loads the forecast for `siteIds` on `day` (undefined for the default day), with `model` as the
  * primary model, for the list's `mode` (undefined on a site page, which takes a result loaded for
@@ -198,6 +259,7 @@ export function useRecommendations(
   siteIds: readonly string[] | undefined,
 ): ForecastLoad {
   const [base, setBase] = useState<RecommendationsState>({ status: "loading" });
+  const [retryAt, setRetryAt] = useState<number | undefined>(undefined);
   // Read by the reload effect to decide whether the loaded result already covers the ids.
   const current = useRef(base);
   current.current = base;
@@ -225,32 +287,61 @@ export function useRecommendations(
   const pending = useRef<PendingLoad | undefined>(undefined);
   // Loads in flight, so coming back to the page doesn't start a second one while one is running.
   const inFlight = useRef(0);
+  // The retry of a load that settled while the page was hidden, run when it is next visible.
+  const retryOnVisible = useRef<{ forceRefresh: boolean } | undefined>(undefined);
+  // Created once. A page that starts hidden (opened in a background tab) has no `visibilitychange`
+  // for that, so it is recorded here.
+  const [tracker] = useState(() => {
+    const created = createVisibilityTracker();
+    if (document.visibilityState === "hidden") created.hidden(performance.now());
+    return created;
+  });
 
   const load = useCallback(
-    (forceRefresh: boolean) => {
+    (forceRefresh: boolean, isRetry = false) => {
+      retryOnVisible.current = undefined;
       if (ids === undefined) return;
       const id = ++requestId.current;
       pending.current = { day, model, mode, ids };
       inFlight.current++;
       setBase((prev) => pendingState(prev, day, model, mode));
+      const startedAt = performance.now();
+      // Called only while this load is the latest. A retry leaves `pending` and the state as they
+      // are, so the failure or fallback never shows in between.
+      const next = (outcome: LoadOutcome): "show" | "retry" | "retryWhenVisible" => {
+        const hiddenNow = document.visibilityState === "hidden";
+        // Also read now: on a thaw the rejection can land before `visibilitychange` is delivered.
+        const hiddenDuring = tracker.hiddenBetween(startedAt) || hiddenNow;
+        const action = afterLoad({ outcome, isRetry, hiddenDuring, hiddenNow });
+        // This render's `load` on purpose: the retry repeats the same day, model, mode and ids.
+        if (action === "retry") load(forceRefresh, true);
+        else if (action === "retryWhenVisible") retryOnVisible.current = { forceRefresh };
+        if (action === "show") setRetryAt((prev) => nextRetryAt(outcome, performance.now(), prev));
+        return action;
+      };
       getRecommendations({ forceRefresh, day, siteIds: ids, model }, deps).then(
         (result) => {
           inFlight.current--;
           if (id !== requestId.current) return;
+          if (next({ ok: true, fallback: result.fallback }) !== "show") return;
           pending.current = undefined;
           setBase({ status: "loaded", requested: day, mode, result, refreshing: false });
         },
         (error: unknown) => {
           inFlight.current--;
           if (id !== requestId.current) return;
+          if (next({ ok: false, kind: fetchFailureKind(error) }) !== "show") {
+            console.warn("Could not load recommendations, retrying", error);
+            return;
+          }
           pending.current = undefined;
           console.error("Could not load recommendations", error);
           // A day out of range comes from an old link, not a bug, and the page already says so.
           if (!(error instanceof DayOutOfRangeError)) reportLoadFailure(error);
           setBase((prev) =>
             prev.status === "loaded"
-              ? { ...prev, refreshing: false, refreshError: describeError(error) }
-              : { status: "failed", message: describeError(error) },
+              ? { ...prev, refreshing: false, refreshError: loadFailureMessage(error) }
+              : { status: "failed", message: loadFailureMessage(error) },
           );
         },
       );
@@ -274,12 +365,15 @@ export function useRecommendations(
     if (decision === "keep") return;
     ++requestId.current;
     pending.current = undefined;
+    // The dropped load's retry, if it was waiting for the page to be visible, goes with it.
+    retryOnVisible.current = undefined;
     setBase((p) => droppedState(p, day, model, mode));
   }, [load]);
 
-  // Coming back to the page re-runs a non-forced load (the core cache rules decide whether to
-  // fetch) and re-renders the forecast age. While visible, the age also re-renders every minute.
-  // `tick` only forces a render: `now` reads the clock itself, and `load` does not depend on it.
+  // Coming back to the page runs the retry waiting for it, or else re-runs a non-forced load (the
+  // core cache rules decide whether to fetch), and re-renders the forecast age. While visible, the
+  // age also re-renders every minute. `tick` only forces a render: `now` reads the clock itself,
+  // and `load` does not depend on it.
   const [, setTick] = useState(0);
   useEffect(() => {
     let timer: ReturnType<typeof setInterval> | undefined;
@@ -294,14 +388,25 @@ export function useRecommendations(
     const resume = () => {
       setTick((t) => t + 1);
       startTimer();
-      if (inFlight.current === 0) load(false);
+      // Decided before loading, since `load` clears the remembered retry.
+      const action = resumeAction(retryOnVisible.current, inFlight.current);
+      if (action.load) load(action.forceRefresh, action.isRetry);
     };
+    // The tracker hears each change before `resume` runs, so a retry started here doesn't count
+    // the page as hidden after its own start.
     const onVisibility = () => {
-      if (document.visibilityState === "visible") resume();
-      else stopTimer();
+      if (document.visibilityState === "visible") {
+        tracker.visible(performance.now());
+        resume();
+      } else {
+        tracker.hidden(performance.now());
+        stopTimer();
+      }
     };
     const onPageShow = (event: PageTransitionEvent) => {
-      if (event.persisted) resume();
+      if (!event.persisted) return;
+      tracker.visible(performance.now());
+      resume();
     };
     if (document.visibilityState === "visible") startTimer();
     document.addEventListener("visibilitychange", onVisibility);
@@ -313,8 +418,13 @@ export function useRecommendations(
     };
   }, [load]);
 
-  const refresh = useCallback(() => load(true), [load]);
-  const retry = useCallback(() => load(false), [load]);
+  // Held after a rate limit, so a button clicked in the last render before the hold ends does nothing.
+  const refresh = useCallback(() => {
+    if (!isHeld(retryAt, performance.now())) load(true);
+  }, [load, retryAt]);
+  const retry = useCallback(() => {
+    if (!isHeld(retryAt, performance.now())) load(false);
+  }, [load, retryAt]);
   const state = useMemo(() => visibleState(base, day, model, mode), [base, day, model, mode]);
-  return { state, now, refresh, retry };
+  return { state, now, refresh, retry, retryAt };
 }

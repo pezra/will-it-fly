@@ -4,18 +4,18 @@ import type { Coordinate, Site, SiteKind } from "../core/sites/site";
 import { MINUTES_PER_HOUR } from "../core/units";
 import { applyTravel } from "../core/travel/applyTravel";
 import type { TravelTimes } from "../core/travel/applyTravel";
-import { OSRM_TIMEOUT_MS, driveTimesFor, startKey, withinReach } from "../core/travel/driveTime";
+import { driveTimesFor, startKey, withinReach } from "../core/travel/driveTime";
 import type { DriveTime } from "../core/travel/driveTime";
 import { inRangeIds, mergeTimes, missingDestinations, travelStage } from "../core/travel/inRange";
 import type { TravelStage } from "../core/travel/inRange";
-import { GEOCODE_TIMEOUT_MS, searchPlaces, shortPlaceName } from "../core/travel/geocode";
+import { searchPlaces, shortPlaceName } from "../core/travel/geocode";
 import type { Place } from "../core/travel/geocode";
 import type { DebugParams } from "./debugParams";
 import { describeError } from "./format";
 import { locate } from "./location";
 import type { LocationResult, LocationStatus } from "./location";
 import { localStorageStore } from "./storage";
-import { fetchTransportWithTimeout } from "./transport";
+import { fetchTransport } from "./transport";
 import {
   MAX_PLACE_NAME_LENGTH,
   loadTravelSettings,
@@ -172,9 +172,6 @@ export function listView(
   return { shown: ofKind, hiddenCount: hasStart ? total - ofKind.length : 0, total };
 }
 
-const routeTransport = fetchTransportWithTimeout(OSRM_TIMEOUT_MS);
-const geocodeTransport = fetchTransportWithTimeout(GEOCODE_TIMEOUT_MS);
-
 const NO_TIMES: ReadonlyMap<string, DriveTime> = new Map();
 
 /**
@@ -254,7 +251,7 @@ export function useTravel(
       setTimes((prev) => mergeTimes(prev, key, NO_TIMES));
       return;
     }
-    const deps = { transport: routeTransport, cache: store, baseURL: debug.routeBaseURL };
+    const deps = { transport: fetchTransport, cache: store, baseURL: debug.routeBaseURL };
     driveTimesFor(start, missing, deps).then(
       (result) => {
         if (key === keyRef.current) setTimes((prev) => mergeTimes(prev, key, result));
@@ -311,7 +308,7 @@ export function useTravel(
     }
     const id = ++searchRequest.current;
     setSearchState({ status: "searching", query });
-    searchPlaces(query, geocodeTransport).then(
+    searchPlaces(query, fetchTransport).then(
       (places) => {
         if (id !== searchRequest.current) return;
         setSearchState(places.length === 0 ? { status: "none" } : { status: "results", places });

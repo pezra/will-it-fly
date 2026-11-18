@@ -1,4 +1,7 @@
 import { METERS_PER_FOOT, METERS_PER_MILE, MINUTES_PER_HOUR, SECONDS_PER_MINUTE, compass } from "../core/units";
+import { fetchFailureKind } from "../core/forecast/fetchFailure";
+import type { FetchFailureKind } from "../core/forecast/fetchFailure";
+import { OpenMeteoError } from "../core/forecast/openMeteoClient";
 import type { DriveTime } from "../core/travel/driveTime";
 import type { TravelStage } from "../core/travel/inRange";
 import type { Confidence } from "../core/scoring/modelAgreement";
@@ -12,6 +15,39 @@ import { addDays, formatDayKey } from "../core/time";
 import type { DayKey } from "../core/time";
 import { radiusLabel } from "./travelSettings";
 import type { TravelStart } from "./travelSettings";
+
+/**
+ * What a failed load says: what went wrong and what to do, for a rate limit, a server error or a
+ * network failure. Any other error keeps its own message.
+ */
+export function loadFailureMessage(error: unknown): string {
+  switch (fetchFailureKind(error)) {
+    case "rateLimited":
+      return "Open-Meteo, the weather service, is limiting how often the app can ask for forecasts. Try again in a minute or two.";
+    case "server": {
+      const status = error instanceof OpenMeteoError ? error.status : undefined;
+      return `Open-Meteo, the weather service, is having trouble (HTTP ${status}). Try again shortly.`;
+    }
+    case "network":
+      return "Couldn't reach Open-Meteo. Check your connection and try again.";
+    case "other":
+      return describeError(error);
+  }
+}
+
+/** The banner over a forecast that came from the cache, by why the fetch failed. */
+export function fallbackBanner(kind: FetchFailureKind): string {
+  switch (kind) {
+    case "network":
+      return "Offline: showing the last saved forecast.";
+    case "rateLimited":
+      return "Open-Meteo is limiting requests: showing the last saved forecast.";
+    case "server":
+      return "Open-Meteo is having trouble: showing the last saved forecast.";
+    case "other":
+      return "Couldn't get a new forecast: showing the last saved one.";
+  }
+}
 
 /** Feet from meters, rounded to the nearest 100 ft, as "≈ 9,200 ft". "n/a" when missing. */
 export function approxFeet(meters: number | undefined): string {
@@ -306,4 +342,21 @@ export function startIdentity(start: TravelStart): string {
   return start.kind === "geolocation"
     ? "geolocation"
     : `place|${start.coordinate.latitude}|${start.coordinate.longitude}`;
+}
+
+/** `ms` as `m:ss`, in whole seconds rounded up; zero or less is `0:00`. */
+export function countdown(ms: number): string {
+  const seconds = Math.max(0, Math.ceil(ms / 1000));
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+/** True while `now` is before `retryAt`, the end of a hold after a rate limit. */
+export function isHeld(retryAt: number | undefined, now: number): boolean {
+  return retryAt !== undefined && now < retryAt;
+}
+
+/** `label` with the time left in the hold ("Retry in 1:30"), or just `label` when not held. */
+export function heldLabel(label: string, retryAt: number | undefined, now: number): string {
+  if (retryAt === undefined || now >= retryAt) return label;
+  return `${label} in ${countdown(retryAt - now)}`;
 }

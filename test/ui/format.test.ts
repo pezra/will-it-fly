@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { testLaunch, testSite } from "../support/builders";
 import type { LaunchEvaluation, SiteRecommendation } from "../../src/core/recommendation/types";
 import type { ModelName, Reason } from "../../src/core/scoring/hourEvaluator";
+import { OpenMeteoError } from "../../src/core/forecast/openMeteoClient";
 import type { SiteKind } from "../../src/core/sites/site";
 import {
   CONDITION_LABEL,
@@ -12,16 +13,21 @@ import {
   callLabel,
   cautionLine,
   confidenceLabel,
+  countdown,
   dayLabel,
   driveLabel,
   feet,
   forecastAge,
+  fallbackBanner,
   fallbackLine,
+  heldLabel,
   hiddenLine,
   hourlyColumns,
   idealLabel,
+  isHeld,
   launchFallbackNote,
   limitsLine,
+  loadFailureMessage,
   loadingMoreLine,
   miles,
   oneDecimal,
@@ -446,5 +452,84 @@ describe("startIdentity", () => {
     expect(startIdentity(at(40, -105))).toBe(startIdentity(at(40, -105)));
     expect(startIdentity(at(40, -105))).not.toBe(startIdentity(at(39, -105)));
     expect(startIdentity(at(40, -105))).not.toBe(startIdentity({ kind: "geolocation" }));
+  });
+});
+
+describe("fallbackBanner", () => {
+  it("saysOfflineForNetwork", () => {
+    expect(fallbackBanner("network")).toBe("Offline: showing the last saved forecast.");
+  });
+
+  it("saysOpenMeteoIsLimitingRequestsForRateLimited", () => {
+    expect(fallbackBanner("rateLimited")).toBe("Open-Meteo is limiting requests: showing the last saved forecast.");
+  });
+
+  it("saysOpenMeteoIsHavingTroubleForServer", () => {
+    expect(fallbackBanner("server")).toBe("Open-Meteo is having trouble: showing the last saved forecast.");
+  });
+
+  it("isGenericForOther", () => {
+    expect(fallbackBanner("other")).toBe("Couldn't get a new forecast: showing the last saved one.");
+  });
+});
+
+describe("loadFailureMessage", () => {
+  it("saysOpenMeteoIsLimitingRequestsOnA429", () => {
+    expect(loadFailureMessage(new OpenMeteoError("http", "request failed", { status: 429 }))).toBe(
+      "Open-Meteo, the weather service, is limiting how often the app can ask for forecasts. Try again in a minute or two.",
+    );
+  });
+
+  it("namesTheStatusOfAServerError", () => {
+    expect(loadFailureMessage(new OpenMeteoError("http", "request failed", { status: 503 }))).toBe(
+      "Open-Meteo, the weather service, is having trouble (HTTP 503). Try again shortly.",
+    );
+  });
+
+  it("saysOpenMeteoCouldNotBeReachedOnATimeoutOrNetworkError", () => {
+    const network = "Couldn't reach Open-Meteo. Check your connection and try again.";
+    expect(loadFailureMessage(new DOMException("Fetch is aborted", "AbortError"))).toBe(network);
+    expect(loadFailureMessage(new TypeError("Load failed"))).toBe(network);
+  });
+
+  it("keepsTheMessageOfAnyOtherError", () => {
+    const shape = new OpenMeteoError("unexpectedShape", "body is not valid JSON");
+    expect(loadFailureMessage(shape)).toBe(shape.message);
+    expect(loadFailureMessage(new Error("boom"))).toBe("boom");
+  });
+});
+
+describe("countdown", () => {
+  it("showsWholeSecondsRoundedUpAsMinutesAndSeconds", () => {
+    expect(countdown(90_000)).toBe("1:30");
+    expect(countdown(1)).toBe("0:01");
+    expect(countdown(61_000)).toBe("1:01");
+    expect(countdown(59_001)).toBe("1:00");
+  });
+
+  it("showsZeroForZeroAndNegative", () => {
+    expect(countdown(0)).toBe("0:00");
+    expect(countdown(-5_000)).toBe("0:00");
+  });
+});
+
+describe("isHeld", () => {
+  it("isHeldOnlyBeforeRetryAt", () => {
+    expect(isHeld(undefined, 1_000)).toBe(false);
+    expect(isHeld(2_000, 1_999)).toBe(true);
+    expect(isHeld(2_000, 2_000)).toBe(false);
+    expect(isHeld(2_000, 2_001)).toBe(false);
+  });
+});
+
+describe("heldLabel", () => {
+  it("addsTheCountdownWhileHeld", () => {
+    expect(heldLabel("Retry", 91_000, 1_000)).toBe("Retry in 1:30");
+  });
+
+  it("isThePlainLabelWhenNotHeld", () => {
+    expect(heldLabel("Retry", undefined, 1_000)).toBe("Retry");
+    expect(heldLabel("Retry", 2_000, 2_000)).toBe("Retry");
+    expect(heldLabel("Retry", 2_000, 3_000)).toBe("Retry");
   });
 });

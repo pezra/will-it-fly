@@ -4,8 +4,6 @@ import { tryParseJSON } from "../json";
 import type { Coordinate } from "../sites/site";
 
 export const NOMINATIM_BASE_URL = "https://nominatim.openstreetmap.org";
-/** How long the UI's transport waits for Nominatim before the search reports an error. */
-export const GEOCODE_TIMEOUT_MS = 8000;
 /** The most candidate places one search asks for. */
 const MAX_RESULTS = 5;
 const MAX_LATITUDE = 90;

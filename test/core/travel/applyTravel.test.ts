@@ -43,7 +43,7 @@ function rec(
 }
 
 function resultOf(...sites: SiteRecommendation[]): RecommendationResult {
-  return { model: "ecmwf", day: "2026-07-15", today: "2026-07-15", dayOver: false, fetchedAt: 0, isOffline: false, sites };
+  return { model: "ecmwf", day: "2026-07-15", today: "2026-07-15", dayOver: false, fetchedAt: 0, fallback: undefined, sites };
 }
 
 function times(start: Coordinate, entries: Record<string, number>): TravelTimes {

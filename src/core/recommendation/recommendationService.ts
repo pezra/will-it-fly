@@ -1,4 +1,6 @@
 import type { LaunchForecast } from "../forecast/models";
+import { fetchFailureKind } from "../forecast/fetchFailure";
+import type { FetchFailureKind } from "../forecast/fetchFailure";
 import { fetchForecasts, OpenMeteoError, parseForecasts, splitRaw } from "../forecast/openMeteoClient";
 import type { Transport } from "../forecast/openMeteoClient";
 import { dayKey, mainKey } from "../forecast/siteForecastCache";
@@ -92,7 +94,7 @@ interface Loaded {
   forecasts: LaunchForecast[];
   day: DayKey;
   fetchedAt: number;
-  isOffline: boolean;
+  fallback: FetchFailureKind | undefined;
 }
 
 /** Which forecast to load: the main one or a single day, and the day it must cover. */
@@ -165,7 +167,7 @@ async function loadForecasts(
     }
   }
 
-  let isOffline = false;
+  let fallback: FetchFailureKind | undefined;
   const saves: SiteForecastSave[] = [];
   if (toFetch.length > 0) {
     try {
@@ -201,7 +203,7 @@ async function loadForecasts(
         used.push(key);
       }
       console.warn("Forecast fetch failed, using the cached forecast", error);
-      isOffline = true;
+      fallback = fetchFailureKind(error);
     }
   }
   snapshot.commit({ saves, used, now });
@@ -214,7 +216,7 @@ async function loadForecasts(
     throw new OpenMeteoError("unexpectedShape", "the forecast doesn't cover the target day");
   }
   const fetchedAt = Math.min(...parts.map((p) => p.fetchedAt));
-  return { forecasts, day, fetchedAt, isOffline };
+  return { forecasts, day, fetchedAt, fallback };
 }
 
 /** Where the requested day comes from. Throws `DayOutOfRangeError` for a day that can't be asked for. */
@@ -251,10 +253,10 @@ export async function getRecommendations(
   if (open.length === 0) {
     const recs = sites.map((site) => recommendSite(site, []));
     const day = request.day ?? today;
-    return { model, day, today, dayOver: false, fetchedAt: now, isOffline: false, sites: rankSites(recs) };
+    return { model, day, today, dayOver: false, fetchedAt: now, fallback: undefined, sites: rankSites(recs) };
   }
 
-  const { forecasts, day, fetchedAt, isOffline } = await loadForecasts(
+  const { forecasts, day, fetchedAt, fallback } = await loadForecasts(
     request,
     deps,
     open,
@@ -273,5 +275,5 @@ export async function getRecommendations(
     return recommendSite(site, evaluations);
   });
   const dayOver = day === today && defaultDay(forecasts, now) !== today;
-  return { model, day, today, dayOver, fetchedAt, isOffline, sites: rankSites(recs) };
+  return { model, day, today, dayOver, fetchedAt, fallback, sites: rankSites(recs) };
 }

@@ -3,8 +3,17 @@ import type { ModelName } from "../../src/core/scoring/hourEvaluator";
 import type { RecommendationResult } from "../../src/core/recommendation/types";
 import type { SiteKind } from "../../src/core/sites/site";
 import type { DayKey } from "../../src/core/time";
-import { droppedState, loadDecision, pendingState, visibleState } from "../../src/ui/useRecommendations";
-import type { PendingLoad, RecommendationsState } from "../../src/ui/useRecommendations";
+import {
+  afterLoad,
+  droppedState,
+  loadDecision,
+  nextRetryAt,
+  RATE_LIMIT_HOLD_MS,
+  pendingState,
+  resumeAction,
+  visibleState,
+} from "../../src/ui/useRecommendations";
+import type { LoadOutcome, PendingLoad, RecommendationsState } from "../../src/ui/useRecommendations";
 import { testSite } from "../support/builders";
 
 const DAY: DayKey = "2026-11-10";
@@ -17,7 +26,7 @@ function result(model: ModelName, ids: readonly string[]): RecommendationResult 
     today: "2026-11-09",
     dayOver: false,
     fetchedAt: 0,
-    isOffline: false,
+    fallback: undefined,
     sites: ids.map((id) => ({ site: testSite({ id }), call: "noGo", launches: [] })),
   };
 }
@@ -266,5 +275,109 @@ describe("visibleState", () => {
   it("leavesLoadingAndFailedAsTheyAre", () => {
     expect(visibleState(LOADING, DAY, "ecmwf", "kiting")).toBe(LOADING);
     expect(visibleState(FAILED, DAY, "ecmwf", "kiting")).toBe(FAILED);
+  });
+});
+
+describe("afterLoad", () => {
+  const settled = (
+    outcome: LoadOutcome,
+    extra: { isRetry?: boolean; hiddenDuring?: boolean; hiddenNow?: boolean } = {},
+  ) => afterLoad({ outcome, isRetry: false, hiddenDuring: false, hiddenNow: false, ...extra });
+
+  it("retriesANetworkFailureAtOnceWhileVisible", () => {
+    expect(settled({ ok: false, kind: "network" })).toBe("retry");
+    expect(settled({ ok: false, kind: "network" }, { hiddenDuring: true })).toBe("retry");
+  });
+
+  it("retriesANetworkFailureWhenVisibleIfHiddenNow", () => {
+    expect(settled({ ok: false, kind: "network" }, { hiddenDuring: true, hiddenNow: true })).toBe("retryWhenVisible");
+  });
+
+  it("showsANetworkFailureOnARetry", () => {
+    expect(settled({ ok: false, kind: "network" }, { isRetry: true })).toBe("show");
+    expect(settled({ ok: false, kind: "network" }, { isRetry: true, hiddenDuring: true, hiddenNow: true })).toBe(
+      "show",
+    );
+  });
+
+  it("showsEveryOtherFailure", () => {
+    for (const kind of ["rateLimited", "server", "other"] as const) {
+      expect(settled({ ok: false, kind })).toBe("show");
+      expect(settled({ ok: false, kind }, { hiddenDuring: true, hiddenNow: true })).toBe("show");
+    }
+  });
+
+  it("showsASuccessWithNoFallback", () => {
+    expect(settled({ ok: true, fallback: undefined })).toBe("show");
+    expect(settled({ ok: true, fallback: undefined }, { hiddenDuring: true, hiddenNow: true })).toBe("show");
+  });
+
+  it("retriesANetworkFallbackIfHiddenDuringTheLoad", () => {
+    expect(settled({ ok: true, fallback: "network" }, { hiddenDuring: true })).toBe("retry");
+    expect(settled({ ok: true, fallback: "network" }, { hiddenDuring: true, hiddenNow: true })).toBe(
+      "retryWhenVisible",
+    );
+  });
+
+  it("showsANetworkFallbackIfVisibleThroughout", () => {
+    expect(settled({ ok: true, fallback: "network" })).toBe("show");
+  });
+
+  it("showsEveryOtherFallbackEvenIfHiddenDuringTheLoad", () => {
+    for (const fallback of ["rateLimited", "server", "other"] as const) {
+      expect(settled({ ok: true, fallback }, { hiddenDuring: true })).toBe("show");
+      expect(settled({ ok: true, fallback }, { hiddenDuring: true, hiddenNow: true })).toBe("show");
+    }
+  });
+
+  it("showsANetworkFallbackOnARetry", () => {
+    expect(settled({ ok: true, fallback: "network" }, { isRetry: true, hiddenDuring: true })).toBe("show");
+    expect(settled({ ok: true, fallback: "network" }, { isRetry: true, hiddenDuring: true, hiddenNow: true })).toBe(
+      "show",
+    );
+  });
+});
+
+describe("resumeAction", () => {
+  it("runsARememberedRetryEvenWithALoadInFlight", () => {
+    expect(resumeAction({ forceRefresh: true }, 1)).toStrictEqual({ load: true, forceRefresh: true, isRetry: true });
+    expect(resumeAction({ forceRefresh: false }, 0)).toStrictEqual({ load: true, forceRefresh: false, isRetry: true });
+  });
+
+  it("startsAPlainLoadWhenNothingIsInFlight", () => {
+    expect(resumeAction(undefined, 0)).toStrictEqual({ load: true, forceRefresh: false, isRetry: false });
+  });
+
+  it("loadsNothingWhileALoadIsInFlight", () => {
+    expect(resumeAction(undefined, 1)).toStrictEqual({ load: false });
+  });
+});
+
+describe("nextRetryAt", () => {
+  const NOW = 1_000_000;
+  const held = NOW + RATE_LIMIT_HOLD_MS;
+
+  it("holdsFor90SecondsAfterARateLimitedFailureOrFallback", () => {
+    expect(RATE_LIMIT_HOLD_MS).toBe(90_000);
+    expect(nextRetryAt({ ok: false, kind: "rateLimited" }, NOW, undefined)).toBe(held);
+    expect(nextRetryAt({ ok: true, fallback: "rateLimited" }, NOW, undefined)).toBe(held);
+  });
+
+  it("replacesAnEarlierHoldWithALaterRateLimit", () => {
+    expect(nextRetryAt({ ok: false, kind: "rateLimited" }, NOW, NOW - 10_000)).toBe(held);
+  });
+
+  it("clearsTheHoldOnAnyOtherFailureOrFallback", () => {
+    const prev = NOW + 30_000;
+    expect(nextRetryAt({ ok: false, kind: "server" }, NOW, prev)).toBeUndefined();
+    expect(nextRetryAt({ ok: false, kind: "network" }, NOW, prev)).toBeUndefined();
+    expect(nextRetryAt({ ok: false, kind: "other" }, NOW, prev)).toBeUndefined();
+    expect(nextRetryAt({ ok: true, fallback: "server" }, NOW, prev)).toBeUndefined();
+    expect(nextRetryAt({ ok: true, fallback: "network" }, NOW, prev)).toBeUndefined();
+  });
+
+  it("keepsThePreviousValueOnACleanSuccess", () => {
+    expect(nextRetryAt({ ok: true, fallback: undefined }, NOW, 5)).toBe(5);
+    expect(nextRetryAt({ ok: true, fallback: undefined }, NOW, undefined)).toBeUndefined();
   });
 });
