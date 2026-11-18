@@ -2,6 +2,15 @@
 
 Architectural decisions that would be costly to reverse. Newest first.
 
+## Failed forecast loads are retried once, only for network failures (2026-11-18, `improve-forecast-fetch-reliability`)
+
+A load that fails on a timeout or network error is retried once, after the page is visible again if it was hidden. HTTP errors aren't retried, and a 429 holds Retry and Refresh for 90 s. Requests give up after 5 s without headers, 20 s for the body. iOS freezes requests in a hidden page, and a full load costs about 560 of Open-Meteo's 600 weighted calls a minute per IP, so extra loads have to be rare.
+
+### Rejected
+- Restarting an in-flight load on resume: a second full load even when the first would land.
+- One request per site: the same quota cost, and Open-Meteo's HTTP/1.1 queues them behind six connections.
+- A flat 5 s timeout: a slow connection can't download a full response in 5 s.
+
 ## Errors go to Sentry, with nothing personal in them (2026-11-17, `error-tracking`)
 
 Production builds on a real host report uncaught errors, render crashes, failed recommendations loads, and failed Open-Meteo, OSRM and Nominatim requests to Sentry, through `@sentry/browser` bundled from npm and started before the first render. Default integrations are off, so nothing records breadcrumbs or wraps `fetch`, and `dataCollection` keeps out user info, cookies, page queries and headers other than User-Agent. Failed requests are reported from the one fetch transport in `src/ui`, through a listener hook so neither the transport nor `src/core` imports the SDK. A failed request is described by its host, the leading words of its path (OSRM puts the start point in the path), and the error's name or HTTP status, which together group it. It also carries context that tells failures apart when the browser hides the reason: the stage it failed at, timing, whether the page was hidden during it (iOS kills backgrounded requests), connection type, earlier successes, URL length rounded to 100, and the error message with every word holding a digit or `/ ? = & : @` redacted, since URL-shaped text is where coordinates and search text would be. Redacting by that word rule fails safe for messages no one has seen yet, where matching URL patterns missed uppercase schemes and bare coordinates (updated 2026-11-17, `api-failure-detail`). Each host and kind is sent once per page load, nothing is sent offline, and a page load sends at most 25 events, which keeps an outage inside the free quota. Source maps are public, since the source is.
