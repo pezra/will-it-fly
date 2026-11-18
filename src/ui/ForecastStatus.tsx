@@ -6,12 +6,10 @@ export function ForecastStatus({
   state,
   retry,
   retryAt,
-  now,
 }: {
   state: Exclude<RecommendationsState, { status: "loaded" }>;
   retry: () => void;
   retryAt: number | undefined;
-  now: () => number;
 }) {
   if (state.status === "loading") {
     return <p class="status" role="status">Loading forecast…</p>;
@@ -20,7 +18,7 @@ export function ForecastStatus({
     <div class="error" role="alert">
       <p><strong>Couldn't load the forecast.</strong></p>
       <p>{state.message}</p>
-      <HeldButton label="Retry" retryAt={retryAt} now={now} onClick={retry} />
+      <HeldButton label="Retry" retryAt={retryAt} onClick={retry} />
     </div>
   );
 }

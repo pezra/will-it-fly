@@ -47,7 +47,10 @@ export interface ForecastLoad {
   /** A forced reload of the same sites. */
   refresh: () => void;
   retry: () => void;
-  /** Until when Retry and Refresh are held after a rate limit (epoch ms, `now()`'s clock). */
+  /**
+   * Until when Retry and Refresh are held after a rate limit, on the `performance.now()` clock: it
+   * runs under a debug `now` and doesn't jump when the device's clock is set.
+   */
   retryAt: number | undefined;
 }
 
@@ -313,7 +316,7 @@ export function useRecommendations(
         // This render's `load` on purpose: the retry repeats the same day, model, mode and ids.
         if (action === "retry") load(forceRefresh, true);
         else if (action === "retryWhenVisible") retryOnVisible.current = { forceRefresh };
-        if (action === "show") setRetryAt((prev) => nextRetryAt(outcome, now(), prev));
+        if (action === "show") setRetryAt((prev) => nextRetryAt(outcome, performance.now(), prev));
         return action;
       };
       getRecommendations({ forceRefresh, day, siteIds: ids, model }, deps).then(
@@ -327,7 +330,10 @@ export function useRecommendations(
         (error: unknown) => {
           inFlight.current--;
           if (id !== requestId.current) return;
-          if (next({ ok: false, kind: fetchFailureKind(error) }) !== "show") return;
+          if (next({ ok: false, kind: fetchFailureKind(error) }) !== "show") {
+            console.warn("Could not load recommendations, retrying", error);
+            return;
+          }
           pending.current = undefined;
           console.error("Could not load recommendations", error);
           // A day out of range comes from an old link, not a bug, and the page already says so.
@@ -345,7 +351,7 @@ export function useRecommendations(
     // drops the other model's result. With ids, the key has the model and changes `ids` too.
     // `mode` is here for the same reason, and the key has no mode, so it also covers a switch to
     // a mode that wants the same ids (none in range in either, say).
-    [deps, day, model, mode, ids, now],
+    [deps, day, model, mode, ids],
   );
 
   // `load` changes exactly when the day, the model, the mode, the ids or the deps do, so this runs
@@ -414,11 +420,11 @@ export function useRecommendations(
 
   // Held after a rate limit, so a button clicked in the last render before the hold ends does nothing.
   const refresh = useCallback(() => {
-    if (!isHeld(retryAt, now())) load(true);
-  }, [load, retryAt, now]);
+    if (!isHeld(retryAt, performance.now())) load(true);
+  }, [load, retryAt]);
   const retry = useCallback(() => {
-    if (!isHeld(retryAt, now())) load(false);
-  }, [load, retryAt, now]);
+    if (!isHeld(retryAt, performance.now())) load(false);
+  }, [load, retryAt]);
   const state = useMemo(() => visibleState(base, day, model, mode), [base, day, model, mode]);
   return { state, now, refresh, retry, retryAt };
 }

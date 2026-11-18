@@ -357,5 +357,6 @@ export function isHeld(retryAt: number | undefined, now: number): boolean {
 
 /** `label` with the time left in the hold ("Retry in 1:30"), or just `label` when not held. */
 export function heldLabel(label: string, retryAt: number | undefined, now: number): string {
-  return retryAt !== undefined && isHeld(retryAt, now) ? `${label} in ${countdown(retryAt - now)}` : label;
+  if (retryAt === undefined || now >= retryAt) return label;
+  return `${label} in ${countdown(retryAt - now)}`;
 }

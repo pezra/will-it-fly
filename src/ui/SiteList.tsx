@@ -87,7 +87,7 @@ export function SiteList({
           routeDay={day}
         />
         {state.status === "failed" || (state.status === "loading" && message === undefined) ? (
-          <ForecastStatus state={state} retry={retry} retryAt={retryAt} now={now} />
+          <ForecastStatus state={state} retry={retry} retryAt={retryAt} />
         ) : (
           <p class={noStart ? "status prompt" : "status"} role="status">{message}</p>
         )}
@@ -106,7 +106,6 @@ export function SiteList({
           label={state.refreshing ? "Refreshing…" : "Refresh"}
           // A load the app started itself can run during a hold; it shows as refreshing, not a countdown.
           retryAt={state.refreshing ? undefined : retryAt}
-          now={now}
           onClick={() => {
             trackEvent("refresh");
             refresh();
