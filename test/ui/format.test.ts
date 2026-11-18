@@ -16,6 +16,7 @@ import {
   driveLabel,
   feet,
   forecastAge,
+  fallbackBanner,
   fallbackLine,
   hiddenLine,
   hourlyColumns,
@@ -446,5 +447,23 @@ describe("startIdentity", () => {
     expect(startIdentity(at(40, -105))).toBe(startIdentity(at(40, -105)));
     expect(startIdentity(at(40, -105))).not.toBe(startIdentity(at(39, -105)));
     expect(startIdentity(at(40, -105))).not.toBe(startIdentity({ kind: "geolocation" }));
+  });
+});
+
+describe("fallbackBanner", () => {
+  it("saysOfflineForNetwork", () => {
+    expect(fallbackBanner("network")).toBe("Offline: showing the last saved forecast.");
+  });
+
+  it("saysOpenMeteoIsLimitingRequestsForRateLimited", () => {
+    expect(fallbackBanner("rateLimited")).toBe("Open-Meteo is limiting requests: showing the last saved forecast.");
+  });
+
+  it("saysOpenMeteoIsHavingTroubleForServer", () => {
+    expect(fallbackBanner("server")).toBe("Open-Meteo is having trouble: showing the last saved forecast.");
+  });
+
+  it("isGenericForOther", () => {
+    expect(fallbackBanner("other")).toBe("Couldn't get a new forecast: showing the last saved one.");
   });
 });

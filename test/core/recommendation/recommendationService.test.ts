@@ -188,7 +188,7 @@ describe("getRecommendations", () => {
     expect(result.today).toBe("2026-11-07");
     expect(result.dayOver).toBe(false);
     expect(result.fetchedAt).toBe(NOW);
-    expect(result.isOffline).toBe(false);
+    expect(result.fallback).toBeUndefined();
     expect(result.sites.map((r) => r.site.id).sort()).toEqual(sites.map((s) => s.id).sort());
     const last = result.sites[result.sites.length - 1];
     expect(last?.site.id).toBe("rmhpa/copper-mountain");
@@ -310,7 +310,7 @@ describe("getRecommendations", () => {
     const result = await getRecommendations(request(), deps(stub, cache));
     expect(stub.urls).toEqual([]);
     expect(result.fetchedAt).toBe(NOW - 59 * MIN_MS);
-    expect(result.isOffline).toBe(false);
+    expect(result.fallback).toBeUndefined();
     expect(result.sites).toHaveLength(4);
   });
 
@@ -332,6 +332,17 @@ describe("getRecommendations", () => {
     expect(openSites().map((s) => cachedAt(cache, s.id))).toEqual([NOW, NOW, NOW]);
   });
 
+  it("aFetchFailingWithATypeErrorFallsBackWithNetworkCause", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const cache = newCache();
+    seed(cache, NOW - 3 * 60 * MIN_MS);
+    const transport: Transport = async () => {
+      throw new TypeError("Load failed");
+    };
+    const result = await getRecommendations(request(), deps({ transport, urls: [] }, cache));
+    expect(result.fallback).toBe("network");
+  });
+
   it("aFetchThatThrowsWithACachePresentIsOffline", async () => {
     vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const cache = newCache();
@@ -339,7 +350,7 @@ describe("getRecommendations", () => {
     const stub = throwingTransport();
     const result = await getRecommendations(request(), deps(stub, cache));
     expect(stub.urls.length).toBeGreaterThan(0);
-    expect(result.isOffline).toBe(true);
+    expect(result.fallback).toBe("other");
     expect(result.fetchedAt).toBe(NOW - 3 * 60 * MIN_MS);
     expect(result.sites).toHaveLength(4);
     // The failed fetch must not clobber the cache.
@@ -367,7 +378,7 @@ describe("getRecommendations", () => {
     const cache = newCache();
     seed(cache, NOW - 2 * 60 * MIN_MS);
     const result = await getRecommendations(request(), deps(failingTransport(429), cache));
-    expect(result.isOffline).toBe(true);
+    expect(result.fallback).toBe("rateLimited");
   });
 
   it("forceRefreshFetchesEvenWhenTheCacheIsFresh", async () => {
@@ -386,7 +397,7 @@ describe("getRecommendations", () => {
     const result = await getRecommendations(request({ forceRefresh: true }), deps(stub, cache));
     expect(stub.urls).toEqual([]);
     expect(result.fetchedAt).toBe(NOW - 4 * MIN_MS);
-    expect(result.isOffline).toBe(false);
+    expect(result.fallback).toBeUndefined();
   });
 
   it("forceRefreshAtExactlyFiveMinutesFetches", async () => {
@@ -610,7 +621,7 @@ describe("getRecommendations per site", () => {
       expect(url).not.toContain("40.0562");
     }
     expect(result.fetchedAt).toBe(NOW - 20 * MIN_MS);
-    expect(result.isOffline).toBe(false);
+    expect(result.fallback).toBeUndefined();
     const open = result.sites.filter((r) => r.site.status.state === "open");
     expect(open.every((r) => (r.launches[0]?.daylight.length ?? 0) > 0)).toBe(true);
     // The fetched site is saved; the others are left as they were.
@@ -655,7 +666,7 @@ describe("getRecommendations per site", () => {
     const stub = throwingTransport();
     const result = await getRecommendations(request(), deps(stub, cache));
     expect(stub.urls.every((u) => latitudes(u).includes("38.8897"))).toBe(true);
-    expect(result.isOffline).toBe(true);
+    expect(result.fallback).toBe("other");
     expect(result.fetchedAt).toBe(NOW - 3 * 60 * MIN_MS);
     const butte = result.sites.find((r) => r.site.id === BUTTE);
     expect(butte?.launches[0]?.daylight.length ?? 0).toBeGreaterThan(0);
@@ -767,7 +778,7 @@ describe("getRecommendations per site", () => {
         today: "2026-11-07",
         dayOver: false,
         fetchedAt: NOW,
-        isOffline: false,
+        fallback: undefined,
         sites: [],
       });
     }

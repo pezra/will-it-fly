@@ -1,4 +1,5 @@
 import { METERS_PER_FOOT, METERS_PER_MILE, MINUTES_PER_HOUR, SECONDS_PER_MINUTE, compass } from "../core/units";
+import type { FetchFailureKind } from "../core/forecast/fetchFailure";
 import type { DriveTime } from "../core/travel/driveTime";
 import type { TravelStage } from "../core/travel/inRange";
 import type { Confidence } from "../core/scoring/modelAgreement";
@@ -12,6 +13,20 @@ import { addDays, formatDayKey } from "../core/time";
 import type { DayKey } from "../core/time";
 import { radiusLabel } from "./travelSettings";
 import type { TravelStart } from "./travelSettings";
+
+/** The banner over a forecast that came from the cache, by why the fetch failed. */
+export function fallbackBanner(kind: FetchFailureKind): string {
+  switch (kind) {
+    case "network":
+      return "Offline: showing the last saved forecast.";
+    case "rateLimited":
+      return "Open-Meteo is limiting requests: showing the last saved forecast.";
+    case "server":
+      return "Open-Meteo is having trouble: showing the last saved forecast.";
+    case "other":
+      return "Couldn't get a new forecast: showing the last saved one.";
+  }
+}
 
 /** Feet from meters, rounded to the nearest 100 ft, as "≈ 9,200 ft". "n/a" when missing. */
 export function approxFeet(meters: number | undefined): string {

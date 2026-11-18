@@ -1,3 +1,4 @@
+import type { FetchFailureKind } from "../forecast/fetchFailure";
 import type { ModelHour } from "../forecast/models";
 import type { HourResult, ModelName, ReasonKind, Severity } from "../scoring/hourEvaluator";
 import type { FlyingWindow } from "../scoring/windowFinder";
@@ -81,7 +82,7 @@ export interface RecommendationResult {
   dayOver: boolean;
   /** When the forecast was fetched (epoch ms). */
   fetchedAt: number;
-  /** True when a fetch failed and the cached forecast was used. */
-  isOffline: boolean;
+  /** Set when a fetch failed and cached forecasts were used: why it failed. */
+  fallback: FetchFailureKind | undefined;
   sites: SiteRecommendation[];
 }

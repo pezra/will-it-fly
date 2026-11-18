@@ -17,7 +17,7 @@ function result(model: ModelName, ids: readonly string[]): RecommendationResult 
     today: "2026-11-09",
     dayOver: false,
     fetchedAt: 0,
-    isOffline: false,
+    fallback: undefined,
     sites: ids.map((id) => ({ site: testSite({ id }), call: "noGo", launches: [] })),
   };
 }

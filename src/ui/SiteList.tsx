@@ -7,7 +7,7 @@ import { addDays, denverDayKey } from "../core/time";
 import type { DayKey } from "../core/time";
 import { DayTitle } from "./DayTitle";
 import { ForecastStatus } from "./ForecastStatus";
-import { fallbackLine, forecastAge, hiddenLine, loadingMoreLine, stageMessage } from "./format";
+import { fallbackBanner, fallbackLine, forecastAge, hiddenLine, loadingMoreLine, stageMessage } from "./format";
 import { listHref } from "./route";
 import { radiusLabel, radiusMinutes } from "./travelSettings";
 import { SiteRow } from "./SiteRow";
@@ -129,10 +129,8 @@ export function SiteList({
       )}
       {example}
       {state.refreshing && missing > 0 && <p class="note">{loadingMoreLine(missing)}</p>}
-      {result.isOffline && (
-        <p class="banner" role="status">
-          Offline: showing the last saved forecast.
-        </p>
+      {result.fallback !== undefined && (
+        <p class="banner" role="status">{fallbackBanner(result.fallback)}</p>
       )}
       {state.refreshError !== undefined && (
         <p class="banner" role="alert">Refresh failed: {state.refreshError}</p>

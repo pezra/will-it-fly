@@ -243,7 +243,7 @@ describe("containsSites", () => {
     today: "2026-11-07",
     dayOver: false,
     fetchedAt: 0,
-    isOffline: false,
+    fallback: undefined,
     sites: sites.map((site) => ({ site, call: "noGo", launches: [] })),
   });
 
