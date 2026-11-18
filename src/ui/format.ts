@@ -343,3 +343,19 @@ export function startIdentity(start: TravelStart): string {
     ? "geolocation"
     : `place|${start.coordinate.latitude}|${start.coordinate.longitude}`;
 }
+
+/** `ms` as `m:ss`, in whole seconds rounded up; zero or less is `0:00`. */
+export function countdown(ms: number): string {
+  const seconds = Math.max(0, Math.ceil(ms / 1000));
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+/** True while `now` is before `retryAt`, the end of a hold after a rate limit. */
+export function isHeld(retryAt: number | undefined, now: number): boolean {
+  return retryAt !== undefined && now < retryAt;
+}
+
+/** `label` with the time left in the hold ("Retry in 1:30"), or just `label` when not held. */
+export function heldLabel(label: string, retryAt: number | undefined, now: number): string {
+  return retryAt !== undefined && isHeld(retryAt, now) ? `${label} in ${countdown(retryAt - now)}` : label;
+}

@@ -1,0 +1,21 @@
+import { useEffect, useState } from "preact/hooks";
+import { heldLabel, isHeld } from "./format";
+
+/** A button that is disabled, with a countdown in its label, until `retryAt` (on `now()`'s clock). */
+export function HeldButton({ label, retryAt, now, onClick, disabled }: {
+  label: string;
+  retryAt: number | undefined;
+  now: () => number;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  const [, setTick] = useState(0);
+  const held = isHeld(retryAt, now());
+  // Its own 1 s interval: the hook's minute tick is too slow for a countdown in seconds.
+  useEffect(() => {
+    if (!held) return;
+    const timer = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(timer);
+  }, [held]);
+  return <button type="button" onClick={onClick} disabled={disabled || held}>{heldLabel(label, retryAt, now())}</button>;
+}

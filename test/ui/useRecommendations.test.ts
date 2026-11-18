@@ -7,6 +7,8 @@ import {
   afterLoad,
   droppedState,
   loadDecision,
+  nextRetryAt,
+  RATE_LIMIT_HOLD_MS,
   pendingState,
   resumeAction,
   visibleState,
@@ -348,5 +350,34 @@ describe("resumeAction", () => {
 
   it("loadsNothingWhileALoadIsInFlight", () => {
     expect(resumeAction(undefined, 1)).toStrictEqual({ load: false });
+  });
+});
+
+describe("nextRetryAt", () => {
+  const NOW = 1_000_000;
+  const held = NOW + RATE_LIMIT_HOLD_MS;
+
+  it("holdsFor90SecondsAfterARateLimitedFailureOrFallback", () => {
+    expect(RATE_LIMIT_HOLD_MS).toBe(90_000);
+    expect(nextRetryAt({ ok: false, kind: "rateLimited" }, NOW, undefined)).toBe(held);
+    expect(nextRetryAt({ ok: true, fallback: "rateLimited" }, NOW, undefined)).toBe(held);
+  });
+
+  it("replacesAnEarlierHoldWithALaterRateLimit", () => {
+    expect(nextRetryAt({ ok: false, kind: "rateLimited" }, NOW, NOW - 10_000)).toBe(held);
+  });
+
+  it("clearsTheHoldOnAnyOtherFailureOrFallback", () => {
+    const prev = NOW + 30_000;
+    expect(nextRetryAt({ ok: false, kind: "server" }, NOW, prev)).toBeUndefined();
+    expect(nextRetryAt({ ok: false, kind: "network" }, NOW, prev)).toBeUndefined();
+    expect(nextRetryAt({ ok: false, kind: "other" }, NOW, prev)).toBeUndefined();
+    expect(nextRetryAt({ ok: true, fallback: "server" }, NOW, prev)).toBeUndefined();
+    expect(nextRetryAt({ ok: true, fallback: "network" }, NOW, prev)).toBeUndefined();
+  });
+
+  it("keepsThePreviousValueOnACleanSuccess", () => {
+    expect(nextRetryAt({ ok: true, fallback: undefined }, NOW, 5)).toBe(5);
+    expect(nextRetryAt({ ok: true, fallback: undefined }, NOW, undefined)).toBeUndefined();
   });
 });

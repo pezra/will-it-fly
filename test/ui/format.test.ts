@@ -13,15 +13,18 @@ import {
   callLabel,
   cautionLine,
   confidenceLabel,
+  countdown,
   dayLabel,
   driveLabel,
   feet,
   forecastAge,
   fallbackBanner,
   fallbackLine,
+  heldLabel,
   hiddenLine,
   hourlyColumns,
   idealLabel,
+  isHeld,
   launchFallbackNote,
   limitsLine,
   loadFailureMessage,
@@ -493,5 +496,40 @@ describe("loadFailureMessage", () => {
     const shape = new OpenMeteoError("unexpectedShape", "body is not valid JSON");
     expect(loadFailureMessage(shape)).toBe(shape.message);
     expect(loadFailureMessage(new Error("boom"))).toBe("boom");
+  });
+});
+
+describe("countdown", () => {
+  it("showsWholeSecondsRoundedUpAsMinutesAndSeconds", () => {
+    expect(countdown(90_000)).toBe("1:30");
+    expect(countdown(1)).toBe("0:01");
+    expect(countdown(61_000)).toBe("1:01");
+    expect(countdown(59_001)).toBe("1:00");
+  });
+
+  it("showsZeroForZeroAndNegative", () => {
+    expect(countdown(0)).toBe("0:00");
+    expect(countdown(-5_000)).toBe("0:00");
+  });
+});
+
+describe("isHeld", () => {
+  it("isHeldOnlyBeforeRetryAt", () => {
+    expect(isHeld(undefined, 1_000)).toBe(false);
+    expect(isHeld(2_000, 1_999)).toBe(true);
+    expect(isHeld(2_000, 2_000)).toBe(false);
+    expect(isHeld(2_000, 2_001)).toBe(false);
+  });
+});
+
+describe("heldLabel", () => {
+  it("addsTheCountdownWhileHeld", () => {
+    expect(heldLabel("Retry", 91_000, 1_000)).toBe("Retry in 1:30");
+  });
+
+  it("isThePlainLabelWhenNotHeld", () => {
+    expect(heldLabel("Retry", undefined, 1_000)).toBe("Retry");
+    expect(heldLabel("Retry", 2_000, 2_000)).toBe("Retry");
+    expect(heldLabel("Retry", 2_000, 3_000)).toBe("Retry");
   });
 });

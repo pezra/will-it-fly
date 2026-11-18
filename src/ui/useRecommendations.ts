@@ -11,7 +11,7 @@ import { containsSites, weatherLoadKey } from "../core/travel/inRange";
 import type { DayKey } from "../core/time";
 import type { DebugParams } from "./debugParams";
 import { createVisibilityTracker, once } from "./errorReporting";
-import { loadFailureMessage } from "./format";
+import { isHeld, loadFailureMessage } from "./format";
 import type { LocationResult, LocationStatus } from "./location";
 import { reportError } from "./sentry";
 import { localStorageStore } from "./storage";
@@ -47,6 +47,8 @@ export interface ForecastLoad {
   /** A forced reload of the same sites. */
   refresh: () => void;
   retry: () => void;
+  /** Until when Retry and Refresh are held after a rate limit (epoch ms, `now()`'s clock). */
+  retryAt: number | undefined;
 }
 
 /** The load with the location from `useTravel`, as the pages use it. */
@@ -184,6 +186,20 @@ export type LoadOutcome =
   | { ok: true; fallback: FetchFailureKind | undefined }
   | { ok: false; kind: FetchFailureKind };
 
+/** How long Retry and Refresh stay held after a rate limit. */
+export const RATE_LIMIT_HOLD_MS = 90_000;
+
+/**
+ * The end of the hold after a load that settled as `outcome` at `now`, given the hold `prev`. A rate
+ * limit (as a failure or as the cause of a fallback) starts one; any other failure or fallback ends
+ * it, so a later server error enables Retry at once; a clean success leaves it as it was.
+ */
+export function nextRetryAt(outcome: LoadOutcome, now: number, prev: number | undefined): number | undefined {
+  const kind = outcome.ok ? outcome.fallback : outcome.kind;
+  if (kind === undefined) return prev;
+  return kind === "rateLimited" ? now + RATE_LIMIT_HOLD_MS : undefined;
+}
+
 /**
  * What to do with a finished load: show it, retry now, or retry when the page is next visible.
  * A network failure is retried once, since a request frozen with the page or a dropped connection
@@ -240,6 +256,7 @@ export function useRecommendations(
   siteIds: readonly string[] | undefined,
 ): ForecastLoad {
   const [base, setBase] = useState<RecommendationsState>({ status: "loading" });
+  const [retryAt, setRetryAt] = useState<number | undefined>(undefined);
   // Read by the reload effect to decide whether the loaded result already covers the ids.
   const current = useRef(base);
   current.current = base;
@@ -297,6 +314,7 @@ export function useRecommendations(
         // This render's `load` on purpose: the retry repeats the same day, model, mode and ids.
         if (action === "retry") load(forceRefresh, true);
         else if (action === "retryWhenVisible") retryOnVisible.current = { forceRefresh };
+        if (action === "show") setRetryAt((prev) => nextRetryAt(outcome, now(), prev));
         return action;
       };
       getRecommendations({ forceRefresh, day, siteIds: ids, model }, deps).then(
@@ -328,7 +346,7 @@ export function useRecommendations(
     // drops the other model's result. With ids, the key has the model and changes `ids` too.
     // `mode` is here for the same reason, and the key has no mode, so it also covers a switch to
     // a mode that wants the same ids (none in range in either, say).
-    [deps, day, model, mode, ids],
+    [deps, day, model, mode, ids, now],
   );
 
   // `load` changes exactly when the day, the model, the mode, the ids or the deps do, so this runs
@@ -395,8 +413,13 @@ export function useRecommendations(
     };
   }, [load]);
 
-  const refresh = useCallback(() => load(true), [load]);
-  const retry = useCallback(() => load(false), [load]);
+  // Held after a rate limit, so a button clicked in the last render before the hold ends does nothing.
+  const refresh = useCallback(() => {
+    if (!isHeld(retryAt, now())) load(true);
+  }, [load, retryAt, now]);
+  const retry = useCallback(() => {
+    if (!isHeld(retryAt, now())) load(false);
+  }, [load, retryAt, now]);
   const state = useMemo(() => visibleState(base, day, model, mode), [base, day, model, mode]);
-  return { state, now, refresh, retry };
+  return { state, now, refresh, retry, retryAt };
 }

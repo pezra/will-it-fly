@@ -7,6 +7,7 @@ import { addDays, denverDayKey } from "../core/time";
 import type { DayKey } from "../core/time";
 import { DayTitle } from "./DayTitle";
 import { ForecastStatus } from "./ForecastStatus";
+import { HeldButton } from "./HeldButton";
 import { fallbackBanner, fallbackLine, forecastAge, hiddenLine, loadingMoreLine, stageMessage } from "./format";
 import { listHref } from "./route";
 import { radiusLabel, radiusMinutes } from "./travelSettings";
@@ -60,7 +61,7 @@ export function SiteList({
   model: ModelName;
   setModel: (model: ModelName) => void;
 }) {
-  const { state, location, now, refresh, retry } = travel.recs;
+  const { state, location, now, refresh, retry, retryAt } = travel.recs;
   const loaded = state.status === "loaded";
   const missing = loaded ? missingSiteIds(state.result, travel.inRangeIds).length : 0;
   const example =
@@ -86,7 +87,7 @@ export function SiteList({
           routeDay={day}
         />
         {state.status === "failed" || (state.status === "loading" && message === undefined) ? (
-          <ForecastStatus state={state} retry={retry} />
+          <ForecastStatus state={state} retry={retry} retryAt={retryAt} now={now} />
         ) : (
           <p class={noStart ? "status prompt" : "status"} role="status">{message}</p>
         )}
@@ -101,16 +102,17 @@ export function SiteList({
   return (
     <>
       <DayTitle key="title" shownDay={result.day} today={result.today} model={model} mode={travel.mode}>
-        <button
-          type="button"
+        <HeldButton
+          label={state.refreshing ? "Refreshing…" : "Refresh"}
+          // A load the app started itself can run during a hold; it shows as refreshing, not a countdown.
+          retryAt={state.refreshing ? undefined : retryAt}
+          now={now}
           onClick={() => {
             trackEvent("refresh");
             refresh();
           }}
           disabled={state.refreshing}
-        >
-          {state.refreshing ? "Refreshing…" : "Refresh"}
-        </button>
+        />
       </DayTitle>
       <p class="age">{forecastAge(result.fetchedAt, now())}</p>
       <TravelBar
