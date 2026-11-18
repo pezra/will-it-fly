@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { testLaunch, testSite } from "../support/builders";
 import type { LaunchEvaluation, SiteRecommendation } from "../../src/core/recommendation/types";
 import type { ModelName, Reason } from "../../src/core/scoring/hourEvaluator";
+import { OpenMeteoError } from "../../src/core/forecast/openMeteoClient";
 import type { SiteKind } from "../../src/core/sites/site";
 import {
   CONDITION_LABEL,
@@ -23,6 +24,7 @@ import {
   idealLabel,
   launchFallbackNote,
   limitsLine,
+  loadFailureMessage,
   loadingMoreLine,
   miles,
   oneDecimal,
@@ -465,5 +467,31 @@ describe("fallbackBanner", () => {
 
   it("isGenericForOther", () => {
     expect(fallbackBanner("other")).toBe("Couldn't get a new forecast: showing the last saved one.");
+  });
+});
+
+describe("loadFailureMessage", () => {
+  it("saysOpenMeteoIsLimitingRequestsOnA429", () => {
+    expect(loadFailureMessage(new OpenMeteoError("http", "request failed", { status: 429 }))).toBe(
+      "Open-Meteo, the weather service, is limiting how often the app can ask for forecasts. Try again in a minute or two.",
+    );
+  });
+
+  it("namesTheStatusOfAServerError", () => {
+    expect(loadFailureMessage(new OpenMeteoError("http", "request failed", { status: 503 }))).toBe(
+      "Open-Meteo, the weather service, is having trouble (HTTP 503). Try again shortly.",
+    );
+  });
+
+  it("saysOpenMeteoCouldNotBeReachedOnATimeoutOrNetworkError", () => {
+    const network = "Couldn't reach Open-Meteo. Check your connection and try again.";
+    expect(loadFailureMessage(new DOMException("Fetch is aborted", "AbortError"))).toBe(network);
+    expect(loadFailureMessage(new TypeError("Load failed"))).toBe(network);
+  });
+
+  it("keepsTheMessageOfAnyOtherError", () => {
+    const shape = new OpenMeteoError("unexpectedShape", "body is not valid JSON");
+    expect(loadFailureMessage(shape)).toBe(shape.message);
+    expect(loadFailureMessage(new Error("boom"))).toBe("boom");
   });
 });

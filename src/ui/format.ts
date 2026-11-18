@@ -1,5 +1,7 @@
 import { METERS_PER_FOOT, METERS_PER_MILE, MINUTES_PER_HOUR, SECONDS_PER_MINUTE, compass } from "../core/units";
+import { fetchFailureKind } from "../core/forecast/fetchFailure";
 import type { FetchFailureKind } from "../core/forecast/fetchFailure";
+import { OpenMeteoError } from "../core/forecast/openMeteoClient";
 import type { DriveTime } from "../core/travel/driveTime";
 import type { TravelStage } from "../core/travel/inRange";
 import type { Confidence } from "../core/scoring/modelAgreement";
@@ -13,6 +15,25 @@ import { addDays, formatDayKey } from "../core/time";
 import type { DayKey } from "../core/time";
 import { radiusLabel } from "./travelSettings";
 import type { TravelStart } from "./travelSettings";
+
+/**
+ * What a failed load says: what went wrong and what to do, for a rate limit, a server error or a
+ * network failure. Any other error keeps its own message.
+ */
+export function loadFailureMessage(error: unknown): string {
+  switch (fetchFailureKind(error)) {
+    case "rateLimited":
+      return "Open-Meteo, the weather service, is limiting how often the app can ask for forecasts. Try again in a minute or two.";
+    case "server": {
+      const status = error instanceof OpenMeteoError ? error.status : undefined;
+      return `Open-Meteo, the weather service, is having trouble (HTTP ${status}). Try again shortly.`;
+    }
+    case "network":
+      return "Couldn't reach Open-Meteo. Check your connection and try again.";
+    case "other":
+      return describeError(error);
+  }
+}
 
 /** The banner over a forecast that came from the cache, by why the fetch failed. */
 export function fallbackBanner(kind: FetchFailureKind): string {

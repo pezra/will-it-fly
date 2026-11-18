@@ -9,7 +9,7 @@ import { containsSites, weatherLoadKey } from "../core/travel/inRange";
 import type { DayKey } from "../core/time";
 import type { DebugParams } from "./debugParams";
 import { once } from "./errorReporting";
-import { describeError } from "./format";
+import { loadFailureMessage } from "./format";
 import type { LocationResult, LocationStatus } from "./location";
 import { reportError } from "./sentry";
 import { localStorageStore } from "./storage";
@@ -249,8 +249,8 @@ export function useRecommendations(
           if (!(error instanceof DayOutOfRangeError)) reportLoadFailure(error);
           setBase((prev) =>
             prev.status === "loaded"
-              ? { ...prev, refreshing: false, refreshError: describeError(error) }
-              : { status: "failed", message: describeError(error) },
+              ? { ...prev, refreshing: false, refreshError: loadFailureMessage(error) }
+              : { status: "failed", message: loadFailureMessage(error) },
           );
         },
       );
