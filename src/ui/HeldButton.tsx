@@ -10,12 +10,14 @@ export function HeldButton({ label, retryAt, now, onClick, disabled }: {
   disabled?: boolean;
 }) {
   const [, setTick] = useState(0);
-  const held = isHeld(retryAt, now());
+  // Read once, so the disabled state and the label agree at the end of the hold.
+  const at = now();
+  const held = isHeld(retryAt, at);
   // Its own 1 s interval: the hook's minute tick is too slow for a countdown in seconds.
   useEffect(() => {
     if (!held) return;
     const timer = setInterval(() => setTick((t) => t + 1), 1000);
     return () => clearInterval(timer);
   }, [held]);
-  return <button type="button" onClick={onClick} disabled={disabled || held}>{heldLabel(label, retryAt, now())}</button>;
+  return <button type="button" onClick={onClick} disabled={disabled || held}>{heldLabel(label, retryAt, at)}</button>;
 }

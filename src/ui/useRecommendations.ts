@@ -288,12 +288,11 @@ export function useRecommendations(
   const retryOnVisible = useRef<{ forceRefresh: boolean } | undefined>(undefined);
   // Created once. A page that starts hidden (opened in a background tab) has no `visibilitychange`
   // for that, so it is recorded here.
-  const visibility = useRef<ReturnType<typeof createVisibilityTracker> | undefined>(undefined);
-  if (visibility.current === undefined) {
-    visibility.current = createVisibilityTracker();
-    if (document.visibilityState === "hidden") visibility.current.hidden(performance.now());
-  }
-  const tracker = visibility.current;
+  const [tracker] = useState(() => {
+    const created = createVisibilityTracker();
+    if (document.visibilityState === "hidden") created.hidden(performance.now());
+    return created;
+  });
 
   const load = useCallback(
     (forceRefresh: boolean, isRetry = false) => {
