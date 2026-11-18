@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  fetchTransportWithTimeout,
+  fetchTransportWithTimeouts,
   reportingTransport,
   setRequestListener,
   type Fetcher,
@@ -21,23 +21,85 @@ function hangingFetch(): typeof fetch {
     });
 }
 
-describe("fetchTransportWithTimeout", () => {
+/** A `Response` whose body, like a real fetch body, errors with the signal's reason once it aborts. */
+function signalBoundResponse(signal: AbortSignal, closeAfterMs?: number): Response {
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      signal.addEventListener("abort", () => controller.error(signal.reason));
+      if (closeAfterMs !== undefined) {
+        setTimeout(() => {
+          if (!signal.aborted) {
+            controller.enqueue(new TextEncoder().encode("late"));
+            controller.close();
+          }
+        }, closeAfterMs);
+      }
+    },
+  });
+  return new Response(body, { status: 200 });
+}
+
+const timeouts = { headersMs: 1_000, bodyMs: 1_000 };
+
+describe("fetchTransportWithTimeouts", () => {
   it("returnsTheStatusAndBody", async () => {
     const stub = vi.fn<typeof fetch>(async () => new Response("busy", { status: 503 }));
     vi.stubGlobal("fetch", stub);
-    const response = await fetchTransportWithTimeout(1_000)("https://example.com/x");
+    const response = await fetchTransportWithTimeouts(timeouts)("https://example.com/x");
     expect(response).toEqual({ status: 503, body: "busy" });
     expect(stub.mock.calls[0]![0]).toBe("https://example.com/x");
     expect(stub.mock.calls[0]![1]?.signal).toBeInstanceOf(AbortSignal);
   });
 
-  it("abortsAfterTheTimeout", async () => {
+  it("abortsWhenTheHeadersTakeTooLong", async () => {
     vi.stubGlobal("fetch", hangingFetch());
     const started = Date.now();
-    await expect(fetchTransportWithTimeout(20)("https://example.com/slow")).rejects.toMatchObject({
-      name: "TimeoutError",
-    });
-    expect(Date.now() - started).toBeLessThan(1_000);
+    await expect(
+      fetchTransportWithTimeouts({ headersMs: 20, bodyMs: 1_000 })("https://example.com/slow"),
+    ).rejects.toMatchObject({ name: "TimeoutError" });
+    expect(Date.now() - started).toBeLessThan(500);
+  });
+
+  it("abortsWhenTheBodyTakesTooLong", async () => {
+    let signal: AbortSignal | undefined;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>(async (_input, init) => {
+        signal = init?.signal ?? undefined;
+        return signalBoundResponse(signal!);
+      }),
+    );
+    const started = Date.now();
+    await expect(
+      fetchTransportWithTimeouts({ headersMs: 1_000, bodyMs: 20 })("https://example.com/slow"),
+    ).rejects.toMatchObject({ name: "TimeoutError" });
+    expect(Date.now() - started).toBeLessThan(500);
+    expect(signal?.aborted).toBe(true);
+  });
+
+  it("theHeadersTimerStopsOnceTheHeadersArrive", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>(async (_input, init) => signalBoundResponse(init!.signal!, 100)),
+    );
+    const response = await fetchTransportWithTimeouts({ headersMs: 20, bodyMs: 1_000 })(
+      "https://example.com/x",
+    );
+    expect(response).toEqual({ status: 200, body: "late" });
+  });
+
+  it("noTimerFiresAfterASuccess", async () => {
+    let signal: AbortSignal | undefined;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>(async (_input, init) => {
+        signal = init?.signal ?? undefined;
+        return new Response("ok");
+      }),
+    );
+    await fetchTransportWithTimeouts({ headersMs: 20, bodyMs: 20 })("https://example.com/x");
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(signal?.aborted).toBe(false);
   });
 
   it("eachRequestGetsItsOwnTimeout", async () => {
@@ -49,7 +111,7 @@ describe("fetchTransportWithTimeout", () => {
         return new Response("");
       }),
     );
-    const transport = fetchTransportWithTimeout(1_000);
+    const transport = fetchTransportWithTimeouts(timeouts);
     await transport("https://example.com/1");
     await transport("https://example.com/2");
     expect(signals[0]).not.toBe(signals[1]);
@@ -177,10 +239,10 @@ describe("reportingTransport", () => {
   });
 });
 
-describe("fetchTransportWithTimeout reporting", () => {
+describe("fetchTransportWithTimeouts reporting", () => {
   it("reportsANon2xxStatusToTheCurrentListener", async () => {
     vi.stubGlobal("fetch", vi.fn<typeof fetch>(async () => new Response("busy", { status: 503 })));
-    const transport = fetchTransportWithTimeout(1_000);
+    const transport = fetchTransportWithTimeouts(timeouts);
     const spy = vi.fn<RequestListener>();
     setRequestListener(spy);
     await transport("https://example.com/x");
@@ -193,13 +255,31 @@ describe("fetchTransportWithTimeout reporting", () => {
     vi.stubGlobal("fetch", hangingFetch());
     const spy = vi.fn<RequestListener>();
     setRequestListener(spy);
-    await expect(fetchTransportWithTimeout(20)("https://example.com/slow")).rejects.toMatchObject({
-      name: "TimeoutError",
-    });
+    await expect(
+      fetchTransportWithTimeouts({ headersMs: 20, bodyMs: 1_000 })("https://example.com/slow"),
+    ).rejects.toMatchObject({ name: "TimeoutError" });
     expect(spy).toHaveBeenCalledTimes(1);
     expect(spy.mock.calls[0]![0].outcome).toMatchObject({
       error: { name: "TimeoutError" },
       stage: "request",
+    });
+  });
+
+  it("reportsABodyTimeoutAtTheBodyStageWithTheStatus", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>(async (_input, init) => signalBoundResponse(init!.signal!)),
+    );
+    const spy = vi.fn<RequestListener>();
+    setRequestListener(spy);
+    await expect(
+      fetchTransportWithTimeouts({ headersMs: 1_000, bodyMs: 20 })("https://example.com/slow"),
+    ).rejects.toMatchObject({ name: "TimeoutError" });
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy.mock.calls[0]![0].outcome).toMatchObject({
+      error: { name: "TimeoutError" },
+      stage: "body",
+      status: 200,
     });
   });
 });

@@ -12,8 +12,6 @@ const ESTIMATED_DRIVE_MPH = 40;
 /** The fastest a road trip is assumed to go. `withinReach` uses it as a bound, not an estimate. */
 export const MAX_ROAD_MPH = 80;
 const OSRM_BASE_URL = "https://router.project-osrm.org";
-/** How long the UI's transport waits for OSRM before the estimates take over. */
-export const OSRM_TIMEOUT_MS = 8000;
 /** The most coordinates OSRM accepts in one table request, the start included. */
 const OSRM_MAX_COORDS = 100;
 /** Starts are rounded to this (about 1 km) before they leave the device or key the cache. */

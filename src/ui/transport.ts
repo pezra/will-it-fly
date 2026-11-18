@@ -1,7 +1,10 @@
 import type { Transport } from "../core/forecast/openMeteoClient";
 import type { RequestReport } from "./errorReporting";
 
-export const REQUEST_TIMEOUT_MS = 20_000;
+/** How long a request waits for its response headers before giving up. */
+export const REQUEST_HEADERS_TIMEOUT_MS = 5_000;
+/** How long reading a response body may take once its headers have arrived. */
+export const REQUEST_BODY_TIMEOUT_MS = 20_000;
 
 export type RequestListener = (report: RequestReport) => void;
 
@@ -54,15 +57,45 @@ export function reportingTransport(
 }
 
 /**
- * `fetch` with a timeout of `ms` per request. A timeout or network error rejects, which counts as a
- * fetch failure.
+ * `fetch` that gives up after `headersMs` without response headers, and after `bodyMs` of reading
+ * the body once they have arrived. Each limit aborts the request's one signal with a
+ * `TimeoutError`, which rejects whichever read is pending and counts as a fetch failure.
  */
-export function fetchTransportWithTimeout(ms: number): Transport {
-  return reportingTransport(
-    (url) => fetch(url, { signal: AbortSignal.timeout(ms) }),
-    () => requestListener,
-  );
+export function fetchTransportWithTimeouts({
+  headersMs,
+  bodyMs,
+}: {
+  headersMs: number;
+  bodyMs: number;
+}): Transport {
+  const timeoutAfter = (controller: AbortController, ms: number) =>
+    setTimeout(() => controller.abort(new DOMException("The request timed out.", "TimeoutError")), ms);
+  const fetcher: Fetcher = async (url) => {
+    const controller = new AbortController();
+    const headersTimer = timeoutAfter(controller, headersMs);
+    let response;
+    try {
+      response = await fetch(url, { signal: controller.signal });
+    } finally {
+      clearTimeout(headersTimer);
+    }
+    return {
+      status: response.status,
+      text: async () => {
+        const bodyTimer = timeoutAfter(controller, bodyMs);
+        try {
+          return await response.text();
+        } finally {
+          clearTimeout(bodyTimer);
+        }
+      },
+    };
+  };
+  return reportingTransport(fetcher, () => requestListener);
 }
 
-/** `fetch` with a 20 s timeout. */
-export const fetchTransport: Transport = fetchTransportWithTimeout(REQUEST_TIMEOUT_MS);
+/** `fetch` that waits 5 s for the headers and 20 s for the body. */
+export const fetchTransport: Transport = fetchTransportWithTimeouts({
+  headersMs: REQUEST_HEADERS_TIMEOUT_MS,
+  bodyMs: REQUEST_BODY_TIMEOUT_MS,
+});
