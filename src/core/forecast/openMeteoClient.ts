@@ -138,7 +138,7 @@ function forecastPoints(sites: readonly (readonly Launch[])[]): Point[] {
  * Five points per site, site-major: the site's highest launch (the "center"), then N, E, S, W.
  *
  * Every point uses `elevation=nan`. With an explicit elevation Open-Meteo picks the grid cell whose
- * terrain best matches it (Crested Butte's launch request landed ~10 km north), whereas `nan` picks the
+ * terrain best matches it (a request for Crested Butte's launch landed ~10 km north), whereas `nan` picks the
  * nearest cell. The neighbor check must compare like with like, so the center point is requested with
  * the same `nan` selection as the neighbors rather than reusing the (elevation-matched) site points.
  */
@@ -293,15 +293,18 @@ function locations(body: string): Location[] {
   return rawLocations(body).map((el, i) => toLocation(el, `location ${i}`));
 }
 
-/** Throws unless the bodies have one surface and one levels location per point, and a ring per site. */
+/**
+ * Throws unless the bodies have one surface and one levels location per point, and a ring per site,
+ * where `pointCounts` holds each site's number of points.
+ */
 function checkCounts(
-  pointCount: number,
-  siteCount: number,
+  pointCounts: readonly number[],
   surface: readonly unknown[],
   levels: readonly unknown[],
   neighbors: readonly unknown[],
 ): void {
-  const neighborCount = siteCount * NEIGHBOR_POINTS_PER_SITE;
+  const pointCount = pointCounts.reduce((sum, n) => sum + n, 0);
+  const neighborCount = pointCounts.length * NEIGHBOR_POINTS_PER_SITE;
   if (surface.length !== pointCount || levels.length !== pointCount || neighbors.length !== neighborCount) {
     throw shape(
       `expected ${pointCount} surface, ${pointCount} levels and ${neighborCount} neighbor locations, got ${surface.length}, ${levels.length} and ${neighbors.length}`,
@@ -319,7 +322,7 @@ export function splitRaw(raw: ForecastRaw, sites: readonly (readonly Launch[])[]
   const levels = rawLocations(raw.levels);
   const neighbors = rawLocations(raw.neighbors);
   const pointCounts = sites.map((launches) => sitePoints(launches).points.length);
-  checkCounts(pointCounts.reduce((sum, n) => sum + n, 0), sites.length, surface, levels, neighbors);
+  checkCounts(pointCounts, surface, levels, neighbors);
   let start = 0;
   return pointCounts.map((n, i) => {
     const end = start + n;
@@ -377,8 +380,7 @@ export function parseForecasts(raw: ForecastRaw, sites: readonly (readonly Launc
   const levelLocs = locations(raw.levels);
   const neighborLocs = locations(raw.neighbors);
   const layouts = sites.map((launches) => ({ launches, ...sitePoints(launches) }));
-  const pointCount = layouts.reduce((sum, { points }) => sum + points.length, 0);
-  checkCounts(pointCount, sites.length, surfaceLocs, levelLocs, neighborLocs);
+  checkCounts(layouts.map(({ points }) => points.length), surfaceLocs, levelLocs, neighborLocs);
 
   let start = 0;
   return layouts.flatMap(({ launches, points, pointOf }, s) => {
