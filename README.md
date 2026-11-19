@@ -58,6 +58,8 @@ Each open launch gets two forecasts from Open-Meteo:
 - **ECMWF** (`ecmwf_ifs` for surface fields and boundary layer height, `ecmwf_ifs025` for the 700, 600 and 500 hPa levels).
 - **RRFS** (`ncep_rrfs_conus`, the 3 km successor to HRRR). It's the default primary model.
 
+A site's launches are close together, so they share the forecast for the site's highest launch, at its coordinate and elevation. A launch more than 1,000 ft below the highest gets its own forecast at its own elevation.
+
 Either model can be the **primary model**, with RRFS as the default. The primary model's hours decide the calls, scores, reasons and windows. The other is the **check model**, used for model agreement and storm detection. Both are evaluated with the same rules and thresholds; only the roles swap.
 
 RRFS runs only about 3½ days ahead. With RRFS primary, a launch falls back to ECMWF for the day when RRFS covers less than three quarters (0.75) of the day's window hours: daylight, from the current hour if it's today. An hour counts as covered when RRFS has it with wind and precipitation. With no window hours left, RRFS stays primary. A launch never mixes models within a day.
@@ -119,7 +121,7 @@ The direction rules (outside the OK range, not ideal, and the ideal-direction sc
 
 If a launch has no ideal range, anywhere in its OK range counts as ideal. A single ideal heading (e.g. "Ideal 200") counts as ±15°.
 
-The nearby-wind check compares 10 m winds at the launch's grid point and at points 5 mi N, E, S and W, within one model. It uses RRFS when it can, whichever model is primary, because ECMWF's ~9 km grid barely resolves 5 mi, and falls back to ECMWF. The check for wind 5 mi away outside the OK range uses the same four points and the same model. It compares each point's own wind with the launch's OK range, whatever the wind at launch, and only applies to launches with a curated OK range.
+The nearby-wind check compares 10 m winds at the site's grid point (at its highest launch) and at points 5 mi N, E, S and W, within one model. It uses RRFS when it can, whichever model is primary, because ECMWF's ~9 km grid barely resolves 5 mi, and falls back to ECMWF. The check for wind 5 mi away outside the OK range uses the same four points and the same model. It compares each point's own wind with the launch's OK range, whatever the wind at launch, and only applies to launches with a curated OK range.
 
 **Gusts are not scored** at flying sites. Model gusts on light thermal days often run 10–14 mph over the mean wind, which says little about what you'll find at launch. Instead, an hour shows "⚠ high gusts possible" when the gust factor (each hour's gust minus that hour's 10 m wind, the larger of h and h+1) is at least 3× the site's gust-factor limit. That's 15 mph at the default limit of 5.
 
@@ -140,7 +142,7 @@ No-go hours score 0. Other hours start at 50, then:
 
 The score is clamped to 0–100.
 
-- **Cloud base** is (temperature − dewpoint) × 125 m, from 2 m values Open-Meteo adjusts to launch elevation. It runs high at launches well above model terrain, which is why low cloud cover is checked as well and the base is shown as "≈".
+- **Cloud base** is (temperature − dewpoint) × 125 m, from 2 m values Open-Meteo adjusts to the elevation of the site's highest launch, or to the launch's own elevation when it is more than 1,000 ft lower. It runs high at launches well above model terrain, which is why low cloud cover is checked as well and the base is shown as "≈".
 - **Thermal index** is the level temperature minus a surface parcel lifted dry adiabatically (9.8 °C/km). Lower means stronger thermals.
 - **Boundary layer height** is relative to the model's smoothed terrain, not to launch, so treat it as a rough signal.
 

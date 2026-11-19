@@ -73,7 +73,8 @@ beforeAll(async () => {
 });
 
 const openSites = (): Site[] => sites.filter((s) => s.status.state === "open");
-const openLaunches = (): Launch[] => openSites().flatMap((s) => s.launches);
+/** The open sites' launch lists, as a load requests them. */
+const openSiteLaunches = (): Launch[][] => openSites().map((s) => s.launches);
 const allIds = (): string[] => sites.map((s) => s.id);
 
 function site(id: string): Site {
@@ -112,9 +113,9 @@ function dayTransport(day: string): Stub {
   const urls: string[] = [];
   const transport: Transport = async (url) => {
     urls.push(url);
-    if (url === surfaceRequestURL(openLaunches(), undefined, day)) return { status: 200, body: surfaceJSON };
-    if (url === levelsRequestURL(openLaunches(), undefined, day)) return { status: 200, body: levelsJSON };
-    if (url === neighborRequestURL(openLaunches(), undefined, day)) return { status: 200, body: neighborsJSON };
+    if (url === surfaceRequestURL(openSiteLaunches(), undefined, day)) return { status: 200, body: surfaceJSON };
+    if (url === levelsRequestURL(openSiteLaunches(), undefined, day)) return { status: 200, body: levelsJSON };
+    if (url === neighborRequestURL(openSiteLaunches(), undefined, day)) return { status: 200, body: neighborsJSON };
     throw new Error(`unexpected request: ${url}`);
   };
   return { transport, urls };
@@ -798,6 +799,46 @@ describe("getRecommendations per site", () => {
   });
 });
 
+describe("getRecommendations for a site with several launches", () => {
+  it("launchesWithin1000FtShareOnePointAndTheSiteHasOneEntry", async () => {
+    // Boulder's recorded slice stands in for a site whose 9,000 and 8,500 ft launches share a point.
+    const boulder = site(BOULDER);
+    const upper = { ...boulder.launches[0]!, id: `${BOULDER}/synthetic-upper`, elevationFt: 9000 };
+    const lower = { ...upper, id: `${BOULDER}/synthetic-lower`, elevationFt: 8500 };
+    const twoLaunch: Site = { ...boulder, launches: [upper, lower] };
+    const slice = fixtureSlice(BOULDER);
+    const urls: string[] = [];
+    const transport: Transport = async (url) => {
+      urls.push(url);
+      if (url === surfaceRequestURL([twoLaunch.launches])) return { status: 200, body: slice.surface };
+      if (url === levelsRequestURL([twoLaunch.launches])) return { status: 200, body: slice.levels };
+      if (url === neighborRequestURL([twoLaunch.launches])) return { status: 200, body: slice.neighbors };
+      throw new Error(`unexpected request: ${url}`);
+    };
+    const cache = newCache();
+    const result = await getRecommendations(request({ siteIds: [BOULDER] }), {
+      siteProvider: { sites: async () => [twoLaunch] },
+      transport,
+      cache,
+      now: () => NOW,
+    });
+
+    expect(urls).toHaveLength(3);
+    expect(latitudes(urls.find((u) => u === surfaceRequestURL([twoLaunch.launches])) ?? never())).toHaveLength(1);
+    const evaluated = result.sites[0]?.launches ?? [];
+    expect(evaluated.map((l) => l.launch.id)).toEqual([upper.id, lower.id]);
+    expect(evaluated.every((l) => l.daylight.length > 0)).toBe(true);
+
+    const cached = cache.open().get(mainKey(BOULDER), twoLaunch.launches) ?? never();
+    expect(JSON.parse(cached.raw.surface)).toHaveLength(1);
+    expect(JSON.parse(cached.raw.levels)).toHaveLength(1);
+    expect(JSON.parse(cached.raw.neighbors)).toHaveLength(5);
+    const [a, b] = parseForecasts(cached.raw, [twoLaunch.launches]);
+    expect(a?.ecmwf).toEqual(b?.ecmwf);
+    expect(a?.ecmwf.length).toBeGreaterThan(0);
+  });
+});
+
 describe("getRecommendations with RRFS primary", () => {
   /** The recorded surface and levels responses with every RRFS field nulled from Nov 8 00:00 MST (index 24). */
   function noRRFSOnNov8(): Pick<ForecastRaw, "surface" | "levels"> {
@@ -815,7 +856,7 @@ describe("getRecommendations with RRFS primary", () => {
   }
 
   it("evaluatesEveryLaunchWithRRFSOnTheRecordedForecast", async () => {
-    const forecasts = parseForecasts(recorded, openLaunches());
+    const forecasts = parseForecasts(recorded, openSiteLaunches());
     let windows = 0;
     let differsFromECMWF = false;
     for (const day of ["2026-11-07", "2026-11-08"]) {
@@ -890,7 +931,7 @@ describe("getRecommendations with RRFS primary", () => {
 
 describe("resolveTargetDay", () => {
   it("uses the first forecast that has daylight days", () => {
-    const [a, b] = parseForecasts(recorded, openLaunches());
+    const [a, b] = parseForecasts(recorded, openSiteLaunches());
     if (a === undefined || b === undefined) never();
     expect(resolveTargetDay([{ ...a, days: [] }, b], NOW)).toBe("2026-11-07");
     expect(resolveTargetDay([{ ...a, days: [] }, { ...b, days: [] }], NOW)).toBeUndefined();

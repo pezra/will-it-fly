@@ -1,11 +1,13 @@
 import { isRecord } from "../isRecord";
 import type { RemovableStore } from "../keyValueStore";
 import type { ForecastRaw } from "./openMeteoClient";
+import { sitePoints } from "./sitePoints";
+import type { SitePoints } from "./sitePoints";
 import type { Launch } from "../sites/site";
 import type { DayKey } from "../time";
 
 export const SITE_CACHE_KEY = "will-it-fly/forecast-v3";
-/** Entries kept across main and day keys, about 25 KB each for a one-launch site. */
+/** Entries kept across main and day keys, about 25 KB each for a site with one forecast point. */
 export const MAX_CACHED_SITES = 30;
 /** The one-blob caches this replaces, and the per-site cache before the surface and levels split. */
 const LEGACY_KEYS = [
@@ -62,14 +64,22 @@ interface Entry extends CachedSiteForecast {
 }
 
 /**
- * The responses are arrays matched to launches by position, so an entry is only valid for the same
- * ordered list of the site's launches: ids, coordinates and elevations (the surface and levels requests
- * depend on all of them). They are compared as one JSON string.
+ * The responses are arrays matched by position to the site's forecast points, and the points to
+ * launches by `pointOf`, so an entry is only valid for the same ordered list of the site's launches
+ * (ids, coordinates and elevations) laid out the same way. Recording the points and `pointOf` too
+ * makes a change to the sharing rule miss instead of reading an entry with the wrong layout. They are
+ * compared as one JSON string.
  */
+export function entryLaunchesKey(launches: readonly Launch[], { points, pointOf }: SitePoints): string {
+  return JSON.stringify({
+    launches: launches.map((l) => [l.id, l.coordinate.latitude, l.coordinate.longitude, l.elevationFt]),
+    points: points.map((p) => [p.coordinate.latitude, p.coordinate.longitude, p.elevationFt]),
+    pointOf,
+  });
+}
+
 function launchesKey(launches: readonly Launch[]): string {
-  return JSON.stringify(
-    launches.map((l) => [l.id, l.coordinate.latitude, l.coordinate.longitude, l.elevationFt]),
-  );
+  return entryLaunchesKey(launches, sitePoints(launches));
 }
 
 function parseEntry(value: unknown): Entry | undefined {

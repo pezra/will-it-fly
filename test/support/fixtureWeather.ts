@@ -8,6 +8,7 @@ import type { ForecastRaw } from "../../src/core/forecast/openMeteoClient";
 import { bundledSiteProvider } from "../../src/core/sites/siteProvider";
 import type { Site } from "../../src/core/sites/site";
 import type { DayKey } from "../../src/core/time";
+import { testLaunch } from "./builders";
 import levelsJSON from "../fixtures/openmeteo-levels.json?raw";
 import neighborsJSON from "../fixtures/openmeteo-neighbors.json?raw";
 import surfaceJSON from "../fixtures/openmeteo-surface.json?raw";
@@ -40,9 +41,10 @@ export async function fixtureSites(): Promise<Site[]> {
 }
 
 const RECORDED = [GLENWOOD, BUTTE, BOULDER];
+// `splitRaw` reads only each site's layout, and every recorded site is one launch: one point and one ring.
 const recordedSlices = splitRaw(
   { surface: surfaceJSON, levels: levelsJSON, neighbors: neighborsJSON },
-  [1, 1, 1],
+  RECORDED.map(() => [testLaunch()]),
 );
 
 /** An open fixture site's slice of the recorded responses. */
@@ -69,7 +71,7 @@ export function fixtureResponse(
   url: string,
   day?: DayKey,
 ): string | undefined {
-  const launches = ids.flatMap((id) => sites.find((s) => s.id === id)?.launches ?? []);
+  const launches = ids.map((id) => sites.find((s) => s.id === id)?.launches ?? []);
   if (url === surfaceRequestURL(launches, undefined, day)) return fixtureBodies(ids).surface;
   if (url === levelsRequestURL(launches, undefined, day)) return fixtureBodies(ids).levels;
   if (url === neighborRequestURL(launches, undefined, day)) return fixtureBodies(ids).neighbors;

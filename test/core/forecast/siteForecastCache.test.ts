@@ -2,11 +2,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createSiteForecastCache,
   dayKey,
+  entryLaunchesKey,
   mainKey,
   MAX_CACHED_SITES,
   SITE_CACHE_KEY,
 } from "../../../src/core/forecast/siteForecastCache";
 import type { SiteForecastSave } from "../../../src/core/forecast/siteForecastCache";
+import { sitePoints } from "../../../src/core/forecast/sitePoints";
 import type { RemovableStore } from "../../../src/core/keyValueStore";
 import type { Launch } from "../../../src/core/sites/site";
 import { mapStore, testLaunch } from "../../support/builders";
@@ -99,6 +101,22 @@ describe("SiteForecastCache", () => {
     const cache = createSiteForecastCache(mapStore());
     cache.open().commit({ saves: [save("main:a")], used: [], now: 0 });
     expect(cache.open().get("main:a", other)).toBeUndefined();
+  });
+
+  it("theLaunchesKeyRecordsTheSitesPoints", () => {
+    // 9,000 and 8,500 ft share one point.
+    const own = [launch("b/1", 39.5, -107.3, 9000), launch("b/2", 39.51, -107.31, 8500)];
+    const points = sitePoints(own);
+    expect(points.pointOf).toEqual([0, 0]);
+    const key = entryLaunchesKey(own, points);
+    expect(entryLaunchesKey(own.map((l) => ({ ...l })), sitePoints(own))).toBe(key);
+    expect(entryLaunchesKey(own, { ...points, pointOf: [0, 1] })).not.toBe(key);
+    const lower = { coordinate: { latitude: 39.51, longitude: -107.31 }, elevationFt: 8500 };
+    expect(entryLaunchesKey(own, { ...points, points: [...points.points, lower] })).not.toBe(key);
+
+    const cache = createSiteForecastCache(mapStore());
+    cache.open().commit({ saves: [save("main:b", 1_000, own)], used: [], now: 0 });
+    expect(cache.open().get("main:b", own.map((l) => ({ ...l })))?.fetchedAt).toBe(1_000);
   });
 
   it.each(["not json {", "42", "[]", "null", '"text"'])("aCorruptBlobReadsAsEmpty: %s", (text) => {

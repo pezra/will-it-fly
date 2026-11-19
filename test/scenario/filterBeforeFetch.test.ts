@@ -147,7 +147,7 @@ function countingWeather(sites: readonly Site[]): { transport: Transport; fetche
     for (const ids of subsets) {
       const body = fixtureResponse(sites, ids, url);
       if (body === undefined) continue;
-      const launches = ids.flatMap((id) => sites.find((s) => s.id === id)?.launches ?? []);
+      const launches = ids.map((id) => sites.find((s) => s.id === id)?.launches ?? []);
       if (url === surfaceRequestURL(launches)) fetched.push(ids);
       return { status: 200, body };
     }

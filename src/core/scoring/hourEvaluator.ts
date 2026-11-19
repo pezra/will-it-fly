@@ -193,7 +193,7 @@ export interface HourContext {
   next?: ModelHour | undefined;
   /** The other model's hour and its next hour, for the primary model's evaluation only. */
   other?: { hour: ModelHour | undefined; next: ModelHour | undefined } | undefined;
-  /** The neighbor request's center 10 m wind at h, per model (not the launch request's wind). */
+  /** The neighbor request's center 10 m wind at h, per model (not the surface request's wind). */
   neighborCenter: NeighborSample;
   /** Each neighbor's 10 m wind at h, per model. */
   neighbors: readonly NeighborPointSample[];
