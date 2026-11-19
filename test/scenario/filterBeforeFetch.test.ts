@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { launchRequestURL } from "../../src/core/forecast/openMeteoClient";
+import { surfaceRequestURL } from "../../src/core/forecast/openMeteoClient";
 import type { Transport } from "../../src/core/forecast/openMeteoClient";
 import type { KeyValueStore } from "../../src/core/keyValueStore";
 import { createSiteForecastCache } from "../../src/core/forecast/siteForecastCache";
@@ -136,7 +136,7 @@ function recordedSubsets(): string[][] {
 
 /**
  * Fake Open-Meteo: serves the recorded slices for any subset of the recorded sites of `sites` and
- * fails anything else. `fetched` has the site ids of each launch request; `urls` every request.
+ * fails anything else. `fetched` has the site ids of each surface request; `urls` every request.
  */
 function countingWeather(sites: readonly Site[]): { transport: Transport; fetched: string[][]; urls: string[] } {
   const fetched: string[][] = [];
@@ -148,7 +148,7 @@ function countingWeather(sites: readonly Site[]): { transport: Transport; fetche
       const body = fixtureResponse(sites, ids, url);
       if (body === undefined) continue;
       const launches = ids.flatMap((id) => sites.find((s) => s.id === id)?.launches ?? []);
-      if (url === launchRequestURL(launches)) fetched.push(ids);
+      if (url === surfaceRequestURL(launches)) fetched.push(ids);
       return { status: 200, body };
     }
     throw new Error(`unexpected request: ${url}`);
@@ -321,7 +321,7 @@ describe("filter before fetch", () => {
     expect(p.osrm.asked).toEqual([[GLENWOOD, BUTTE, BOULDER, COPPER]]);
     // Glenwood is routed over 2 h and Copper is closed: only Butte and Boulder get weather.
     expect(p.weather.fetched).toEqual([[BUTTE, BOULDER]]);
-    expect(p.weather.urls).toHaveLength(2);
+    expect(p.weather.urls).toHaveLength(3);
     const asked = latitudes(p.weather.urls[0] ?? "");
     for (const id of [GLENWOOD, COPPER, FAR]) expect(asked).not.toContain(first(id).latitude);
     expect(p.view(START, radii(2))).toEqual({ shown: [BOULDER, BUTTE, COPPER].sort(), hiddenCount: 2, total: 5 });
@@ -338,7 +338,7 @@ describe("filter before fetch", () => {
     expect(wide.inRange).toContain(GLENWOOD);
     expect(p.osrm.asked).toEqual([[FAR]]);
     expect(p.weather.fetched).toEqual([[GLENWOOD]]);
-    expect(p.weather.urls).toHaveLength(2);
+    expect(p.weather.urls).toHaveLength(3);
     expect(p.view(START, radii(3))).toEqual({
       shown: [BOULDER, BUTTE, COPPER, GLENWOOD].sort(),
       hiddenCount: 1,
@@ -351,7 +351,7 @@ describe("filter before fetch", () => {
     expect(narrow.inRange).not.toContain(GLENWOOD);
     expect(p.loads).toBe(loads);
     expect(p.osrm.asked).toHaveLength(1);
-    expect(p.weather.urls).toHaveLength(2);
+    expect(p.weather.urls).toHaveLength(3);
     expect(p.view(START, radii(2))).toEqual({ shown: [BOULDER, BUTTE, COPPER].sort(), hiddenCount: 2, total: 5 });
   });
 

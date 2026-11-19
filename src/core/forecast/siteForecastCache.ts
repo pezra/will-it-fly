@@ -1,22 +1,26 @@
 import { isRecord } from "../isRecord";
 import type { RemovableStore } from "../keyValueStore";
+import type { ForecastRaw } from "./openMeteoClient";
 import type { Launch } from "../sites/site";
 import type { DayKey } from "../time";
 
-export const SITE_CACHE_KEY = "will-it-fly/forecast-v2";
-/** Entries kept across main and day keys, about 70 KB each. */
+export const SITE_CACHE_KEY = "will-it-fly/forecast-v3";
+/** Entries kept across main and day keys, about 25 KB each for a one-launch site. */
 export const MAX_CACHED_SITES = 30;
-/** The one-blob caches this replaces. */
-const LEGACY_KEYS = ["will-it-fly/forecast-v1", "will-it-fly/forecast-v1/day"];
+/** The one-blob caches this replaces, and the per-site cache before the surface and levels split. */
+const LEGACY_KEYS = [
+  "will-it-fly/forecast-v1",
+  "will-it-fly/forecast-v1/day",
+  "will-it-fly/forecast-v2",
+];
 /** A read alone rewrites the blob only when it would move `usedAt` by more than this. */
 const USED_AT_RESOLUTION_MS = 60 * 60 * 1000;
 
-/** One site's slices of a response pair (see `splitRaw`). */
+/** One site's slices of a load's responses (see `splitRaw`). */
 export interface CachedSiteForecast {
   /** When the responses were fetched (epoch ms). */
   fetchedAt: number;
-  launchRaw: string;
-  neighborRaw: string;
+  raw: ForecastRaw;
 }
 
 export interface SiteForecastSave extends CachedSiteForecast {
@@ -59,8 +63,8 @@ interface Entry extends CachedSiteForecast {
 
 /**
  * The responses are arrays matched to launches by position, so an entry is only valid for the same
- * ordered list of the site's launches: ids, coordinates and elevations (the launch request depends on
- * all of them). They are compared as one JSON string.
+ * ordered list of the site's launches: ids, coordinates and elevations (the surface and levels requests
+ * depend on all of them). They are compared as one JSON string.
  */
 function launchesKey(launches: readonly Launch[]): string {
   return JSON.stringify(
@@ -70,17 +74,20 @@ function launchesKey(launches: readonly Launch[]): string {
 
 function parseEntry(value: unknown): Entry | undefined {
   if (!isRecord(value)) return undefined;
-  const { fetchedAt, usedAt, launchesKey, launchRaw, neighborRaw } = value;
+  const { fetchedAt, usedAt, launchesKey, raw } = value;
   if (
     typeof fetchedAt !== "number" ||
     typeof usedAt !== "number" ||
     typeof launchesKey !== "string" ||
-    typeof launchRaw !== "string" ||
-    typeof neighborRaw !== "string"
+    !isRecord(raw)
   ) {
     return undefined;
   }
-  return { fetchedAt, usedAt, launchesKey, launchRaw, neighborRaw };
+  const { surface, levels, neighbors } = raw;
+  if (typeof surface !== "string" || typeof levels !== "string" || typeof neighbors !== "string") {
+    return undefined;
+  }
+  return { fetchedAt, usedAt, launchesKey, raw: { surface, levels, neighbors } };
 }
 
 /** The stored entries. A corrupt blob reads as empty and a malformed entry is left out. */
@@ -129,8 +136,7 @@ export function createSiteForecastCache(store: RemovableStore): SiteForecastCach
         get(key, launches) {
           const entry = snapshotEntries.get(key);
           if (entry === undefined || entry.launchesKey !== launchesKey(launches)) return undefined;
-          const { fetchedAt, launchRaw, neighborRaw } = entry;
-          return { fetchedAt, launchRaw, neighborRaw };
+          return { fetchedAt: entry.fetchedAt, raw: entry.raw };
         },
         commit({ saves, used, now }) {
           const stale = used.some((key) => {
@@ -146,14 +152,8 @@ export function createSiteForecastCache(store: RemovableStore): SiteForecastCach
             const entry = entries.get(key);
             if (entry !== undefined) entry.usedAt = now;
           }
-          for (const { key, launches, fetchedAt, launchRaw, neighborRaw } of saves) {
-            entries.set(key, {
-              fetchedAt,
-              usedAt: now,
-              launchesKey: launchesKey(launches),
-              launchRaw,
-              neighborRaw,
-            });
+          for (const { key, launches, fetchedAt, raw } of saves) {
+            entries.set(key, { fetchedAt, usedAt: now, launchesKey: launchesKey(launches), raw });
           }
 
           const kept = new Set([...saves.map((s) => s.key), ...used.filter((k) => entries.has(k))]);

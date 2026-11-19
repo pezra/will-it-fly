@@ -119,7 +119,7 @@ function usableEntry(
   source: Source,
 ): Usable | undefined {
   try {
-    const forecasts = parseForecasts(cached.launchRaw, cached.neighborRaw, launches);
+    const forecasts = parseForecasts(cached.raw, launches);
     return source.dayFor(forecasts) === undefined ? undefined : { forecasts, fetchedAt: cached.fetchedAt };
   } catch (error) {
     console.warn("Ignoring an unreadable forecast cache entry", error);
@@ -136,8 +136,8 @@ interface ToFetch {
 }
 
 /**
- * Loads each site's forecast from its fresh cache entry, and fetches the rest in one request pair.
- * If that fetch fails, each of those sites falls back to its stale entry, or the error is rethrown.
+ * Loads each site's forecast from its fresh cache entry, and fetches the rest in one load of three
+ * requests. If that fetch fails, each of those sites falls back to its stale entry, or the error is rethrown.
  */
 async function loadForecasts(
   request: RecommendationRequest,
@@ -171,7 +171,7 @@ async function loadForecasts(
   const saves: SiteForecastSave[] = [];
   if (toFetch.length > 0) {
     try {
-      const { forecasts, launchRaw, neighborRaw } = await fetchForecasts(
+      const { forecasts, raw } = await fetchForecasts(
         toFetch.flatMap(({ site }) => site.launches),
         { transport: deps.transport, baseURL: deps.baseURL, day: source.fetchDay },
       );
@@ -183,7 +183,7 @@ async function loadForecasts(
       // Splitting only feeds the cache: if it fails the fetched weather is still good, just unsaved.
       let slices: ReturnType<typeof splitRaw> = [];
       try {
-        slices = splitRaw(launchRaw, neighborRaw, counts);
+        slices = splitRaw(raw, counts);
       } catch (splitError) {
         console.warn("Could not split the forecast for the cache", splitError);
       }
@@ -193,7 +193,7 @@ async function loadForecasts(
         loaded.set(site.id, { forecasts: forecasts.slice(start, end), fetchedAt: now });
         start = end;
         const slice = slices[i];
-        if (slice !== undefined) saves.push({ key, launches: site.launches, fetchedAt: now, ...slice });
+        if (slice !== undefined) saves.push({ key, launches: site.launches, fetchedAt: now, raw: slice });
       });
     } catch (error) {
       for (const { site, key, stale } of toFetch) {

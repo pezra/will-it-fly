@@ -1,22 +1,25 @@
 import { describe, expect, it } from "vitest";
 import {
   fetchForecasts,
-  launchRequestURL,
+  levelsRequestURL,
   NEIGHBOR_POINTS_PER_LAUNCH,
   neighborRequestURL,
   OpenMeteoError,
   parseForecasts,
   splitRaw,
+  surfaceRequestURL,
 } from "../../../src/core/forecast/openMeteoClient";
-import type { Transport } from "../../../src/core/forecast/openMeteoClient";
+import type { ForecastRaw, Transport } from "../../../src/core/forecast/openMeteoClient";
 import type { LaunchForecast } from "../../../src/core/forecast/models";
 import type { Launch } from "../../../src/core/sites/site";
 import { denverDayKey, denverHour } from "../../../src/core/time";
 import { testLaunch } from "../../support/builders";
-import launchesJSON from "../../fixtures/openmeteo-launches.json?raw";
+import levelsJSON from "../../fixtures/openmeteo-levels.json?raw";
 import neighborsJSON from "../../fixtures/openmeteo-neighbors.json?raw";
-import launchesURL from "../../fixtures/openmeteo-launches.url.txt?raw";
+import surfaceJSON from "../../fixtures/openmeteo-surface.json?raw";
+import levelsURL from "../../fixtures/openmeteo-levels.url.txt?raw";
 import neighborsURL from "../../fixtures/openmeteo-neighbors.url.txt?raw";
+import surfaceURL from "../../fixtures/openmeteo-surface.url.txt?raw";
 
 function launch(id: string, latitude: number, longitude: number, elevationFt: number): Launch {
   return testLaunch({ id, name: id, coordinate: { latitude, longitude }, elevationFt });
@@ -29,13 +32,21 @@ const launches: Launch[] = [
   launch("rmhpa/boulder-wonderland/upper", 40.0562, -105.3, 6260),
 ];
 
-function neighborBody(count: number): string {
+const recorded: ForecastRaw = { surface: surfaceJSON, levels: levelsJSON, neighbors: neighborsJSON };
+
+/** `count` locations that share the one hour the synthetic bodies below use. */
+function locationsBody(count: number): string {
   const one = '{"hourly":{"time":[1794034800]},"daily":{"time":[1794034800]}}';
   return `[${Array<string>(count).fill(one).join(",")}]`;
 }
 
+/** A launch's raw bodies where only `surface` matters: `levels` and the neighbors have the same hour. */
+function oneLaunch(surface: string): ForecastRaw {
+  return { surface, levels: locationsBody(1), neighbors: locationsBody(5) };
+}
+
 function parsed(): LaunchForecast[] {
-  return parseForecasts(launchesJSON, neighborsJSON, launches);
+  return parseForecasts(recorded, launches);
 }
 
 function queryParam(url: string, name: string): string | undefined {
@@ -83,12 +94,47 @@ function rawHourly(json: string): RawSeries[] {
 
 describe("OpenMeteoClient", () => {
   it("buildersMatchRecordedURLs", () => {
-    expect(launchRequestURL(launches)).toBe(launchesURL.trim());
+    expect(surfaceRequestURL(launches)).toBe(surfaceURL.trim());
+    expect(levelsRequestURL(launches)).toBe(levelsURL.trim());
     expect(neighborRequestURL(launches)).toBe(neighborsURL.trim());
   });
 
   it("baseURLTrailingSlashIsIgnored", () => {
-    expect(launchRequestURL(launches, "https://api.open-meteo.com/")).toBe(launchesURL.trim());
+    expect(surfaceRequestURL(launches, "https://api.open-meteo.com/")).toBe(surfaceURL.trim());
+    expect(levelsRequestURL(launches, "https://api.open-meteo.com/")).toBe(levelsURL.trim());
+  });
+
+  it("surfaceURLAsksOnlyForSurfaceVariablesAndDaylightFromECMWFAndRRFS", () => {
+    const url = surfaceRequestURL(launches);
+    const hourly = (queryParam(url, "hourly") ?? "").split(",");
+    expect(hourly).toHaveLength(9);
+    expect(hourly.some((v) => v.endsWith("hPa"))).toBe(false);
+    expect(queryParam(url, "daily")).toBe("sunrise,sunset");
+    expect(queryParam(url, "models")).toBe("ecmwf_ifs,ncep_rrfs_conus");
+    expect((queryParam(url, "elevation") ?? "").split(",")).toEqual(["2386.6", "3444.2", "1908.0"]);
+  });
+
+  it("levelsURLAsksOnlyForPressureLevelsFromIFS025AndRRFS", () => {
+    const url = levelsRequestURL(launches);
+    const hourly = (queryParam(url, "hourly") ?? "").split(",");
+    expect(hourly).toHaveLength(12);
+    expect(hourly.every((v) => v.endsWith("hPa"))).toBe(true);
+    expect(queryParam(url, "daily")).toBeUndefined();
+    expect(queryParam(url, "models")).toBe("ecmwf_ifs025,ncep_rrfs_conus");
+    expect(queryParam(url, "latitude")).toBe(queryParam(surfaceRequestURL(launches), "latitude"));
+    expect(queryParam(url, "elevation")).toBe(queryParam(surfaceRequestURL(launches), "elevation"));
+  });
+
+  it("singleDayRequestsCarryTheDayInAllThreeURLs", () => {
+    for (const url of [
+      surfaceRequestURL(launches, undefined, "2026-11-12"),
+      levelsRequestURL(launches, undefined, "2026-11-12"),
+      neighborRequestURL(launches, undefined, "2026-11-12"),
+    ]) {
+      expect(queryParam(url, "start_date")).toBe("2026-11-12");
+      expect(queryParam(url, "end_date")).toBe("2026-11-12");
+      expect(queryParam(url, "forecast_days")).toBeUndefined();
+    }
   });
 
   it("neighborURLHasFourPointsPerLaunchAllNanElevation", () => {
@@ -117,39 +163,41 @@ describe("OpenMeteoClient", () => {
       expect(f.neighbors.map((n) => n.bearingDeg)).toEqual([0, 90, 180, 270]);
       expect(f.neighbors.every((n) => n.ecmwf.length === 48 && n.rrfs.length === 48)).toBe(true);
       expect(f.days).toHaveLength(2);
-      // ecmwf_ifs BLH and the merged ecmwf_ifs025 700 hPa fields are present at every hour.
+      // ecmwf_ifs BLH and the ecmwf_ifs025 700 hPa fields are present at every hour.
       expect(f.ecmwf.every((h) => h.blhM !== undefined)).toBe(true);
       expect(
         f.ecmwf.every((h) => h.levels[700]?.windMph !== undefined && h.levels[700]?.heightM !== undefined),
       ).toBe(true);
       expect(f.ecmwf.every((h) => h.windMph !== undefined && h.precipMm !== undefined)).toBe(true);
-      // ecmwf_ifs's own pressure-level fields are all null and must not leak in; ifs025 BLH likewise.
       expect(f.ecmwf.every((h) => h.levels[500]?.tempC !== undefined)).toBe(true);
     }
   });
 
-  it("recordedNullPositionsComeThroughAsUndefined", () => {
-    // In the recording the only nulls are ecmwf_ifs pressure levels and ecmwf_ifs025 BLH, all of which
-    // the merge replaces; RRFS is complete at all 48 hours. Assert exactly that.
+  it("recordedResponsesHaveNoSeriesTheParserIgnores", () => {
+    // RRFS is complete at all 48 hours. The requests don't ask ecmwf_ifs for pressure levels or
+    // ecmwf_ifs025 for surface variables, so the recording has neither.
     const rrfs = parsed().flatMap((f) => f.rrfs);
     expect(
       rrfs.every(
         (h) => h.windMph !== undefined && h.blhM !== undefined && h.levels[500]?.heightM !== undefined,
       ),
     ).toBe(true);
-    const hourly = rawHourly(launchesJSON)[0];
-    expect(hourly?.["wind_speed_700hPa_ecmwf_ifs"]?.every((x) => x === null)).toBe(true);
-    expect(hourly?.["boundary_layer_height_ecmwf_ifs025"]?.every((x) => x === null)).toBe(true);
+    const surface = rawHourly(surfaceJSON)[0];
+    const levels = rawHourly(levelsJSON)[0];
+    expect(Object.keys(surface ?? {}).filter((k) => k.includes("hPa") || k.endsWith("ifs025"))).toEqual([]);
+    expect(Object.keys(levels ?? {}).filter((k) => !k.includes("hPa") && k !== "time")).toEqual([]);
+    expect(Object.keys(levels ?? {}).some((k) => k.endsWith("_ecmwf_ifs"))).toBe(false);
   });
 
   it("nullsBecomeUndefinedAndKeysDoNotCollide", () => {
     // _ecmwf_ifs is a prefix of _ecmwf_ifs025; each must be read by exact key.
-    const body = `{"hourly":{"time":[1794034800,1794038400],
+    const surface = `{"hourly":{"time":[1794034800,1794038400],
       "wind_speed_10m_ecmwf_ifs":[10,null],"wind_speed_10m_ecmwf_ifs025":[99,99],
-      "wind_speed_700hPa_ecmwf_ifs":[77,77],"wind_speed_700hPa_ecmwf_ifs025":[null,25],
       "wind_speed_10m_ncep_rrfs_conus":[null,null]},
      "daily":{"time":[1794034800],"sunrise":[1794059075],"sunset":[1794096063]}}`;
-    const f = parseForecasts(body, neighborBody(5), [launches[0]!])[0]!;
+    const levels = `{"hourly":{"time":[1794034800,1794038400],
+      "wind_speed_700hPa_ecmwf_ifs":[77,77],"wind_speed_700hPa_ecmwf_ifs025":[null,25]}}`;
+    const f = parseForecasts({ ...oneLaunch(surface), levels }, [launches[0]!])[0]!;
     expect(f.ecmwf.map((h) => h.windMph)).toEqual([10, undefined]);
     expect(f.ecmwf.map((h) => h.levels[700]?.windMph)).toEqual([undefined, 25]);
     expect(f.rrfs.map((h) => h.windMph)).toEqual([undefined, undefined]);
@@ -160,7 +208,10 @@ describe("OpenMeteoClient", () => {
   it("missingAndShortSeriesGiveUndefined", () => {
     const body = `[{"hourly":{"time":[1794034800,1794038400],"wind_speed_10m_ncep_rrfs_conus":[5]},
       "daily":{"sunrise":[1,2,3],"sunset":[4,5]}}]`;
-    const f = parseForecasts(body, neighborBody(5), [launches[0]!])[0]!;
+    const f = parseForecasts(
+      { ...oneLaunch(body), levels: '[{"hourly":{"time":[1794034800,1794038400]}}]' },
+      [launches[0]!],
+    )[0]!;
     expect(f.rrfs.map((h) => h.windMph)).toEqual([5, undefined]);
     expect(f.ecmwf.map((h) => h.windMph)).toEqual([undefined, undefined]);
     expect(f.days).toEqual([
@@ -171,21 +222,24 @@ describe("OpenMeteoClient", () => {
 
   it("perModelDailyKeysArePreferred", () => {
     const body = `[{"hourly":{"time":[1794034800]},
-      "daily":{"sunrise":[1],"sunset":[2],"sunrise_ecmwf_ifs025":[10],"sunset_ecmwf_ifs025":[20]}}]`;
-    const f = parseForecasts(body, neighborBody(5), [launches[0]!])[0]!;
+      "daily":{"sunrise":[1],"sunset":[2],"sunrise_ecmwf_ifs":[10],"sunset_ecmwf_ifs":[20]}}]`;
+    const f = parseForecasts(oneLaunch(body), [launches[0]!])[0]!;
     expect(f.days).toEqual([{ sunrise: 10_000, sunset: 20_000 }]);
   });
 
   it("wrongTypesAndNullTimesAreUnexpectedShape", () => {
-    const nb = neighborBody(5);
     const one = [launches[0]!];
-    shapeError(() => parseForecasts('[{"hourly":{"time":[1],"wind_speed_10m_ecmwf_ifs":["x"]}}]', nb, one));
-    shapeError(() => parseForecasts('[{"hourly":{"time":[1,null]}}]', nb, one));
-    shapeError(() => parseForecasts('[{"hourly":{"wind_speed_10m_ecmwf_ifs":[1]}}]', nb, one));
-    shapeError(() => parseForecasts('[{"daily":{}}]', nb, one));
+    const parse = (surface: string): unknown => parseForecasts(oneLaunch(surface), one);
+    shapeError(() => parse('[{"hourly":{"time":[1],"wind_speed_10m_ecmwf_ifs":["x"]}}]'));
+    shapeError(() => parse('[{"hourly":{"time":[1,null]}}]'));
+    shapeError(() => parse('[{"hourly":{"wind_speed_10m_ecmwf_ifs":[1]}}]'));
+    shapeError(() => parse('[{"daily":{}}]'));
+    shapeError(() => parse('[{"hourly":{"time":[1]},"daily":{"sunrise":[null],"sunset":[2]}}]'));
+    // The levels body is held to the same checks.
     shapeError(() =>
-      parseForecasts('[{"hourly":{"time":[1]},"daily":{"sunrise":[null],"sunset":[2]}}]', nb, one),
+      parseForecasts({ ...oneLaunch(locationsBody(1)), levels: '[{"hourly":{"time":[1794034800],"x":["x"]}}]' }, one),
     );
+    shapeError(() => parseForecasts({ ...oneLaunch(locationsBody(1)), levels: '[{"daily":{}}]' }, one));
   });
 
   it("datesDecodeToDenverLocalTime", () => {
@@ -211,7 +265,7 @@ describe("OpenMeteoClient", () => {
   it("apiErrorBodyThrowsApiError", () => {
     const body = '{"error":true,"reason":"Latitude must be in range of -90 to 90"}';
     try {
-      parseForecasts(body, body, launches);
+      parseForecasts({ surface: body, levels: body, neighbors: body }, launches);
       throw new Error("expected throw");
     } catch (e) {
       expect(e).toBeInstanceOf(OpenMeteoError);
@@ -220,26 +274,83 @@ describe("OpenMeteoClient", () => {
     }
   });
 
-  it("wrongElementCountIsUnexpectedShape", () => {
-    shapeError(() => parseForecasts(launchesJSON, neighborsJSON, launches.slice(0, 2)));
-    shapeError(() => parseForecasts(launchesJSON, neighborBody(14), launches));
-    const err = shapeError(() => parseForecasts("nonsense", neighborsJSON, launches));
+  it("wrongElementCountInAnyBodyIsUnexpectedShape", () => {
+    shapeError(() => parseForecasts(recorded, launches.slice(0, 2)));
+    shapeError(() => parseForecasts({ ...recorded, surface: locationsBody(2) }, launches));
+    shapeError(() => parseForecasts({ ...recorded, levels: locationsBody(2) }, launches));
+    shapeError(() => parseForecasts({ ...recorded, neighbors: locationsBody(14) }, launches));
+    const err = shapeError(() => parseForecasts({ ...recorded, surface: "nonsense" }, launches));
     expect(err.cause).toBeDefined();
+    shapeError(() => parseForecasts({ ...recorded, levels: "nonsense" }, launches));
+  });
+
+  it("differentSurfaceAndLevelsTimesAreUnexpectedShape", () => {
+    const surface = '[{"hourly":{"time":[1794034800,1794038400]}}]';
+    const one = [launches[0]!];
+    const parse = (levels: string): unknown => parseForecasts({ ...oneLaunch(surface), levels }, one);
+    parse('[{"hourly":{"time":[1794034800,1794038400]}}]');
+    shapeError(() => parse('[{"hourly":{"time":[1794034800,1794042000]}}]'));
+    shapeError(() => parse('[{"hourly":{"time":[1794034800]}}]'));
+    shapeError(() => parse('[{"hourly":{"time":[1794034800,1794038400,1794042000]}}]'));
+  });
+
+  it("everyHourFieldComesFromTheMatchingModelAndBody", () => {
+    // Every model x variable x location has its own value, so a field read from the wrong model,
+    // the wrong body or the wrong launch can't pass.
+    const hours = "[1794034800,1794038400]";
+    const surface = `[
+      {"hourly":{"time":${hours},
+        "wind_speed_10m_ecmwf_ifs":[11,12],"wind_speed_10m_ncep_rrfs_conus":[21,22],
+        "temperature_2m_ecmwf_ifs":[31,32],"temperature_2m_ncep_rrfs_conus":[41,42],
+        "precipitation_ecmwf_ifs":[0.1,0.2],"precipitation_ncep_rrfs_conus":[0.3,0.4]}},
+      {"hourly":{"time":${hours},
+        "wind_speed_10m_ecmwf_ifs":[111,112],"wind_speed_10m_ncep_rrfs_conus":[121,122],
+        "temperature_2m_ecmwf_ifs":[131,132],"temperature_2m_ncep_rrfs_conus":[141,142],
+        "precipitation_ecmwf_ifs":[1.1,1.2],"precipitation_ncep_rrfs_conus":[1.3,1.4]}}]`;
+    const levels = `[
+      {"hourly":{"time":${hours},
+        "wind_speed_700hPa_ecmwf_ifs025":[51,52],"wind_speed_700hPa_ncep_rrfs_conus":[61,62]}},
+      {"hourly":{"time":${hours},
+        "wind_speed_700hPa_ecmwf_ifs025":[151,152],"wind_speed_700hPa_ncep_rrfs_conus":[161,162]}}]`;
+    const [a, b] = parseForecasts({ surface, levels, neighbors: locationsBody(10) }, launches.slice(0, 2));
+    const t0 = 1794034800_000;
+    const t1 = 1794038400_000;
+    expect(a!.ecmwf[0]).toMatchObject({
+      time: t0, windMph: 11, tempC: 31, precipMm: 0.1, levels: { 700: { windMph: 51 } },
+    });
+    expect(a!.ecmwf[1]).toMatchObject({
+      time: t1, windMph: 12, tempC: 32, precipMm: 0.2, levels: { 700: { windMph: 52 } },
+    });
+    expect(a!.rrfs[0]).toMatchObject({
+      time: t0, windMph: 21, tempC: 41, precipMm: 0.3, levels: { 700: { windMph: 61 } },
+    });
+    expect(a!.rrfs[1]).toMatchObject({
+      time: t1, windMph: 22, tempC: 42, precipMm: 0.4, levels: { 700: { windMph: 62 } },
+    });
+    expect(b!.ecmwf[1]).toMatchObject({
+      windMph: 112, tempC: 132, precipMm: 1.2, levels: { 700: { windMph: 152 } },
+    });
+    expect(b!.rrfs[0]).toMatchObject({
+      windMph: 121, tempC: 141, precipMm: 1.3, levels: { 700: { windMph: 161 } },
+    });
+    expect(a!.ecmwf[0]!.gustMph).toBeUndefined();
   });
 
   it("fetchRoundTripWithStubTransport", async () => {
     const requested: string[] = [];
+    const bodies = new Map([
+      [surfaceURL.trim(), surfaceJSON],
+      [levelsURL.trim(), levelsJSON],
+      [neighborsURL.trim(), neighborsJSON],
+    ]);
     const transport: Transport = (url) => {
       requested.push(url);
-      // The neighbor request asks only for 10 m wind; the launch request asks for everything.
-      const isNeighbor = url.includes("hourly=wind_speed_10m,wind_direction_10m&");
-      return Promise.resolve({ status: 200, body: isNeighbor ? neighborsJSON : launchesJSON });
+      return Promise.resolve({ status: 200, body: bodies.get(url) ?? "" });
     };
     const result = await fetchForecasts(launches, { transport });
     expect(result.forecasts).toHaveLength(3);
-    expect(result.launchRaw).toBe(launchesJSON);
-    expect(result.neighborRaw).toBe(neighborsJSON);
-    expect(requested.sort()).toEqual([launchesURL.trim(), neighborsURL.trim()].sort());
+    expect(result.raw).toEqual(recorded);
+    expect(requested.sort()).toEqual([...bodies.keys()].sort());
   });
 
   it("fetchHonorsBaseURL", async () => {
@@ -249,8 +360,24 @@ describe("OpenMeteoClient", () => {
       return Promise.resolve({ status: 500, body: "" });
     };
     await rejection(fetchForecasts(launches, { transport, baseURL: "http://localhost:9/" }));
-    expect(requested).toHaveLength(2);
+    expect(requested).toHaveLength(3);
     expect(requested.every((u) => u.startsWith("http://localhost:9/v1/forecast?"))).toBe(true);
+  });
+
+  it("anyOneRequestFailingFailsTheFetch", async () => {
+    const bodies = new Map([
+      [surfaceURL.trim(), surfaceJSON],
+      [levelsURL.trim(), levelsJSON],
+      [neighborsURL.trim(), neighborsJSON],
+    ]);
+    for (const failing of bodies.keys()) {
+      const transport: Transport = (url) =>
+        Promise.resolve(
+          url === failing ? { status: 503, body: "busy" } : { status: 200, body: bodies.get(url) ?? "" },
+        );
+      const err = await rejection(fetchForecasts(launches, { transport }));
+      expect(err.status).toBe(503);
+    }
   });
 
   it("fetchMapsHTTPAndAPIErrors", async () => {
@@ -288,17 +415,18 @@ describe("OpenMeteoClient", () => {
     [[2, 1]],
     [[1, 1, 1]],
   ])("splitRawSlicesParseLikeTheWholeResponse: %j", (counts) => {
-    const slices = splitRaw(launchesJSON, neighborsJSON, counts);
+    const slices = splitRaw(recorded, counts);
     expect(slices).toHaveLength(counts.length);
     const whole = parsed();
     let start = 0;
     slices.forEach((slice, i) => {
       const n = counts[i]!;
       const own = launches.slice(start, start + n);
-      expect(JSON.parse(slice.launchRaw)).toHaveLength(n);
-      expect(JSON.parse(slice.neighborRaw)).toHaveLength(n * NEIGHBOR_POINTS_PER_LAUNCH);
+      expect(JSON.parse(slice.surface)).toHaveLength(n);
+      expect(JSON.parse(slice.levels)).toHaveLength(n);
+      expect(JSON.parse(slice.neighbors)).toHaveLength(n * NEIGHBOR_POINTS_PER_LAUNCH);
       // Re-serializing writes the recording's -0 as 0, which is the same number.
-      expect(zeroSign(parseForecasts(slice.launchRaw, slice.neighborRaw, own))).toEqual(
+      expect(zeroSign(parseForecasts(slice, own))).toEqual(
         zeroSign(whole.slice(start, start + n)),
       );
       start += n;
@@ -307,35 +435,40 @@ describe("OpenMeteoClient", () => {
 
   it("splitRawAcceptsTheSingleObjectResponse", () => {
     const body = '{"hourly":{"time":[1794034800]},"daily":{"time":[1794034800]}}';
-    const [slice, ...rest] = splitRaw(body, neighborBody(5), [1]);
+    const raw = { surface: body, levels: body, neighbors: locationsBody(5) };
+    const [slice, ...rest] = splitRaw(raw, [1]);
     expect(rest).toEqual([]);
-    expect(JSON.parse(slice!.launchRaw)).toEqual([JSON.parse(body)]);
-    expect(parseForecasts(slice!.launchRaw, slice!.neighborRaw, [launches[0]!])).toEqual(
-      parseForecasts(body, neighborBody(5), [launches[0]!]),
-    );
+    expect(JSON.parse(slice!.surface)).toEqual([JSON.parse(body)]);
+    expect(JSON.parse(slice!.levels)).toEqual([JSON.parse(body)]);
+    expect(parseForecasts(slice!, [launches[0]!])).toEqual(parseForecasts(raw, [launches[0]!]));
   });
 
   it("splitRawCountMismatchIsUnexpectedShape", () => {
-    shapeError(() => splitRaw(launchesJSON, neighborsJSON, [1, 1]));
-    shapeError(() => splitRaw(launchesJSON, neighborsJSON, [2, 2]));
-    shapeError(() => splitRaw(launchesJSON, neighborBody(14), [1, 2]));
-    shapeError(() => splitRaw("nonsense", neighborsJSON, [3]));
+    shapeError(() => splitRaw(recorded, [1, 1]));
+    shapeError(() => splitRaw(recorded, [2, 2]));
+    shapeError(() => splitRaw({ ...recorded, surface: locationsBody(2) }, [1, 2]));
+    shapeError(() => splitRaw({ ...recorded, levels: locationsBody(2) }, [1, 2]));
+    shapeError(() => splitRaw({ ...recorded, neighbors: locationsBody(14) }, [1, 2]));
+    shapeError(() => splitRaw({ ...recorded, surface: "nonsense" }, [3]));
+    shapeError(() => splitRaw({ ...recorded, levels: "nonsense" }, [3]));
   });
 
   it("parsedValuesComeFromTheMatchingRawElements", () => {
     const forecasts = parsed();
-    const launchRaw = rawHourly(launchesJSON);
+    const surfaceRaw = rawHourly(surfaceJSON);
+    const levelsRaw = rawHourly(levelsJSON);
     const neighborRaw = rawHourly(neighborsJSON);
     const at = (s: RawSeries | undefined, key: string, i: number): number | undefined =>
       s?.[key]?.[i] ?? undefined;
     forecasts.forEach((f, li) => {
       for (const i of [0, 14, 47]) {
-        const l = launchRaw[li];
-        expect(f.ecmwf[i]!.blhM).toBe(at(l, "boundary_layer_height_ecmwf_ifs", i));
-        expect(f.ecmwf[i]!.windMph).toBe(at(l, "wind_speed_10m_ecmwf_ifs", i));
+        const s = surfaceRaw[li];
+        const l = levelsRaw[li];
+        expect(f.ecmwf[i]!.blhM).toBe(at(s, "boundary_layer_height_ecmwf_ifs", i));
+        expect(f.ecmwf[i]!.windMph).toBe(at(s, "wind_speed_10m_ecmwf_ifs", i));
         expect(f.ecmwf[i]!.levels[700]?.heightM).toBe(at(l, "geopotential_height_700hPa_ecmwf_ifs025", i));
         expect(f.ecmwf[i]!.levels[500]?.windDir).toBe(at(l, "wind_direction_500hPa_ecmwf_ifs025", i));
-        expect(f.rrfs[i]!.gustMph).toBe(at(l, "wind_gusts_10m_ncep_rrfs_conus", i));
+        expect(f.rrfs[i]!.gustMph).toBe(at(s, "wind_gusts_10m_ncep_rrfs_conus", i));
         expect(f.rrfs[i]!.levels[600]?.tempC).toBe(at(l, "temperature_600hPa_ncep_rrfs_conus", i));
         const c = neighborRaw[li * 5];
         expect(f.neighborCenter.ecmwf[i]!.windMph).toBe(at(c, "wind_speed_10m_ecmwf_ifs", i));

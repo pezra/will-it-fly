@@ -1,14 +1,16 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import type { Transport } from "../../../src/core/forecast/openMeteoClient";
+import type { ForecastRaw, Transport } from "../../../src/core/forecast/openMeteoClient";
 import { createSiteForecastCache } from "../../../src/core/forecast/siteForecastCache";
 import { getRecommendations } from "../../../src/core/recommendation/recommendationService";
 import type { DaylightRow, RecommendationResult } from "../../../src/core/recommendation/types";
 import type { HourResult } from "../../../src/core/scoring/hourEvaluator";
 import type { Site } from "../../../src/core/sites/site";
-import launchesJSON from "../../fixtures/openmeteo-launches.json?raw";
+import levelsJSON from "../../fixtures/openmeteo-levels.json?raw";
 import neighborsJSON from "../../fixtures/openmeteo-neighbors.json?raw";
-import launchesURL from "../../fixtures/openmeteo-launches.url.txt?raw";
+import surfaceJSON from "../../fixtures/openmeteo-surface.json?raw";
+import levelsURL from "../../fixtures/openmeteo-levels.url.txt?raw";
 import neighborsURL from "../../fixtures/openmeteo-neighbors.url.txt?raw";
+import surfaceURL from "../../fixtures/openmeteo-surface.url.txt?raw";
 import { mapStore } from "../../support/builders";
 import { BOULDER, BUTTE, GLENWOOD, fixtureSites } from "../../support/fixtureWeather";
 
@@ -32,31 +34,34 @@ beforeAll(async () => {
   sites = await fixtureSites();
 });
 
-type Locations = { hourly: Record<string, (number | string | null)[]> }[];
+type Hourly = Record<string, (number | string | null)[]>;
+type Responses = { hourly: Hourly }[];
+/** One site's hourly series from the surface and levels responses (the sites are in the order Glenwood, Crested Butte, Boulder). */
+type Location = { surface: Hourly; levels: Hourly };
 
-/**
- * The recorded launch response with edits to one site's RRFS hours (the sites are in the order
- * Glenwood, Crested Butte, Boulder).
- */
-function editedLaunches(edit: (locations: Locations) => void): string {
-  const locations = JSON.parse(launchesJSON) as Locations;
-  edit(locations);
-  return JSON.stringify(locations);
+/** The recorded surface and levels responses, with edits to the sites' hours. */
+function editedLaunches(edit: (locations: Location[]) => void): Pick<ForecastRaw, "surface" | "levels"> {
+  const surface = JSON.parse(surfaceJSON) as Responses;
+  const levels = JSON.parse(levelsJSON) as Responses;
+  edit(surface.map((s, i) => ({ surface: s.hourly, levels: levels[i]?.hourly ?? {} })));
+  return { surface: JSON.stringify(surface), levels: JSON.stringify(levels) };
 }
 
 /** Sets the ECMWF precipitation for the hourly indexes from `from` to `to`, inclusive. */
-function rainECMWF(location: Locations[number] | undefined, from: number, to: number): void {
-  const precip = location?.hourly["precipitation_ecmwf_ifs"];
+function rainECMWF(location: Location | undefined, from: number, to: number): void {
+  const precip = location?.surface["precipitation_ecmwf_ifs"];
   if (precip === undefined) throw new Error("no ECMWF precipitation");
   for (let i = from; i <= to; i++) precip[i] = 2;
 }
 
 /** Nulls every RRFS field for the hourly indexes from `from` to `to`, inclusive. */
-function blankRRFS(location: Locations[number] | undefined, from: number, to: number): void {
+function blankRRFS(location: Location | undefined, from: number, to: number): void {
   if (location === undefined) throw new Error("no such location");
-  for (const [key, values] of Object.entries(location.hourly)) {
-    if (!key.endsWith("_ncep_rrfs_conus")) continue;
-    for (let i = from; i <= to; i++) values[i] = null;
+  for (const hourly of [location.surface, location.levels]) {
+    for (const [key, values] of Object.entries(hourly)) {
+      if (!key.endsWith("_ncep_rrfs_conus")) continue;
+      for (let i = from; i <= to; i++) values[i] = null;
+    }
   }
 }
 
@@ -72,14 +77,18 @@ const VARIANT = editedLaunches((locations) => {
   blankRRFS(locations[2], NOV8_1000_MST, NOV8_1600_MST);
   rainECMWF(locations[1], NOV8_0700_MST, NOV8_1600_MST);
   const glenwood = locations[0];
-  const precip = glenwood?.hourly["precipitation_ncep_rrfs_conus"];
+  const precip = glenwood?.surface["precipitation_ncep_rrfs_conus"];
   if (precip === undefined) throw new Error("no RRFS precipitation");
   precip[NOV8_1500_MST] = 2;
 });
 
-async function recommend(launchBody: string, day: string): Promise<RecommendationResult> {
+async function recommend(
+  launchBodies: Pick<ForecastRaw, "surface" | "levels">,
+  day: string,
+): Promise<RecommendationResult> {
   const transport: Transport = async (url) => {
-    if (url === launchesURL.trim()) return { status: 200, body: launchBody };
+    if (url === surfaceURL.trim()) return { status: 200, body: launchBodies.surface };
+    if (url === levelsURL.trim()) return { status: 200, body: launchBodies.levels };
     if (url === neighborsURL.trim()) return { status: 200, body: neighborsJSON };
     throw new Error(`unexpected request: ${url}`);
   };
@@ -135,7 +144,7 @@ function pin(result: RecommendationResult) {
 describe("ECMWF-primary characterization", () => {
   for (const day of DAYS) {
     it(`pins the recorded forecast for ${day}`, async () => {
-      expect(pin(await recommend(launchesJSON, day))).toMatchSnapshot();
+      expect(pin(await recommend({ surface: surfaceJSON, levels: levelsJSON }, day))).toMatchSnapshot();
     });
 
     it(`pins the variant (RRFS gap and RRFS storm) for ${day}`, async () => {

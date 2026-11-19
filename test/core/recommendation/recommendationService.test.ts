@@ -1,11 +1,12 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import {
   OpenMeteoError,
-  launchRequestURL,
+  levelsRequestURL,
   neighborRequestURL,
   parseForecasts,
+  surfaceRequestURL,
 } from "../../../src/core/forecast/openMeteoClient";
-import type { RawSlice, Transport } from "../../../src/core/forecast/openMeteoClient";
+import type { ForecastRaw, Transport } from "../../../src/core/forecast/openMeteoClient";
 import { createSiteForecastCache, dayKey, mainKey } from "../../../src/core/forecast/siteForecastCache";
 import type { SiteForecastCache } from "../../../src/core/forecast/siteForecastCache";
 import type { RemovableStore } from "../../../src/core/keyValueStore";
@@ -27,10 +28,12 @@ import { byTime, denverDayKey } from "../../../src/core/time";
 import type { DayKey } from "../../../src/core/time";
 import { windowLabel } from "../../../src/core/scoring/windowFinder";
 import type { Launch, Site } from "../../../src/core/sites/site";
-import launchesJSON from "../../fixtures/openmeteo-launches.json?raw";
+import levelsJSON from "../../fixtures/openmeteo-levels.json?raw";
 import neighborsJSON from "../../fixtures/openmeteo-neighbors.json?raw";
-import launchesURL from "../../fixtures/openmeteo-launches.url.txt?raw";
+import surfaceJSON from "../../fixtures/openmeteo-surface.json?raw";
+import levelsURL from "../../fixtures/openmeteo-levels.url.txt?raw";
 import neighborsURL from "../../fixtures/openmeteo-neighbors.url.txt?raw";
+import surfaceURL from "../../fixtures/openmeteo-surface.url.txt?raw";
 import { FLYING_ONLY_KINDS, kinds, mapStore } from "../../support/builders";
 import {
   BOULDER,
@@ -43,6 +46,10 @@ import {
 } from "../../support/fixtureWeather";
 
 const MIN_MS = 60_000;
+
+const recorded: ForecastRaw = { surface: surfaceJSON, levels: levelsJSON, neighbors: neighborsJSON };
+/** The three recorded request URLs, in the order a load sends them. */
+const recordedURLs = [surfaceURL.trim(), levelsURL.trim(), neighborsURL.trim()];
 
 function never(): never {
   throw new Error("expected a value");
@@ -84,15 +91,17 @@ interface Stub {
 }
 
 /**
- * Serves the recorded bodies (or `launchBody` for the launch request) only for the recorded URLs, so
- * a wrong request fails loudly.
+ * Serves the recorded bodies (with any of them replaced by `overrides`) only for the recorded URLs,
+ * so a wrong request fails loudly.
  */
-function fixtureTransport(launchBody = launchesJSON): Stub {
+function fixtureTransport(overrides: Partial<ForecastRaw> = {}): Stub {
   const urls: string[] = [];
+  const bodies = { ...recorded, ...overrides };
   const transport: Transport = async (url) => {
     urls.push(url);
-    if (url === launchesURL.trim()) return { status: 200, body: launchBody };
-    if (url === neighborsURL.trim()) return { status: 200, body: neighborsJSON };
+    if (url === surfaceURL.trim()) return { status: 200, body: bodies.surface };
+    if (url === levelsURL.trim()) return { status: 200, body: bodies.levels };
+    if (url === neighborsURL.trim()) return { status: 200, body: bodies.neighbors };
     throw new Error(`unexpected request: ${url}`);
   };
   return { transport, urls };
@@ -103,7 +112,8 @@ function dayTransport(day: string): Stub {
   const urls: string[] = [];
   const transport: Transport = async (url) => {
     urls.push(url);
-    if (url === launchRequestURL(openLaunches(), undefined, day)) return { status: 200, body: launchesJSON };
+    if (url === surfaceRequestURL(openLaunches(), undefined, day)) return { status: 200, body: surfaceJSON };
+    if (url === levelsRequestURL(openLaunches(), undefined, day)) return { status: 200, body: levelsJSON };
     if (url === neighborRequestURL(openLaunches(), undefined, day)) return { status: 200, body: neighborsJSON };
     throw new Error(`unexpected request: ${url}`);
   };
@@ -122,7 +132,7 @@ function subsetTransport(ids: readonly string[], day?: DayKey): Stub {
   return { transport, urls };
 }
 
-/** The `latitude=` values a request asked for. */
+/** The `latitude=` values a request asked for. The first request of a load is the surface one. */
 function latitudes(url: string): string[] {
   return new URL(url).searchParams.get("latitude")?.split(",") ?? [];
 }
@@ -164,9 +174,9 @@ function seed(
   fetchedAt: number,
   ids: readonly string[] = openSites().map((s) => s.id),
   key: (id: string) => string = mainKey,
-  slice: (id: string) => RawSlice = fixtureSlice,
+  slice: (id: string) => ForecastRaw = fixtureSlice,
 ): void {
-  const saves = ids.map((id) => ({ key: key(id), launches: site(id).launches, fetchedAt, ...slice(id) }));
+  const saves = ids.map((id) => ({ key: key(id), launches: site(id).launches, fetchedAt, raw: slice(id) }));
   cache.open().commit({ saves, used: [], now: fetchedAt });
 }
 
@@ -183,7 +193,7 @@ describe("getRecommendations", () => {
     const cache = newCache();
     const result = await getRecommendations(request(), deps(stub, cache));
 
-    expect(stub.urls.sort()).toEqual([launchesURL.trim(), neighborsURL.trim()].sort());
+    expect(stub.urls.sort()).toEqual([...recordedURLs].sort());
     expect(result.day).toBe("2026-11-07");
     expect(result.today).toBe("2026-11-07");
     expect(result.dayOver).toBe(false);
@@ -297,7 +307,7 @@ describe("getRecommendations", () => {
     const cache = newCache();
     await getRecommendations(request(), deps(fixtureTransport(), cache));
     for (const { id, launches } of openSites()) {
-      expect(cache.open().get(mainKey(id), launches)).toEqual({ ...fixtureSlice(id), fetchedAt: NOW });
+      expect(cache.open().get(mainKey(id), launches)).toEqual({ raw: fixtureSlice(id), fetchedAt: NOW });
     }
     // The closed site is never cached.
     expect(cache.open().get(mainKey(COPPER), site(COPPER).launches)).toBeUndefined();
@@ -319,7 +329,7 @@ describe("getRecommendations", () => {
     seed(cache, NOW - SCORING_DEFAULTS.cacheMaxAgeMs);
     const stub = fixtureTransport();
     await getRecommendations(request(), deps(stub, cache));
-    expect(stub.urls).toHaveLength(2);
+    expect(stub.urls).toHaveLength(3);
   });
 
   it("aStaleCacheTriggersAFetchAndIsReplaced", async () => {
@@ -327,7 +337,7 @@ describe("getRecommendations", () => {
     seed(cache, NOW - 61 * MIN_MS);
     const stub = fixtureTransport();
     const result = await getRecommendations(request(), deps(stub, cache));
-    expect(stub.urls).toHaveLength(2);
+    expect(stub.urls).toHaveLength(3);
     expect(result.fetchedAt).toBe(NOW);
     expect(openSites().map((s) => cachedAt(cache, s.id))).toEqual([NOW, NOW, NOW]);
   });
@@ -386,7 +396,7 @@ describe("getRecommendations", () => {
     seed(cache, NOW - 30 * MIN_MS);
     const stub = fixtureTransport();
     const result = await getRecommendations(request({ forceRefresh: true }), deps(stub, cache));
-    expect(stub.urls).toHaveLength(2);
+    expect(stub.urls).toHaveLength(3);
     expect(result.fetchedAt).toBe(NOW);
   });
 
@@ -405,7 +415,7 @@ describe("getRecommendations", () => {
     seed(cache, NOW - SCORING_DEFAULTS.forcedRefreshMinIntervalMs);
     const stub = fixtureTransport();
     await getRecommendations(request({ forceRefresh: true }), deps(stub, cache));
-    expect(stub.urls).toHaveLength(2);
+    expect(stub.urls).toHaveLength(3);
   });
 
   it("aCacheForADifferentLaunchListIsNotUsed", async () => {
@@ -415,21 +425,21 @@ describe("getRecommendations", () => {
       key: mainKey(id),
       launches: launches.map((l) => ({ ...l, elevationFt: l.elevationFt + 1 })),
       fetchedAt: NOW - MIN_MS,
-      ...fixtureSlice(id),
+      raw: fixtureSlice(id),
     }));
     cache.open().commit({ saves, used: [], now: NOW - MIN_MS });
     const stub = fixtureTransport();
     await getRecommendations(request(), deps(stub, cache));
-    expect(stub.urls).toHaveLength(2);
+    expect(stub.urls).toHaveLength(3);
   });
 
   it("aCorruptCachedBodyIsTreatedAsNoCache", async () => {
     vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const cache = newCache();
-    seed(cache, NOW - MIN_MS, undefined, mainKey, () => ({ launchRaw: "not json", neighborRaw: "[]" }));
+    seed(cache, NOW - MIN_MS, undefined, mainKey, () => ({ surface: "not json", levels: "[]", neighbors: "[]" }));
     const stub = fixtureTransport();
     const result = await getRecommendations(request(), deps(stub, cache));
-    expect(stub.urls).toHaveLength(2);
+    expect(stub.urls).toHaveLength(3);
     expect(result.fetchedAt).toBe(NOW);
   });
 
@@ -475,7 +485,7 @@ describe("getRecommendations", () => {
     const stub = fixtureTransport();
     const cache = newCache();
     const result = await getRecommendations(request({ day: "2026-11-08" }), deps(stub, cache));
-    expect(stub.urls.sort()).toEqual([launchesURL.trim(), neighborsURL.trim()].sort());
+    expect(stub.urls.sort()).toEqual([...recordedURLs].sort());
     expect(result.day).toBe("2026-11-08");
     expect(result.dayOver).toBe(false);
     const daylight = result.sites[0]?.launches[0]?.daylight ?? [];
@@ -483,7 +493,7 @@ describe("getRecommendations", () => {
     expect(daylight.every((h) => denverDayKey(h.time) === "2026-11-08")).toBe(true);
     // Switching back to today reuses the cached main forecast.
     const today = await getRecommendations(request({ day: "2026-11-07" }), deps(stub, cache));
-    expect(stub.urls).toHaveLength(2);
+    expect(stub.urls).toHaveLength(3);
     expect(today.day).toBe("2026-11-07");
   });
 
@@ -503,7 +513,7 @@ describe("getRecommendations", () => {
     const cache = newCache();
     const later = request({ day: "2026-11-07" });
     const result = await getRecommendations(later, deps(stub, cache, NOW_EARLIER));
-    expect(stub.urls).toHaveLength(2);
+    expect(stub.urls).toHaveLength(3);
     expect(stub.urls.every((u) => u.includes("start_date=2026-11-07&end_date=2026-11-07"))).toBe(true);
     expect(result.day).toBe("2026-11-07");
     expect(result.today).toBe("2026-11-05");
@@ -519,7 +529,7 @@ describe("getRecommendations", () => {
 
     // The same day again is served from the day entries.
     await getRecommendations(later, deps(stub, cache, NOW_EARLIER + MIN_MS));
-    expect(stub.urls).toHaveLength(2);
+    expect(stub.urls).toHaveLength(3);
   });
 
   it("aDayEntryThatDoesntCoverItsDayIsNotUsed", async () => {
@@ -530,7 +540,7 @@ describe("getRecommendations", () => {
     await expect(
       getRecommendations(request({ day: "2026-11-09" }), deps(stub, cache, NOW_EARLIER)),
     ).rejects.toThrow("offline");
-    expect(stub.urls).toHaveLength(2);
+    expect(stub.urls).toHaveLength(3);
   });
 
   it("aDayOutsideTheRangeIsRejectedWithoutFetching", async () => {
@@ -601,10 +611,10 @@ function countingStore(): RemovableStore & { gets: number; sets: number } {
 }
 
 /** The site's recorded slice with its sunrise and sunset removed: it parses but covers no day. */
-function noDaysSlice(id: string): RawSlice {
-  const { launchRaw, neighborRaw } = fixtureSlice(id);
-  const locs = JSON.parse(launchRaw) as Record<string, unknown>[];
-  return { launchRaw: JSON.stringify(locs.map(({ daily: _, ...rest }) => rest)), neighborRaw };
+function noDaysSlice(id: string): ForecastRaw {
+  const slice = fixtureSlice(id);
+  const locs = JSON.parse(slice.surface) as Record<string, unknown>[];
+  return { ...slice, surface: JSON.stringify(locs.map(({ daily: _, ...rest }) => rest)) };
 }
 
 describe("getRecommendations per site", () => {
@@ -613,7 +623,7 @@ describe("getRecommendations per site", () => {
     seed(cache, NOW - 20 * MIN_MS, [GLENWOOD, BOULDER]);
     const stub = subsetTransport([BUTTE]);
     const result = await getRecommendations(request(), deps(stub, cache));
-    expect(stub.urls).toHaveLength(2);
+    expect(stub.urls).toHaveLength(3);
     // Crested Butte's launch only (the neighbor request also has its four offset points).
     expect(stub.urls.map(latitudes)[0]).toEqual(["38.8897"]);
     for (const url of stub.urls) {
@@ -649,7 +659,7 @@ describe("getRecommendations per site", () => {
     seed(cache, NOW - 30 * MIN_MS, [BOULDER]);
     const stub = subsetTransport([BOULDER]);
     const result = await getRecommendations(request({ forceRefresh: true }), deps(stub, cache));
-    expect(stub.urls).toHaveLength(2);
+    expect(stub.urls).toHaveLength(3);
     expect(result.fetchedAt).toBe(NOW - 4 * MIN_MS);
 
     // With every entry under five minutes old, Refresh makes no request.
@@ -688,7 +698,7 @@ describe("getRecommendations per site", () => {
     seed(cache, NOW - MIN_MS, [BUTTE], mainKey, noDaysSlice);
     const stub = subsetTransport([BUTTE]);
     const result = await getRecommendations(request(), deps(stub, cache));
-    expect(stub.urls).toHaveLength(2);
+    expect(stub.urls).toHaveLength(3);
     const butte = result.sites.find((r) => r.site.id === BUTTE);
     expect(butte?.launches[0]?.daylight.length ?? 0).toBeGreaterThan(0);
     expect(cachedAt(cache, BUTTE)).toBe(NOW);
@@ -698,10 +708,10 @@ describe("getRecommendations per site", () => {
     vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const cache = newCache();
     seed(cache, NOW - 10 * MIN_MS, [GLENWOOD, BOULDER]);
-    seed(cache, NOW - MIN_MS, [BUTTE], mainKey, () => ({ launchRaw: "[]", neighborRaw: "[]" }));
+    seed(cache, NOW - MIN_MS, [BUTTE], mainKey, () => ({ surface: "[]", levels: "[]", neighbors: "[]" }));
     const stub = subsetTransport([BUTTE]);
     const result = await getRecommendations(request(), deps(stub, cache));
-    expect(stub.urls).toHaveLength(2);
+    expect(stub.urls).toHaveLength(3);
     expect(result.fetchedAt).toBe(NOW - 10 * MIN_MS);
     expect(cachedAt(cache, BUTTE)).toBe(NOW);
   });
@@ -738,7 +748,7 @@ describe("getRecommendations per site", () => {
     seed(cache, NOW_EARLIER - 2 * MIN_MS, [GLENWOOD, BOULDER], onDay);
     const stub = subsetTransport([BUTTE], "2026-11-07");
     const result = await getRecommendations(request({ day: "2026-11-07" }), deps(stub, cache, NOW_EARLIER));
-    expect(stub.urls).toHaveLength(2);
+    expect(stub.urls).toHaveLength(3);
     expect(stub.urls.every((u) => u.includes("start_date=2026-11-07&end_date=2026-11-07"))).toBe(true);
     expect(result.fetchedAt).toBe(NOW_EARLIER - 2 * MIN_MS);
     expect(cachedAt(cache, BUTTE, onDay)).toBe(NOW_EARLIER);
@@ -749,7 +759,7 @@ describe("getRecommendations per site", () => {
     const cache = newCache();
     const stub = subsetTransport([BOULDER]);
     const result = await getRecommendations(request({ siteIds: [COPPER, BOULDER] }), deps(stub, cache));
-    expect(stub.urls).toHaveLength(2);
+    expect(stub.urls).toHaveLength(3);
     expect(result.sites.map((r) => r.site.id)).toEqual([BOULDER, COPPER]);
     expect(result.sites[1]?.launches).toEqual([]);
     expect(cachedAt(cache, COPPER)).toBeUndefined();
@@ -761,7 +771,7 @@ describe("getRecommendations per site", () => {
       request({ siteIds: ["nowhere/at-all", BOULDER, BOULDER] }),
       deps(stub, newCache()),
     );
-    expect(stub.urls).toHaveLength(2);
+    expect(stub.urls).toHaveLength(3);
     expect(result.sites.map((r) => r.site.id)).toEqual([BOULDER]);
     expect(result.fetchedAt).toBe(NOW);
   });
@@ -789,20 +799,23 @@ describe("getRecommendations per site", () => {
 });
 
 describe("getRecommendations with RRFS primary", () => {
-  /** The recorded launch response with every RRFS field nulled from Nov 8 00:00 MST (index 24). */
-  function noRRFSOnNov8(): string {
-    const locations = JSON.parse(launchesJSON) as { hourly: Record<string, unknown[]> }[];
-    for (const { hourly } of locations) {
-      for (const [key, values] of Object.entries(hourly)) {
-        if (!key.endsWith("_ncep_rrfs_conus")) continue;
-        for (let i = 24; i < values.length; i++) values[i] = null;
+  /** The recorded surface and levels responses with every RRFS field nulled from Nov 8 00:00 MST (index 24). */
+  function noRRFSOnNov8(): Pick<ForecastRaw, "surface" | "levels"> {
+    const withoutRRFS = (body: string): string => {
+      const locations = JSON.parse(body) as { hourly: Record<string, unknown[]> }[];
+      for (const { hourly } of locations) {
+        for (const [key, values] of Object.entries(hourly)) {
+          if (!key.endsWith("_ncep_rrfs_conus")) continue;
+          for (let i = 24; i < values.length; i++) values[i] = null;
+        }
       }
-    }
-    return JSON.stringify(locations);
+      return JSON.stringify(locations);
+    };
+    return { surface: withoutRRFS(surfaceJSON), levels: withoutRRFS(levelsJSON) };
   }
 
   it("evaluatesEveryLaunchWithRRFSOnTheRecordedForecast", async () => {
-    const forecasts = parseForecasts(launchesJSON, neighborsJSON, openLaunches());
+    const forecasts = parseForecasts(recorded, openLaunches());
     let windows = 0;
     let differsFromECMWF = false;
     for (const day of ["2026-11-07", "2026-11-08"]) {
@@ -832,10 +845,10 @@ describe("getRecommendations with RRFS primary", () => {
   });
 
   it("aDayRRFSDoesNotCoverFallsBackToECMWF", async () => {
-    const body = noRRFSOnNov8();
+    const missing = noRRFSOnNov8();
     const day = "2026-11-08";
-    const rrfs = await getRecommendations(request({ day, model: "rrfs" }), deps(fixtureTransport(body), newCache()));
-    const ecmwf = await getRecommendations(request({ day, model: "ecmwf" }), deps(fixtureTransport(body), newCache()));
+    const rrfs = await getRecommendations(request({ day, model: "rrfs" }), deps(fixtureTransport(missing), newCache()));
+    const ecmwf = await getRecommendations(request({ day, model: "ecmwf" }), deps(fixtureTransport(missing), newCache()));
     expect(rrfs.model).toBe("rrfs");
     const launches = rrfs.sites.flatMap((rec) => rec.launches);
     expect(launches).toHaveLength(3);
@@ -850,7 +863,7 @@ describe("getRecommendations with RRFS primary", () => {
     // Nov 7 still has RRFS, so it stays primary there.
     const nov7 = await getRecommendations(
       request({ day: "2026-11-07", model: "rrfs" }),
-      deps(fixtureTransport(body), newCache()),
+      deps(fixtureTransport(missing), newCache()),
     );
     const nov7Launches = nov7.sites.flatMap((rec) => rec.launches);
     expect(nov7Launches).toHaveLength(3);
@@ -877,7 +890,7 @@ describe("getRecommendations with RRFS primary", () => {
 
 describe("resolveTargetDay", () => {
   it("uses the first forecast that has daylight days", () => {
-    const [a, b] = parseForecasts(launchesJSON, neighborsJSON, openLaunches());
+    const [a, b] = parseForecasts(recorded, openLaunches());
     if (a === undefined || b === undefined) never();
     expect(resolveTargetDay([{ ...a, days: [] }, b], NOW)).toBe("2026-11-07");
     expect(resolveTargetDay([{ ...a, days: [] }, { ...b, days: [] }], NOW)).toBeUndefined();
