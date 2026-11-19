@@ -16,6 +16,8 @@ const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "../..");
 const chromeBin = process.env.CHROME ?? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+// Requests per load: surface, levels and neighbors, sent in parallel. A retry sends them all again.
+const KINDS = 3;
 
 const TEXT = {
   rate: "Open-Meteo, the weather service, is limiting how often the app can ask for forecasts. Try again in a minute or two.",
@@ -202,8 +204,8 @@ const scenarios = {
         held ? JSON.stringify(held.buttons) : JSON.stringify(c.last()?.buttons));
       check("429: no 'Couldn't reach' text", !c.samples.some(has("Couldn't reach")));
       const requestsAtFail = c.stub.forecastRequests().length;
-      check("429: exactly one launch and one neighbor request so far (no automatic retry)",
-        requestsAtFail === 2 && c.stub.forecastRequests().every((r) => r.outcome === "429"),
+      check("429: exactly one request of each kind so far (no automatic retry)",
+        requestsAtFail === KINDS && new Set(c.stub.forecastRequests().map((r) => r.kind)).size === KINDS && c.stub.forecastRequests().every((r) => r.outcome === "429"),
         c.stub.forecastRequests().map((r) => `${r.kind}:${r.outcome}`).join(","));
       await sleep(5_000);
       const labels = c.samples.map((s) => buttonMatching(/^Retry in \d:\d\d$/)(s)?.text).filter(Boolean);
@@ -221,14 +223,14 @@ const scenarios = {
         !!enabled && enabled.t - heldAt > 80_000 && enabled.t - heldAt < 95_000,
         enabled ? `enabled ${fmt(enabled.t - heldAt)} after first held sample` : "never enabled");
       await sleep(3_000);
-      check("429: no automatic reload when the hold ends", c.stub.forecastRequests().length === 2,
+      check("429: no automatic reload when the hold ends", c.stub.forecastRequests().length === KINDS,
         `${c.stub.forecastRequests().length} forecast requests`);
       check("429: failure text still shown after the hold", c.last().text.includes(TEXT.rate));
       // Clicking Retry works again, and re-holds.
       await c.cdp.run(`[...document.querySelectorAll("button")].find((b) => b.innerText.trim() === "Retry")?.click()`);
       await sleep(3_000);
       check("429: clicking Retry sends new requests and holds again",
-        c.stub.forecastRequests().length === 4 && !!buttonMatching(/^Retry in 1:\d\d$/)(c.last())?.disabled,
+        c.stub.forecastRequests().length === 2 * KINDS && !!buttonMatching(/^Retry in 1:\d\d$/)(c.last())?.disabled,
         `${c.stub.forecastRequests().length} requests; ${JSON.stringify(c.last().buttons)}`);
     });
   },
@@ -240,11 +242,11 @@ const scenarios = {
       const b = buttonMatching(/^Retry$/)(c.last() ?? { buttons: [] });
       check("503: Retry is enabled at once", !!b && !b.disabled, JSON.stringify(c.last()?.buttons));
       await sleep(3_000);
-      check("503: no automatic retry (2 requests)", c.stub.forecastRequests().length === 2,
+      check(`503: no automatic retry (${KINDS} requests)`, c.stub.forecastRequests().length === KINDS,
         c.stub.forecastRequests().map((r) => `${r.kind}:${r.outcome}`).join(","));
       await c.cdp.run(`[...document.querySelectorAll("button")].find((b) => b.innerText.trim() === "Retry")?.click()`);
       await sleep(2_500);
-      check("503: clicking Retry sends new requests (not held)", c.stub.forecastRequests().length === 4,
+      check("503: clicking Retry sends new requests (not held)", c.stub.forecastRequests().length === 2 * KINDS,
         `${c.stub.forecastRequests().length} requests`);
       check("503: no 'Retry in' countdown ever shown", !c.samples.some((s) => s.buttons.some((x) => /Retry in/.test(x.text))));
     });
@@ -258,8 +260,11 @@ const scenarios = {
       const bad = c.samples.find(has("Couldn't"));
       check("hang-once: no \"Couldn't\" text in any sample", !bad, bad ? `at ${fmt(bad.t)}: ${snippet(bad)}` : `${c.samples.length} samples`);
       const reqs = c.stub.forecastRequests();
-      check("hang-once: 4 requests (2 hung, then 2 answered)",
-        reqs.map((r) => r.outcome).join(",") === "hang,hang,200,200" || reqs.map((r) => r.outcome).sort().join(",") === "200,200,hang,hang",
+      const outcomes = reqs.map((r) => r.outcome);
+      // Only how many hung and how many answered matters, not their order.
+      const expected = [...Array(KINDS).fill("200"), ...Array(KINDS).fill("hang")].join(",");
+      check(`hang-once: ${2 * KINDS} requests (${KINDS} hung, then ${KINDS} answered)`,
+        [...outcomes].sort().join(",") === expected,
         reqs.map((r) => `${r.kind}:${r.outcome}@${fmt(r.t - c.t0)}`).join(" "));
       const hung = reqs.filter((r) => r.outcome === "hang");
       check("hang-once: the app aborted the hung requests after about 5 s",
@@ -280,7 +285,7 @@ const scenarios = {
       check("hang: no failure shown before the retry finishes", !early, early ? snippet(early) : "");
       await sleep(8_000);
       const reqs = c.stub.forecastRequests();
-      check("hang: exactly 4 requests (one retry, no second)", reqs.length === 4,
+      check(`hang: exactly ${2 * KINDS} requests (one retry, no second)`, reqs.length === 2 * KINDS,
         reqs.map((r) => `${r.kind}@${fmt(r.t - c.t0)}`).join(" "));
       const b = buttonMatching(/^Retry$/)(c.last());
       check("hang: Retry is enabled (no hold for a network failure)", !!b && !b.disabled, JSON.stringify(c.last().buttons));
@@ -334,7 +339,7 @@ const scenarios = {
       check("hidden B: opening a second tab + bringToFront makes the first page's document.visibilityState 'hidden'", vs === "hidden", `got ${vs}`);
       await sleep(8_000); // the 5 s timeout lands at ~5.6 s while hidden
       const reqsHidden = c.stub.forecastRequests().length;
-      check("hidden B: while hidden, no retry request is sent (still 2 hung requests)", reqsHidden === 2, `${reqsHidden} requests`);
+      check(`hidden B: while hidden, no retry request is sent (still ${KINDS} hung requests)`, reqsHidden === KINDS, `${reqsHidden} requests`);
       check("hidden B: while hidden, no failure shown and no list (still loading)",
         !c.samples.some(has("Couldn't")) && c.last().text.includes("Loading forecast"), snippet(c.last()));
       await c.cdp.send("Page.bringToFront");
@@ -342,7 +347,7 @@ const scenarios = {
       await sleep(500);
       console.log(`   after Page.bringToFront on the first page: visibilityState=${await c.cdp.run("document.visibilityState")}; events ${await c.cdp.run("JSON.stringify(window.__vis)")}`);
       const loaded = await c.waitFor((s) => s.t > visibleAt && listLoaded(s), 10_000);
-      check("hidden B: once visible again the retry runs and the list loads", !!loaded && c.stub.forecastRequests().length === 4,
+      check("hidden B: once visible again the retry runs and the list loads", !!loaded && c.stub.forecastRequests().length === 2 * KINDS,
         loaded ? `${fmt(loaded.t - visibleAt)} after bringToFront; ${c.stub.forecastRequests().length} requests` : snippet(c.last()));
       check("hidden B: no \"Couldn't\" text in any sample", !c.samples.some(has("Couldn't")));
       other.close();
@@ -357,7 +362,7 @@ const scenarios = {
       await sleep(8_500); // the 5 s timeout lands at ~5.6 s while "hidden"
       const mid = c.last();
       const reqsHidden = c.stub.forecastRequests().length;
-      check("hidden C: while hidden, no retry request is sent (still 2 hung requests)", reqsHidden === 2, `${reqsHidden} requests`);
+      check(`hidden C: while hidden, no retry request is sent (still ${KINDS} hung requests)`, reqsHidden === KINDS, `${reqsHidden} requests`);
       check("hidden C: while hidden, no failure and no list is shown (still loading)",
         !c.samples.some(has("Couldn't")) && mid.text.includes("Loading forecast"), snippet(mid));
       const hungClosed = c.stub.forecastRequests().every((r) => r.closedAt);
@@ -366,7 +371,7 @@ const scenarios = {
       const visibleAt = c.elapsed();
       const loaded = await c.waitFor((s) => s.t > visibleAt && listLoaded(s), 10_000);
       check("hidden C: after the page is visible again the retry runs and the list loads",
-        !!loaded && c.stub.forecastRequests().length === 4, loaded ? `${fmt(loaded.t - visibleAt)} after visible; ${c.stub.forecastRequests().length} requests` : snippet(c.last()));
+        !!loaded && c.stub.forecastRequests().length === 2 * KINDS, loaded ? `${fmt(loaded.t - visibleAt)} after visible; ${c.stub.forecastRequests().length} requests` : snippet(c.last()));
       check("hidden C: no \"Couldn't\" text in any sample", !c.samples.some(has("Couldn't")));
     });
   },

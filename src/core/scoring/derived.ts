@@ -72,14 +72,15 @@ export function launchWind(hour: ModelHour, launchElevationM: number): Wind | un
 
 /**
  * Launch elevation + max(cloud base above launch, BLH), or launch + the fallback when both are
- * missing.
+ * missing. `pointAboveLaunchM` is as for `cloudBaseAboveLaunchM`.
  */
 export function topOfLiftM(
   hour: ModelHour,
   launchElevationM: number,
+  pointAboveLaunchM: number,
   defaults: ScoringDefaults = SCORING_DEFAULTS,
 ): number {
-  const above = definedMax(cloudBaseAboveLaunchM(hour, defaults), hour.blhM);
+  const above = definedMax(cloudBaseAboveLaunchM(hour, pointAboveLaunchM, defaults), hour.blhM);
   return launchElevationM + (above ?? defaults.topOfLiftFallbackAboveLaunchM);
 }
 
@@ -111,25 +112,28 @@ export function aloftWind(
 }
 
 /**
- * (T2m - Td2m) x 125 m/degC. Biased high for launches well above model terrain. Undefined if
- * either input is missing.
+ * (T2m - Td2m) x 125 m/degC + `pointAboveLaunchM`, the height of the forecast point (whose 2 m
+ * values these are) above the launch: 0 for a launch that is its own point. Biased high for
+ * points well above model terrain. Undefined if either input is missing.
  */
 export function cloudBaseAboveLaunchM(
   hour: ModelHour,
+  pointAboveLaunchM: number,
   defaults: ScoringDefaults = SCORING_DEFAULTS,
 ): number | undefined {
   if (hour.tempC === undefined || hour.dewpointC === undefined) return undefined;
-  return (hour.tempC - hour.dewpointC) * defaults.cloudBaseMPerDegSpread;
+  return (hour.tempC - hour.dewpointC) * defaults.cloudBaseMPerDegSpread + pointAboveLaunchM;
 }
 
 /**
  * T_level - T_parcel at the lowest level >= launch + offset that has height and temperature,
- * with T_parcel = T2m - lapse x (Z_level - launch). Lower is stronger. Undefined if none
- * qualifies.
+ * with T_parcel = T2m - lapse x (Z_level - point), where point is the forecast point's elevation,
+ * `pointAboveLaunchM` above the launch. Lower is stronger. Undefined if none qualifies.
  */
 export function thermalIndex(
   hour: ModelHour,
   launchElevationM: number,
+  pointAboveLaunchM: number,
   defaults: ScoringDefaults = SCORING_DEFAULTS,
 ): number | undefined {
   if (hour.tempC === undefined) return undefined;
@@ -138,7 +142,8 @@ export function thermalIndex(
     ({ heightM, data }) => heightM >= floor && data.tempC !== undefined,
   );
   if (level === undefined || level.data.tempC === undefined) return undefined;
-  const parcel = hour.tempC - defaults.dryAdiabaticLapseCPerM * (level.heightM - launchElevationM);
+  const pointElevationM = launchElevationM + pointAboveLaunchM;
+  const parcel = hour.tempC - defaults.dryAdiabaticLapseCPerM * (level.heightM - pointElevationM);
   return level.data.tempC - parcel;
 }
 

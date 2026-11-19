@@ -1,10 +1,17 @@
-import { launchRequestURL, neighborRequestURL, splitRaw } from "../../src/core/forecast/openMeteoClient";
-import type { RawSlice } from "../../src/core/forecast/openMeteoClient";
+import {
+  levelsRequestURL,
+  neighborRequestURL,
+  splitRaw,
+  surfaceRequestURL,
+} from "../../src/core/forecast/openMeteoClient";
+import type { ForecastRaw } from "../../src/core/forecast/openMeteoClient";
 import { bundledSiteProvider } from "../../src/core/sites/siteProvider";
 import type { Site } from "../../src/core/sites/site";
 import type { DayKey } from "../../src/core/time";
-import launchesJSON from "../fixtures/openmeteo-launches.json?raw";
+import { testLaunch } from "./builders";
+import levelsJSON from "../fixtures/openmeteo-levels.json?raw";
 import neighborsJSON from "../fixtures/openmeteo-neighbors.json?raw";
+import surfaceJSON from "../fixtures/openmeteo-surface.json?raw";
 
 export const GLENWOOD = "rmhpa/glenwood-lookout-mtn";
 export const BUTTE = "rmhpa/crested-butte";
@@ -34,24 +41,28 @@ export async function fixtureSites(): Promise<Site[]> {
 }
 
 const RECORDED = [GLENWOOD, BUTTE, BOULDER];
-const recordedSlices = splitRaw(launchesJSON, neighborsJSON, [1, 1, 1]);
+// `splitRaw` reads only each site's layout, and every recorded site is one launch: one point and one ring.
+const recordedSlices = splitRaw(
+  { surface: surfaceJSON, levels: levelsJSON, neighbors: neighborsJSON },
+  RECORDED.map(() => [testLaunch()]),
+);
 
 /** An open fixture site's slice of the recorded responses. */
-export function fixtureSlice(id: string): RawSlice {
+export function fixtureSlice(id: string): ForecastRaw {
   const slice = recordedSlices[RECORDED.indexOf(id)];
   if (slice === undefined) throw new Error(`no recorded slice for ${id}`);
   return slice;
 }
 
 /** The recorded response bodies for exactly these fixture sites, in this order. */
-export function fixtureBodies(ids: readonly string[]): { launchBody: string; neighborBody: string } {
-  const join = (part: keyof RawSlice): string =>
+export function fixtureBodies(ids: readonly string[]): ForecastRaw {
+  const join = (part: keyof ForecastRaw): string =>
     JSON.stringify(ids.flatMap((id) => JSON.parse(fixtureSlice(id)[part]) as unknown[]));
-  return { launchBody: join("launchRaw"), neighborBody: join("neighborRaw") };
+  return { surface: join("surface"), levels: join("levels"), neighbors: join("neighbors") };
 }
 
 /**
- * Serves the recorded bodies for the request pair of exactly these sites (in this order), and
+ * Serves the recorded bodies for the three requests of exactly these sites (in this order), and
  * returns undefined for any other URL.
  */
 export function fixtureResponse(
@@ -60,8 +71,9 @@ export function fixtureResponse(
   url: string,
   day?: DayKey,
 ): string | undefined {
-  const launches = ids.flatMap((id) => sites.find((s) => s.id === id)?.launches ?? []);
-  if (url === launchRequestURL(launches, undefined, day)) return fixtureBodies(ids).launchBody;
-  if (url === neighborRequestURL(launches, undefined, day)) return fixtureBodies(ids).neighborBody;
+  const launches = ids.map((id) => sites.find((s) => s.id === id)?.launches ?? []);
+  if (url === surfaceRequestURL(launches, undefined, day)) return fixtureBodies(ids).surface;
+  if (url === levelsRequestURL(launches, undefined, day)) return fixtureBodies(ids).levels;
+  if (url === neighborRequestURL(launches, undefined, day)) return fixtureBodies(ids).neighbors;
   return undefined;
 }

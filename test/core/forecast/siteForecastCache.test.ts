@@ -2,11 +2,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createSiteForecastCache,
   dayKey,
+  entryLaunchesKey,
   mainKey,
   MAX_CACHED_SITES,
   SITE_CACHE_KEY,
 } from "../../../src/core/forecast/siteForecastCache";
 import type { SiteForecastSave } from "../../../src/core/forecast/siteForecastCache";
+import { sitePoints } from "../../../src/core/forecast/sitePoints";
 import type { RemovableStore } from "../../../src/core/keyValueStore";
 import type { Launch } from "../../../src/core/sites/site";
 import { mapStore, testLaunch } from "../../support/builders";
@@ -21,7 +23,12 @@ const launches = [launch("a/1", 39.5, -107.3), launch("a/2", 38.9, -106.9)];
 
 /** The cache never parses the slices, so any string stands in for them. */
 function save(key: string, fetchedAt = 1_000, own: readonly Launch[] = launches): SiteForecastSave {
-  return { key, launches: own, fetchedAt, launchRaw: `L ${key}`, neighborRaw: `N ${key}` };
+  return {
+    key,
+    launches: own,
+    fetchedAt,
+    raw: { surface: `S ${key}`, levels: `L ${key}`, neighbors: `N ${key}` },
+  };
 }
 
 /** A map store that counts `set` calls. */
@@ -65,8 +72,14 @@ describe("SiteForecastCache", () => {
     expect([...map.keys()]).toEqual([SITE_CACHE_KEY]);
     expect(cache.open().get("main:a", launches)).toEqual({
       fetchedAt: 1_000,
-      launchRaw: "L main:a",
-      neighborRaw: "N main:a",
+      raw: { surface: "S main:a", levels: "L main:a", neighbors: "N main:a" },
+    });
+    const stored = JSON.parse(map.get(SITE_CACHE_KEY)!) as Record<string, unknown>;
+    expect(stored["main:a"]).toEqual({
+      fetchedAt: 1_000,
+      usedAt: 5_000,
+      launchesKey: expect.any(String),
+      raw: { surface: "S main:a", levels: "L main:a", neighbors: "N main:a" },
     });
   });
 
@@ -90,6 +103,22 @@ describe("SiteForecastCache", () => {
     expect(cache.open().get("main:a", other)).toBeUndefined();
   });
 
+  it("theLaunchesKeyRecordsTheSitesPoints", () => {
+    // 9,000 and 8,500 ft share one point.
+    const own = [launch("b/1", 39.5, -107.3, 9000), launch("b/2", 39.51, -107.31, 8500)];
+    const points = sitePoints(own);
+    expect(points.pointOf).toEqual([0, 0]);
+    const key = entryLaunchesKey(own, points);
+    expect(entryLaunchesKey(own.map((l) => ({ ...l })), sitePoints(own))).toBe(key);
+    expect(entryLaunchesKey(own, { ...points, pointOf: [0, 1] })).not.toBe(key);
+    const lower = { coordinate: { latitude: 39.51, longitude: -107.31 }, elevationFt: 8500 };
+    expect(entryLaunchesKey(own, { ...points, points: [...points.points, lower] })).not.toBe(key);
+
+    const cache = createSiteForecastCache(mapStore());
+    cache.open().commit({ saves: [save("main:b", 1_000, own)], used: [], now: 0 });
+    expect(cache.open().get("main:b", own.map((l) => ({ ...l })))?.fetchedAt).toBe(1_000);
+  });
+
   it.each(["not json {", "42", "[]", "null", '"text"'])("aCorruptBlobReadsAsEmpty: %s", (text) => {
     vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const map = new Map([[SITE_CACHE_KEY, text]]);
@@ -100,12 +129,23 @@ describe("SiteForecastCache", () => {
     expect(storedKeys(map)).toEqual(["main:a"]);
   });
 
+  const goodRaw = { surface: "s", levels: "l", neighbors: "n" };
+  const entryWith = (raw: unknown): unknown => ({ fetchedAt: 1, usedAt: 1, launchesKey: "k", raw });
+
   it.each([
     ["not an object", 5],
-    ["no usedAt", { fetchedAt: 1, launchesKey: "k", launchRaw: "l", neighborRaw: "n" }],
-    ["a string fetchedAt", { fetchedAt: "1", usedAt: 1, launchesKey: "k", launchRaw: "l", neighborRaw: "n" }],
-    ["no launchRaw", { fetchedAt: 1, usedAt: 1, launchesKey: "k", neighborRaw: "n" }],
-    ["an array neighborRaw", { fetchedAt: 1, usedAt: 1, launchesKey: "k", launchRaw: "l", neighborRaw: [] }],
+    ["no usedAt", { fetchedAt: 1, launchesKey: "k", raw: goodRaw }],
+    ["a string fetchedAt", { fetchedAt: "1", usedAt: 1, launchesKey: "k", raw: goodRaw }],
+    ["no raw", { fetchedAt: 1, usedAt: 1, launchesKey: "k" }],
+    ["the v2 flat shape", { fetchedAt: 1, usedAt: 1, launchesKey: "k", launchRaw: "l", neighborRaw: "n" }],
+    ["a string raw", entryWith("s")],
+    ["an array raw", entryWith([])],
+    ["no surface", entryWith({ levels: "l", neighbors: "n" })],
+    ["no levels", entryWith({ surface: "s", neighbors: "n" })],
+    ["no neighbors", entryWith({ surface: "s", levels: "l" })],
+    ["a non-string surface", entryWith({ ...goodRaw, surface: 1 })],
+    ["an array levels", entryWith({ ...goodRaw, levels: [] })],
+    ["a null neighbors", entryWith({ ...goodRaw, neighbors: null })],
   ])("anEntryOfTheWrongShapeIsAMissAndOthersSurvive: %s", (_name, bad) => {
     const map = new Map<string, string>();
     const cache = createSiteForecastCache(mapStore(map));
@@ -294,10 +334,12 @@ describe("SiteForecastCache", () => {
     const map = new Map([
       ["will-it-fly/forecast-v1", "old"],
       ["will-it-fly/forecast-v1/day", "old day"],
+      ["will-it-fly/forecast-v2", "old sites"],
       ["willItFly.travel.v1", "settings"],
     ]);
     createSiteForecastCache(mapStore(map));
     expect([...map.keys()]).toEqual(["willItFly.travel.v1"]);
+    expect(SITE_CACHE_KEY).toBe("will-it-fly/forecast-v3");
   });
 
   it("aStoreWhoseRemoveThrowsStillGivesACache", () => {

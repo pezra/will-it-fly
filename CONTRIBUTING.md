@@ -72,7 +72,7 @@ The UI loads things in this order, and each step narrows what the next one asks 
 3. OSRM drive times for the sites left. Only the sites with no time for this start are asked for, so narrowing the radius asks for nothing and widening asks for the new sites only.
 4. Weather, only for the sites within the drive time. A site's detail page loads just its own site at once, without waiting for 1 to 3.
 
-Only the in-range sites' launch coordinates go to Open-Meteo, and the rounded start point goes only to OSRM. Forecasts are cached per site in `will-it-fly/forecast-v2` in localStorage, keeping the 30 most recently used sites (about 2 MB). Each entry has its own fetch time, so a changed radius fetches only the sites with no fresh entry. The old `forecast-v1` entries are deleted when the cache is created. The radius choices are 1 to 4 h in Fly mode and 15 min, 30 min or 1 h in Kite mode, each remembered apart from the other; there is no unlimited option.
+Only the in-range sites' launch coordinates go to Open-Meteo, and the rounded start point goes only to OSRM. Forecasts are cached per site in `will-it-fly/forecast-v3` in localStorage, keeping the 30 most recently used sites (about 0.8 MB). Each entry has its own fetch time, so a changed radius fetches only the sites with no fresh entry. The old `forecast-v1` and `forecast-v2` entries are deleted when the cache is created. The radius choices are 1 to 4 h in Fly mode and 15 min, 30 min or 1 h in Kite mode, each remembered apart from the other; there is no unlimited option.
 
 ## Scoring
 
@@ -101,10 +101,11 @@ How to read a site guide and turn it into these fields is in the `add-sites` ski
 
 ## Open-Meteo fixtures
 
-`test/fixtures/openmeteo-launches.json` and `openmeteo-neighbors.json` are real responses for three launches: Glenwood Lookout North, Crested Butte and Boulder Wonderland Upper. Next to each one, the `.url.txt` file holds the exact URL it came from. `buildersMatchRecordedURLs` checks that the client still builds those URLs, so a change to the request fails until the fixtures are re-recorded:
+`test/fixtures/openmeteo-surface.json`, `openmeteo-levels.json` and `openmeteo-neighbors.json` are real responses for the same three launches: Glenwood Lookout North, Crested Butte and Boulder Wonderland Upper. Next to each one, the `.url.txt` file holds the exact URL it came from. `buildersMatchRecordedURLs` checks that the client still builds those URLs, so a change to the request fails until the fixtures are re-recorded:
 
 ```sh
-curl -s "$(cat test/fixtures/openmeteo-launches.url.txt)" > test/fixtures/openmeteo-launches.json
+curl -s "$(cat test/fixtures/openmeteo-surface.url.txt)" > test/fixtures/openmeteo-surface.json
+curl -s "$(cat test/fixtures/openmeteo-levels.url.txt)" > test/fixtures/openmeteo-levels.json
 curl -s "$(cat test/fixtures/openmeteo-neighbors.url.txt)" > test/fixtures/openmeteo-neighbors.json
 ```
 

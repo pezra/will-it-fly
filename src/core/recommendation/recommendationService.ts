@@ -119,7 +119,7 @@ function usableEntry(
   source: Source,
 ): Usable | undefined {
   try {
-    const forecasts = parseForecasts(cached.launchRaw, cached.neighborRaw, launches);
+    const forecasts = parseForecasts(cached.raw, [launches]);
     return source.dayFor(forecasts) === undefined ? undefined : { forecasts, fetchedAt: cached.fetchedAt };
   } catch (error) {
     console.warn("Ignoring an unreadable forecast cache entry", error);
@@ -136,8 +136,8 @@ interface ToFetch {
 }
 
 /**
- * Loads each site's forecast from its fresh cache entry, and fetches the rest in one request pair.
- * If that fetch fails, each of those sites falls back to its stale entry, or the error is rethrown.
+ * Loads each site's forecast from its fresh cache entry, and fetches the rest in one load of three
+ * requests. If that fetch fails, each of those sites falls back to its stale entry, or the error is rethrown.
  */
 async function loadForecasts(
   request: RecommendationRequest,
@@ -171,19 +171,21 @@ async function loadForecasts(
   const saves: SiteForecastSave[] = [];
   if (toFetch.length > 0) {
     try {
-      const { forecasts, launchRaw, neighborRaw } = await fetchForecasts(
-        toFetch.flatMap(({ site }) => site.launches),
-        { transport: deps.transport, baseURL: deps.baseURL, day: source.fetchDay },
-      );
+      const siteLaunches = toFetch.map(({ site }) => site.launches);
+      const { forecasts, raw } = await fetchForecasts(siteLaunches, {
+        transport: deps.transport,
+        baseURL: deps.baseURL,
+        day: source.fetchDay,
+      });
       if (source.dayFor(forecasts) === undefined) {
         throw new OpenMeteoError("unexpectedShape", "the forecast doesn't cover the target day");
       }
-      const counts = toFetch.map(({ site }) => site.launches.length);
-      // One slice per site. `forecasts` is in launch order, so each site takes its next `count`.
-      // Splitting only feeds the cache: if it fails the fetched weather is still good, just unsaved.
+      // One slice per site. `forecasts` is in site and launch order, so each site takes its next
+      // launch count. Splitting only feeds the cache: if it fails the fetched weather is still good,
+      // just unsaved.
       let slices: ReturnType<typeof splitRaw> = [];
       try {
-        slices = splitRaw(launchRaw, neighborRaw, counts);
+        slices = splitRaw(raw, siteLaunches);
       } catch (splitError) {
         console.warn("Could not split the forecast for the cache", splitError);
       }
@@ -193,7 +195,7 @@ async function loadForecasts(
         loaded.set(site.id, { forecasts: forecasts.slice(start, end), fetchedAt: now });
         start = end;
         const slice = slices[i];
-        if (slice !== undefined) saves.push({ key, launches: site.launches, fetchedAt: now, ...slice });
+        if (slice !== undefined) saves.push({ key, launches: site.launches, fetchedAt: now, raw: slice });
       });
     } catch (error) {
       for (const { site, key, stale } of toFetch) {

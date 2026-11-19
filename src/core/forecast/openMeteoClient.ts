@@ -5,6 +5,7 @@ import { elevationM } from "../sites/site";
 import type { Coordinate, Launch } from "../sites/site";
 import type { DayKey } from "../time";
 import { PRESSURE_LEVELS } from "./models";
+import { sitePoints } from "./sitePoints";
 import type {
   DaylightDay,
   LaunchForecast,
@@ -52,19 +53,31 @@ export interface TransportResponse {
 }
 export type Transport = (url: string) => Promise<TransportResponse>;
 
+/** The three response bodies of a load, or one site's slice of them (see `splitRaw`). */
+export interface ForecastRaw {
+  /** The surface variables at each site's points (see `sitePoints`). */
+  surface: string;
+  /** The pressure-level variables at the same points. */
+  levels: string;
+  /** The neighbor ring winds. */
+  neighbors: string;
+}
+
 export interface FetchResult {
   forecasts: LaunchForecast[];
-  launchRaw: string;
-  neighborRaw: string;
+  raw: ForecastRaw;
 }
 
 export const DEFAULT_BASE_URL = "https://api.open-meteo.com";
 export const NEIGHBOR_DISTANCE_M = 8047;
 export const NEIGHBOR_BEARINGS: readonly number[] = [0, 90, 180, 270];
 /** Center point plus N, E, S, W. */
-export const NEIGHBOR_POINTS_PER_LAUNCH = 1 + NEIGHBOR_BEARINGS.length;
+export const NEIGHBOR_POINTS_PER_SITE = 1 + NEIGHBOR_BEARINGS.length;
 
-const LAUNCH_MODELS = ["ecmwf_ifs", "ecmwf_ifs025", "ncep_rrfs_conus"] as const;
+/** The surface request. ECMWF's surface values come from `ecmwf_ifs`. */
+const SURFACE_MODELS = ["ecmwf_ifs", "ncep_rrfs_conus"] as const;
+/** The levels request. ECMWF's pressure levels come from `ecmwf_ifs025`. */
+const LEVEL_MODELS = ["ecmwf_ifs025", "ncep_rrfs_conus"] as const;
 const NEIGHBOR_MODELS = ["ecmwf_ifs", "ncep_rrfs_conus"] as const;
 
 const SURFACE_VARIABLES = [
@@ -80,10 +93,9 @@ const SURFACE_VARIABLES = [
 ];
 const LEVEL_VARIABLES = ["wind_speed", "wind_direction", "temperature", "geopotential_height"];
 
-const LAUNCH_HOURLY_VARIABLES = [
-  ...SURFACE_VARIABLES,
-  ...PRESSURE_LEVELS.flatMap((level) => LEVEL_VARIABLES.map((v) => `${v}_${level}hPa`)),
-];
+const LEVEL_HOURLY_VARIABLES = PRESSURE_LEVELS.flatMap((level) =>
+  LEVEL_VARIABLES.map((v) => `${v}_${level}hPa`),
+);
 
 // Request URLs
 
@@ -92,50 +104,70 @@ interface Point {
   elevation: string;
 }
 
-export function launchRequestURL(
-  launches: readonly Launch[],
+/**
+ * The surface variables and the daylight at each site's points (see `sitePoints`), site by site,
+ * each at its own elevation. `sites` holds each site's launches.
+ */
+export function surfaceRequestURL(
+  sites: readonly (readonly Launch[])[],
   baseURL = DEFAULT_BASE_URL,
   day?: DayKey,
 ): string {
-  const points = launches.map((l) => ({
-    coord: l.coordinate,
-    elevation: elevationM(l).toFixed(1),
-  }));
-  return makeURL(baseURL, points, LAUNCH_HOURLY_VARIABLES, LAUNCH_MODELS, day);
+  return makeURL(baseURL, forecastPoints(sites), SURFACE_VARIABLES, SURFACE_MODELS, true, day);
+}
+
+/** The pressure-level variables at the same points as `surfaceRequestURL`. */
+export function levelsRequestURL(
+  sites: readonly (readonly Launch[])[],
+  baseURL = DEFAULT_BASE_URL,
+  day?: DayKey,
+): string {
+  return makeURL(baseURL, forecastPoints(sites), LEVEL_HOURLY_VARIABLES, LEVEL_MODELS, false, day);
+}
+
+function forecastPoints(sites: readonly (readonly Launch[])[]): Point[] {
+  return sites.flatMap((launches) =>
+    sitePoints(launches).points.map((p) => ({
+      coord: p.coordinate,
+      elevation: elevationM(p).toFixed(1),
+    })),
+  );
 }
 
 /**
- * Five points per launch, launch-major: the launch location itself (the "center"), then N, E, S, W.
+ * Five points per site, site-major: the site's highest launch (the "center"), then N, E, S, W.
  *
  * Every point uses `elevation=nan`. With an explicit elevation Open-Meteo picks the grid cell whose
- * terrain best matches it (Crested Butte's launch request landed ~10 km north), whereas `nan` picks the
+ * terrain best matches it (a request for Crested Butte's launch landed ~10 km north), whereas `nan` picks the
  * nearest cell. The neighbor check must compare like with like, so the center point is requested with
- * the same `nan` selection as the neighbors rather than reusing the (elevation-matched) launch request.
+ * the same `nan` selection as the neighbors rather than reusing the (elevation-matched) site points.
  */
 export function neighborRequestURL(
-  launches: readonly Launch[],
+  sites: readonly (readonly Launch[])[],
   baseURL = DEFAULT_BASE_URL,
   day?: DayKey,
 ): string {
   const points: Point[] = [];
-  for (const launch of launches) {
-    points.push({ coord: launch.coordinate, elevation: "nan" });
+  for (const launches of sites) {
+    const center = sitePoints(launches).points[0].coordinate;
+    points.push({ coord: center, elevation: "nan" });
     for (const bearing of NEIGHBOR_BEARINGS) {
-      points.push({ coord: offset(launch.coordinate, bearing, NEIGHBOR_DISTANCE_M), elevation: "nan" });
+      points.push({ coord: offset(center, bearing, NEIGHBOR_DISTANCE_M), elevation: "nan" });
     }
   }
-  return makeURL(baseURL, points, ["wind_speed_10m", "wind_direction_10m"], NEIGHBOR_MODELS, day);
+  return makeURL(baseURL, points, ["wind_speed_10m", "wind_direction_10m"], NEIGHBOR_MODELS, true, day);
 }
 
 /**
  * Hand-joined: URLSearchParams would encode the commas and slashes. Without a `day` it asks for today
- * and tomorrow; with one, for that Denver day only.
+ * and tomorrow; with one, for that Denver day only. `daily` adds sunrise and sunset.
  */
 function makeURL(
   baseURL: string,
   points: readonly Point[],
   hourly: readonly string[],
   models: readonly string[],
+  daily: boolean,
   day?: DayKey,
 ): string {
   const range: [string, string][] =
@@ -150,7 +182,7 @@ function makeURL(
     ["longitude", points.map((p) => p.coord.longitude.toFixed(4)).join(",")],
     ["elevation", points.map((p) => p.elevation).join(",")],
     ["hourly", hourly.join(",")],
-    ["daily", "sunrise,sunset"],
+    ...(daily ? [["daily", "sunrise,sunset"] as [string, string]] : []),
     ["models", models.join(",")],
     ["wind_speed_unit", "mph"],
     ["timezone", "America/Denver"],
@@ -171,17 +203,19 @@ export interface FetchOptions {
   day?: DayKey | undefined;
 }
 
+/** `sites` holds each site's launches. The forecasts are as `parseForecasts` returns them. */
 export async function fetchForecasts(
-  launches: readonly Launch[],
+  sites: readonly (readonly Launch[])[],
   options: FetchOptions,
 ): Promise<FetchResult> {
   const baseURL = options.baseURL ?? DEFAULT_BASE_URL;
-  const [launchRaw, neighborRaw] = await Promise.all([
-    load(options.transport, launchRequestURL(launches, baseURL, options.day)),
-    load(options.transport, neighborRequestURL(launches, baseURL, options.day)),
+  const [surface, levels, neighbors] = await Promise.all([
+    load(options.transport, surfaceRequestURL(sites, baseURL, options.day)),
+    load(options.transport, levelsRequestURL(sites, baseURL, options.day)),
+    load(options.transport, neighborRequestURL(sites, baseURL, options.day)),
   ]);
-  const forecasts = parseForecasts(launchRaw, neighborRaw, launches);
-  return { forecasts, launchRaw, neighborRaw };
+  const raw = { surface, levels, neighbors };
+  return { forecasts: parseForecasts(raw, sites), raw };
 }
 
 /**
@@ -257,86 +291,118 @@ function locations(body: string): Location[] {
   return rawLocations(body).map((el, i) => toLocation(el, `location ${i}`));
 }
 
-export interface RawSlice {
-  /** A JSON array of the site's launch locations, one per launch. */
-  launchRaw: string;
-  /** A JSON array of the site's neighbor locations, `NEIGHBOR_POINTS_PER_LAUNCH` per launch. */
-  neighborRaw: string;
+/**
+ * Throws unless the bodies have one surface and one levels location per point, and a ring per site,
+ * where `pointCounts` holds each site's number of points.
+ */
+function checkCounts(
+  pointCounts: readonly number[],
+  surface: readonly unknown[],
+  levels: readonly unknown[],
+  neighbors: readonly unknown[],
+): void {
+  const pointCount = pointCounts.reduce((sum, n) => sum + n, 0);
+  const neighborCount = pointCounts.length * NEIGHBOR_POINTS_PER_SITE;
+  if (surface.length !== pointCount || levels.length !== pointCount || neighbors.length !== neighborCount) {
+    throw shape(
+      `expected ${pointCount} surface, ${pointCount} levels and ${neighborCount} neighbor locations, got ${surface.length}, ${levels.length} and ${neighbors.length}`,
+    );
+  }
 }
 
 /**
- * Cuts a launch and neighbor response pair into one slice per site, in order, where site `i` owns
- * the next `launchCounts[i]` launches. Each slice is a valid response for that site's launches alone,
- * so `parseForecasts` reads it as it reads the whole pair.
+ * Cuts a load's three bodies into one slice per site, in order, where `sites` holds each site's
+ * launches: each site owns its next points (see `sitePoints`) and its ring. Each slice is a valid
+ * response for that site alone, so `parseForecasts` reads it as it reads the whole load.
  */
-export function splitRaw(
-  launchBody: string,
-  neighborBody: string,
-  launchCounts: readonly number[],
-): RawSlice[] {
-  const launchLocs = rawLocations(launchBody);
-  const neighborLocs = rawLocations(neighborBody);
-  const total = launchCounts.reduce((sum, n) => sum + n, 0);
-  const neighborCount = total * NEIGHBOR_POINTS_PER_LAUNCH;
-  if (launchLocs.length !== total || neighborLocs.length !== neighborCount) {
-    throw shape(
-      `expected ${total} launch and ${neighborCount} neighbor locations, got ${launchLocs.length} and ${neighborLocs.length}`,
-    );
-  }
+export function splitRaw(raw: ForecastRaw, sites: readonly (readonly Launch[])[]): ForecastRaw[] {
+  const surface = rawLocations(raw.surface);
+  const levels = rawLocations(raw.levels);
+  const neighbors = rawLocations(raw.neighbors);
+  const pointCounts = sites.map((launches) => sitePoints(launches).points.length);
+  checkCounts(pointCounts, surface, levels, neighbors);
   let start = 0;
-  return launchCounts.map((n) => {
+  return pointCounts.map((n, i) => {
     const end = start + n;
+    const ring = i * NEIGHBOR_POINTS_PER_SITE;
     const slice = {
-      launchRaw: JSON.stringify(launchLocs.slice(start, end)),
-      neighborRaw: JSON.stringify(
-        neighborLocs.slice(start * NEIGHBOR_POINTS_PER_LAUNCH, end * NEIGHBOR_POINTS_PER_LAUNCH),
-      ),
+      surface: JSON.stringify(surface.slice(start, end)),
+      levels: JSON.stringify(levels.slice(start, end)),
+      neighbors: JSON.stringify(neighbors.slice(ring, ring + NEIGHBOR_POINTS_PER_SITE)),
     };
     start = end;
     return slice;
   });
 }
 
-export function parseForecasts(
-  launchBody: string,
-  neighborBody: string,
-  launches: readonly Launch[],
-): LaunchForecast[] {
-  const launchLocs = locations(launchBody);
-  const neighborLocs = locations(neighborBody);
-  const neighborCount = launches.length * NEIGHBOR_POINTS_PER_LAUNCH;
-  if (launchLocs.length !== launches.length || neighborLocs.length !== neighborCount) {
-    throw shape(
-      `expected ${launches.length} launch and ${neighborCount} neighbor locations, got ${launchLocs.length} and ${neighborLocs.length}`,
-    );
+/** One forecast point's series, from its surface and levels locations. */
+interface PointForecast {
+  ecmwf: ModelHour[];
+  rrfs: ModelHour[];
+  days: DaylightDay[];
+}
+
+function pointForecast(
+  surfaceLoc: Location | undefined,
+  levelLoc: Location | undefined,
+  where: string,
+): PointForecast {
+  const surface = surfaceLoc?.hourly;
+  const times = surface?.["time"];
+  if (surfaceLoc === undefined || surface === undefined || times === undefined) {
+    throw shape(`${where} has no hourly time`);
   }
+  const levelSeries = levelLoc?.hourly;
+  const levelTimes = levelSeries?.["time"];
+  if (levelSeries === undefined || levelTimes === undefined) {
+    throw shape(`${where} has no hourly time in the levels response`);
+  }
+  if (levelTimes.length !== times.length || levelTimes.some((t, i) => t !== times[i])) {
+    throw shape(`${where} has different times in the surface and levels responses`);
+  }
+  const dates = times.map(timestamp);
+  return {
+    ecmwf: dates.map((time, i) => ecmwfHour(time, i, surface, levelSeries)),
+    rrfs: dates.map((time, i) => rrfsHour(time, i, surface, levelSeries)),
+    days: daylightDays(surfaceLoc.daily),
+  };
+}
 
-  return launches.map((launch, index) => {
-    const loc = launchLocs[index];
-    const hourly = loc?.hourly;
-    const times = hourly?.["time"];
-    if (loc === undefined || hourly === undefined || times === undefined) {
-      throw shape(`launch location ${launch.id} has no hourly time`);
-    }
-    const dates = times.map(timestamp);
+/**
+ * One forecast per launch, site by site and in launch order within each, where `sites` holds each
+ * site's launches. Each launch gets its point's series (see `sitePoints`) and its site's ring.
+ * Launches sharing a point share the arrays, as a site's launches share the ring's.
+ */
+export function parseForecasts(raw: ForecastRaw, sites: readonly (readonly Launch[])[]): LaunchForecast[] {
+  const surfaceLocs = locations(raw.surface);
+  const levelLocs = locations(raw.levels);
+  const neighborLocs = locations(raw.neighbors);
+  const layouts = sites.map((launches) => ({ launches, ...sitePoints(launches) }));
+  checkCounts(layouts.map(({ points }) => points.length), surfaceLocs, levelLocs, neighborLocs);
 
-    const ecmwf = dates.map((time, i) => mergedECMWFHour(time, i, hourly));
-    const rrfs = dates.map((time, i) => modelHour(time, i, hourly, "ncep_rrfs_conus"));
+  let start = 0;
+  return layouts.flatMap(({ launches, points, pointOf }, s) => {
+    const series = points.map((_, p) =>
+      pointForecast(surfaceLocs[start + p], levelLocs[start + p], `point location ${start + p}`),
+    );
+    start += points.length;
 
-    const base = index * NEIGHBOR_POINTS_PER_LAUNCH;
-    const neighborCenter = modelWinds(neighborLocs[base]);
+    const ring = s * NEIGHBOR_POINTS_PER_SITE;
+    const neighborCenter = modelWinds(neighborLocs[ring]);
     const neighbors: NeighborForecast[] = NEIGHBOR_BEARINGS.map((bearingDeg, b) => ({
       bearingDeg,
-      ...modelWinds(neighborLocs[base + 1 + b]),
+      ...modelWinds(neighborLocs[ring + 1 + b]),
     }));
-    return {
-      launchID: launch.id,
-      ecmwf,
-      rrfs,
-      neighborCenter,
-      neighbors,
-      days: daylightDays(loc.daily),
-    };
+    return launches.map((launch, i) => {
+      const p = pointOf[i] ?? -1;
+      const point = series[p];
+      const pointElevationFt = points[p]?.elevationFt;
+      if (point === undefined || pointElevationFt === undefined) {
+        throw new Error(`launch ${launch.id} has no forecast point`);
+      }
+      const { ecmwf, rrfs, days } = point;
+      return { launchID: launch.id, pointElevationFt, ecmwf, rrfs, neighborCenter, neighbors, days };
+    });
   });
 }
 
@@ -361,7 +427,7 @@ function timestamp(unix: number | null | undefined): number {
 /** Daily sunrise/sunset are identical for every model, so use the first model that supplies them. */
 function daylightDays(daily: SeriesMap | undefined): DaylightDay[] {
   if (daily === undefined) return [];
-  for (const model of LAUNCH_MODELS) {
+  for (const model of SURFACE_MODELS) {
     const rise = daily[`sunrise_${model}`];
     const set = daily[`sunset_${model}`];
     if (rise !== undefined && set !== undefined) return zipDays(rise, set);
@@ -417,13 +483,16 @@ function levels(i: number, hourly: SeriesMap, model: string): Partial<Record<Pre
   return result;
 }
 
-function modelHour(time: number, i: number, hourly: SeriesMap, model: string): ModelHour {
-  return { ...surfaceHour(time, i, hourly, model), levels: levels(i, hourly, model) };
+/** Surface, BLH and low cloud from `ecmwf_ifs`; pressure levels from `ecmwf_ifs025`. */
+function ecmwfHour(time: number, i: number, surface: SeriesMap, levelSeries: SeriesMap): ModelHour {
+  return { ...surfaceHour(time, i, surface, "ecmwf_ifs"), levels: levels(i, levelSeries, "ecmwf_ifs025") };
 }
 
-/** Surface, BLH and low cloud from `ecmwf_ifs`; pressure levels from `ecmwf_ifs025`. */
-function mergedECMWFHour(time: number, i: number, hourly: SeriesMap): ModelHour {
-  return { ...surfaceHour(time, i, hourly, "ecmwf_ifs"), levels: levels(i, hourly, "ecmwf_ifs025") };
+function rrfsHour(time: number, i: number, surface: SeriesMap, levelSeries: SeriesMap): ModelHour {
+  return {
+    ...surfaceHour(time, i, surface, "ncep_rrfs_conus"),
+    levels: levels(i, levelSeries, "ncep_rrfs_conus"),
+  };
 }
 
 function neighborWinds(dates: readonly number[], hourly: SeriesMap, model: string): NeighborWind[] {

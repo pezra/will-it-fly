@@ -4,6 +4,7 @@ import type { ScoringDefaults } from "../scoring/defaults";
 import { CHECK_MODEL, applyStormLookahead, evaluateHour, hasCoreData } from "../scoring/hourEvaluator";
 import type { HourContext, HourResult, ModelName } from "../scoring/hourEvaluator";
 import { daylightDayFor, daylightHours, findBestWindow } from "../scoring/windowFinder";
+import { elevationM } from "../sites/site";
 import type { Launch, Site } from "../sites/site";
 import { HOUR_MS, byTime } from "../time";
 import type { DayKey } from "../time";
@@ -57,6 +58,7 @@ function evaluateForecastIndexed(
     ecmwf: byTime(forecast.neighborCenter.ecmwf),
     rrfs: byTime(forecast.neighborCenter.rrfs),
   };
+  const pointAboveLaunchM = elevationM({ elevationFt: forecast.pointElevationFt }) - elevationM(launch);
   const neighbors = forecast.neighbors.map((n) => ({
     bearingDeg: n.bearingDeg,
     ecmwf: byTime(n.ecmwf),
@@ -78,6 +80,7 @@ function evaluateForecastIndexed(
         rrfs: n.rrfs.get(t),
       })),
       launch,
+      pointAboveLaunchM,
       site,
     };
   }

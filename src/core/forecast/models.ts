@@ -31,8 +31,8 @@ export interface NeighborWind {
 }
 
 /**
- * 10 m wind series for the neighbor request's center point (the launch location, snapped to the
- * nearest grid cell). Compare neighbors against this, not against the launch request's wind.
+ * 10 m wind series for the neighbor request's center point (the site's highest launch, snapped to
+ * the nearest grid cell). Compare neighbors against this, not against the surface request's wind.
  */
 export interface NeighborCenter {
   ecmwf: NeighborWind[];
@@ -50,6 +50,8 @@ export interface DaylightDay {
 
 export interface LaunchForecast {
   launchID: string;
+  /** The elevation of the point these series are for: the launch's, or the higher launch's it shares. */
+  pointElevationFt: number;
   ecmwf: ModelHour[];
   rrfs: ModelHour[];
   neighborCenter: NeighborCenter;
