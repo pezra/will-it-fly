@@ -1,9 +1,9 @@
 import { isRecord } from "../isRecord";
 import { tryParseJSON } from "../json";
 import { offset } from "../sites/coordinate";
+import { elevationM } from "../sites/site";
 import type { Coordinate, Launch } from "../sites/site";
 import type { DayKey } from "../time";
-import { METERS_PER_FOOT } from "../units";
 import { PRESSURE_LEVELS } from "./models";
 import { sitePoints } from "./sitePoints";
 import type {
@@ -129,7 +129,7 @@ function forecastPoints(sites: readonly (readonly Launch[])[]): Point[] {
   return sites.flatMap((launches) =>
     sitePoints(launches).points.map((p) => ({
       coord: p.coordinate,
-      elevation: (p.elevationFt * METERS_PER_FOOT).toFixed(1),
+      elevation: elevationM(p).toFixed(1),
     })),
   );
 }
@@ -149,9 +149,7 @@ export function neighborRequestURL(
 ): string {
   const points: Point[] = [];
   for (const launches of sites) {
-    const [anchor] = sitePoints(launches).points;
-    if (anchor === undefined) throw new Error("a site has no forecast point");
-    const center = anchor.coordinate;
+    const center = sitePoints(launches).points[0].coordinate;
     points.push({ coord: center, elevation: "nan" });
     for (const bearing of NEIGHBOR_BEARINGS) {
       points.push({ coord: offset(center, bearing, NEIGHBOR_DISTANCE_M), elevation: "nan" });

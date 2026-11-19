@@ -10,7 +10,7 @@ export interface ForecastPoint {
 
 export interface SitePoints {
   /** Point 0 is the site's highest launch. The neighbor ring centers on its coordinate. */
-  points: ForecastPoint[];
+  points: [ForecastPoint, ...ForecastPoint[]];
   /** `pointOf[i]` is the index in `points` of launch `i`. */
   pointOf: number[];
 }
@@ -26,7 +26,7 @@ export function sitePoints(launches: readonly Launch[]): SitePoints {
   let anchor = first;
   for (const l of launches) if (l.elevationFt > anchor.elevationFt) anchor = l;
 
-  const points: ForecastPoint[] = [{ coordinate: anchor.coordinate, elevationFt: anchor.elevationFt }];
+  const points: SitePoints["points"] = [{ coordinate: anchor.coordinate, elevationFt: anchor.elevationFt }];
   const pointOf = launches.map((l) => {
     if (anchor.elevationFt - l.elevationFt <= SHARED_POINT_MAX_DROP_FT) return 0;
     const same = points.findIndex(

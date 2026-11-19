@@ -261,10 +261,10 @@ const scenarios = {
       check("hang-once: no \"Couldn't\" text in any sample", !bad, bad ? `at ${fmt(bad.t)}: ${snippet(bad)}` : `${c.samples.length} samples`);
       const reqs = c.stub.forecastRequests();
       const outcomes = reqs.map((r) => r.outcome);
-      const hungThenAnswered = [...Array(KINDS).fill("hang"), ...Array(KINDS).fill("200")].join(",");
-      const answeredThenHung = [...Array(KINDS).fill("200"), ...Array(KINDS).fill("hang")];
+      // Only how many hung and how many answered matters, not their order.
+      const expected = [...Array(KINDS).fill("200"), ...Array(KINDS).fill("hang")].join(",");
       check(`hang-once: ${2 * KINDS} requests (${KINDS} hung, then ${KINDS} answered)`,
-        outcomes.join(",") === hungThenAnswered || [...outcomes].sort().join(",") === [...answeredThenHung].join(","),
+        [...outcomes].sort().join(",") === expected,
         reqs.map((r) => `${r.kind}:${r.outcome}@${fmt(r.t - c.t0)}`).join(" "));
       const hung = reqs.filter((r) => r.outcome === "hang");
       check("hang-once: the app aborted the hung requests after about 5 s",

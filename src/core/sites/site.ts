@@ -101,6 +101,7 @@ export function effectiveLimits(site: Site, launch: Launch): EffectiveLimits {
   return { ...limits, gustFactorMph: limits.gustFactorMph ?? DEFAULT_WIND_LIMITS.gustFactorMph };
 }
 
-export function elevationM(launch: Launch): number {
-  return launch.elevationFt * METERS_PER_FOOT;
+/** A launch's, or any place's, elevation in meters. */
+export function elevationM(place: { elevationFt: number }): number {
+  return place.elevationFt * METERS_PER_FOOT;
 }
