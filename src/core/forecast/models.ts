@@ -50,6 +50,8 @@ export interface DaylightDay {
 
 export interface LaunchForecast {
   launchID: string;
+  /** The elevation of the point these series are for: the launch's, or the higher launch's it shares. */
+  pointElevationFt: number;
   ecmwf: ModelHour[];
   rrfs: ModelHour[];
   neighborCenter: NeighborCenter;

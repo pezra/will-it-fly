@@ -394,10 +394,14 @@ export function parseForecasts(raw: ForecastRaw, sites: readonly (readonly Launc
       ...modelWinds(neighborLocs[ring + 1 + b]),
     }));
     return launches.map((launch, i) => {
-      const point = series[pointOf[i] ?? -1];
-      if (point === undefined) throw new Error(`launch ${launch.id} has no forecast point`);
+      const p = pointOf[i] ?? -1;
+      const point = series[p];
+      const pointElevationFt = points[p]?.elevationFt;
+      if (point === undefined || pointElevationFt === undefined) {
+        throw new Error(`launch ${launch.id} has no forecast point`);
+      }
       const { ecmwf, rrfs, days } = point;
-      return { launchID: launch.id, ecmwf, rrfs, neighborCenter, neighbors, days };
+      return { launchID: launch.id, pointElevationFt, ecmwf, rrfs, neighborCenter, neighbors, days };
     });
   });
 }

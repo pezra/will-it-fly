@@ -580,6 +580,17 @@ describe("OpenMeteoClient", () => {
       });
     });
 
+    it("eachLaunchCarriesItsPointsElevation", () => {
+      expect(parseForecasts(raw, sites).map((f) => [f.launchID, f.pointElevationFt])).toEqual([
+        ["c/only", 7000],
+        ["b/low", 8930],
+        ["b/top", 10400],
+        ["b/mid", 10400],
+        ["a/upper", 9000],
+        ["a/lower", 9000],
+      ]);
+    });
+
     it("theURLsAskForEachSitesPointsInOrderAndOneRingPerSite", () => {
       const elevations = [7000, 10400, 8930, 9000].map((ft) => (ft * 0.3048).toFixed(1));
       for (const url of [surfaceRequestURL(sites), levelsRequestURL(sites)]) {

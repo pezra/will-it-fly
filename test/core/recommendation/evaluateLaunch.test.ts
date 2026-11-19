@@ -5,6 +5,7 @@ import { findBestWindow } from "../../../src/core/scoring/windowFinder";
 import type { HourResult, ReasonKind } from "../../../src/core/scoring/hourEvaluator";
 import type { Launch, Site } from "../../../src/core/sites/site";
 import { byTime, denverDayKey, formatDenverTime } from "../../../src/core/time";
+import { METERS_PER_FOOT } from "../../../src/core/units";
 import { kinds, testLaunch, testSite } from "../../support/builders";
 import { REFERENCE_TIME, perfectHour } from "../../support/hourBuilder";
 
@@ -34,6 +35,7 @@ const calm = (ks: number[]): NeighborWind[] => ks.map((k) => wind(k, 10, 270));
 function forecast(parts: Partial<LaunchForecast>): LaunchForecast {
   return {
     launchID: launch.id,
+    pointElevationFt: launch.elevationFt,
     ecmwf: [],
     rrfs: [],
     neighborCenter: { ecmwf: [], rrfs: [] },
@@ -44,6 +46,15 @@ function forecast(parts: Partial<LaunchForecast>): LaunchForecast {
 }
 
 describe("evaluateForecast", () => {
+  it("measuresCloudBaseFromTheForecastPoint", () => {
+    // The perfect hour's spread gives (20 - 5) * 125 = 1875 m. A point 300 m above the launch adds 300.
+    const own = evaluateForecast(site, launch, forecast({ ecmwf: [hour(0)] }), "ecmwf");
+    expect(own.ecmwf[0]?.cloudBaseM).toBeCloseTo(1875, 9);
+    const higher = forecast({ ecmwf: [hour(0)], pointElevationFt: launch.elevationFt + 300 / METERS_PER_FOOT });
+    const shared = evaluateForecast(site, launch, higher, "ecmwf");
+    expect(shared.ecmwf[0]?.cloudBaseM).toBeCloseTo(2175, 9);
+  });
+
   it("alignsRRFSByTimeNotIndexWhenAnHourIsMissing", () => {
     // RRFS has no hour 1, and storms at hour 2. By index, RRFS[1] (hour 2) would pair with ECMWF
     // hour 1, and ECMWF hour 0 would see hour 2's rain as its "next".

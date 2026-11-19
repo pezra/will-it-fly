@@ -198,6 +198,11 @@ export interface HourContext {
   /** Each neighbor's 10 m wind at h, per model. */
   neighbors: readonly NeighborPointSample[];
   launch: Launch;
+  /**
+   * How far the forecast point is above the launch, in m: 0 for a launch at its own point. Cloud
+   * base and the thermal parcel are measured from the point, whose 2 m values the hour holds.
+   */
+  pointAboveLaunchM: number;
   site: Site;
 }
 
@@ -497,12 +502,12 @@ function kitingGustReasons(hour: ModelHour, next: ModelHour | undefined, default
 
 /** The per-hour call, score and reasons for one launch and one model. */
 export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORING_DEFAULTS): HourResult {
-  const { hour, next, launch } = ctx;
+  const { hour, next, launch, pointAboveLaunchM } = ctx;
   const elev = elevationM(launch);
   const wind = launchWind(hour, elev);
   // Shown for every hour, no-data ones included.
-  const cloudBase = cloudBaseAboveLaunchM(hour, defaults);
-  const ti = thermalIndex(hour, elev, defaults);
+  const cloudBase = cloudBaseAboveLaunchM(hour, pointAboveLaunchM, defaults);
+  const ti = thermalIndex(hour, elev, pointAboveLaunchM, defaults);
   const fields = (unpenalizedScore: number, conditions: HourCondition[] = []): HourFields => ({
     time: hour.time,
     launchWind: wind,
@@ -537,7 +542,7 @@ export function evaluateHour(ctx: HourContext, defaults: ScoringDefaults = SCORI
   }
 
   // Aloft.
-  const aloft = aloftWind(hour, elev, topOfLiftM(hour, elev, defaults), defaults);
+  const aloft = aloftWind(hour, elev, topOfLiftM(hour, elev, pointAboveLaunchM, defaults), defaults);
   if (aloft === undefined) {
     reasons.push(reason("aloftWindUnavailable", "wind aloft: n/a"));
   } else {

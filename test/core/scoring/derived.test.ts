@@ -295,7 +295,7 @@ describe("thermalIndex", () => {
   it("perfectHourHandComputed", () => {
     // Launch 2000: lowest level >= 3200 m is 600 hPa (Z 4400, -7.5 C).
     // parcel = 20 - 0.0098 * 2400 = 20 - 23.52 = -3.52; TI = -7.5 - (-3.52) = -3.98.
-    const ti = thermalIndex(perfectHour().build(), 2000);
+    const ti = thermalIndex(perfectHour().build(), 2000, 0);
     expect(isClose(ti, -3.98)).toBe(true);
   });
 
@@ -310,7 +310,7 @@ describe("thermalIndex", () => {
         l.heightM = 2950;
       })
       .build();
-    expect(isClose(thermalIndex(hour, 1770), -1.726)).toBe(true);
+    expect(isClose(thermalIndex(hour, 1770, 0), -1.726)).toBe(true);
   });
 
   it("levelExactlyAtOffsetQualifies", () => {
@@ -321,7 +321,7 @@ describe("thermalIndex", () => {
         l.heightM = 2970;
       })
       .build();
-    expect(isClose(thermalIndex(hour, 1770), -6.24)).toBe(true);
+    expect(isClose(thermalIndex(hour, 1770, 0), -6.24)).toBe(true);
   });
 
   it("launch3444UsesFiveHundred", () => {
@@ -336,12 +336,12 @@ describe("thermalIndex", () => {
         l.heightM = 4600;
       })
       .build();
-    expect(isClose(thermalIndex(hour, 3444), -6.9112)).toBe(true);
+    expect(isClose(thermalIndex(hour, 3444, 0), -6.9112)).toBe(true);
   });
 
   it("noQualifyingLevelIsNil", () => {
     // Launch 5000 needs >= 6200; Z500 is 5800.
-    expect(thermalIndex(perfectHour().build(), 5000)).toBeUndefined();
+    expect(thermalIndex(perfectHour().build(), 5000, 0)).toBeUndefined();
   });
 
   it("missingSurfaceTempIsNil", () => {
@@ -350,7 +350,7 @@ describe("thermalIndex", () => {
         h.tempC = undefined;
       })
       .build();
-    expect(thermalIndex(hour, 2000)).toBeUndefined();
+    expect(thermalIndex(hour, 2000, 0)).toBeUndefined();
   });
 
   it("levelWithoutTempIsSkipped", () => {
@@ -361,14 +361,32 @@ describe("thermalIndex", () => {
         l.tempC = undefined;
       })
       .build();
-    expect(isClose(thermalIndex(hour, 2000), -0.76)).toBe(true);
+    expect(isClose(thermalIndex(hour, 2000, 0), -0.76)).toBe(true);
+  });
+
+  it("liftsTheParcelFromAHigherForecastPoint", () => {
+    // Launch 2000, point 300 m above it at 2300. The floor stays 2000 + 1200 = 3200 -> 600 hPa.
+    // parcel = 20 - 0.0098 * (4400 - 2300 = 2100) = 20 - 20.58 = -0.58; TI = -7.5 - (-0.58) = -6.92
+    const ti = thermalIndex(perfectHour().build(), 2000, 300);
+    expect(isClose(ti, -6.92)).toBe(true);
+  });
+
+  it("theLevelFloorStaysAboveTheLaunchNotThePoint", () => {
+    // Z700 = 3250 clears the launch's floor (3200) but not the point's (3500), so 700 hPa (2 C).
+    // parcel = 20 - 0.0098 * (3250 - 2300 = 950) = 20 - 9.31 = 10.69; TI = 2 - 10.69 = -8.69
+    const hour = perfectHour()
+      .level(700, (l) => {
+        l.heightM = 3250;
+      })
+      .build();
+    expect(isClose(thermalIndex(hour, 2000, 300), -8.69)).toBe(true);
   });
 });
 
 describe("cloud base and top of lift", () => {
   it("cloudBaseHandComputed", () => {
     // (20 - 5) * 125 = 1875 m
-    expect(isClose(cloudBaseAboveLaunchM(perfectHour().build()), 1875)).toBe(true);
+    expect(isClose(cloudBaseAboveLaunchM(perfectHour().build(), 0), 1875)).toBe(true);
     // (25.4 - 18.2) * 125 = 7.2 * 125 = 900 m
     const humid = perfectHour()
       .with((h) => {
@@ -376,7 +394,12 @@ describe("cloud base and top of lift", () => {
         h.dewpointC = 18.2;
       })
       .build();
-    expect(isClose(cloudBaseAboveLaunchM(humid), 900)).toBe(true);
+    expect(isClose(cloudBaseAboveLaunchM(humid, 0), 900)).toBe(true);
+  });
+
+  it("cloudBaseAddsTheForecastPointsHeightAboveTheLaunch", () => {
+    // The point is 300 m above the launch: (20 - 5) * 125 + 300 = 2175 m
+    expect(isClose(cloudBaseAboveLaunchM(perfectHour().build(), 300), 2175)).toBe(true);
   });
 
   it("cloudBaseNilWhenInputMissing", () => {
@@ -385,25 +408,25 @@ describe("cloud base and top of lift", () => {
         h.dewpointC = undefined;
       })
       .build();
-    expect(cloudBaseAboveLaunchM(noDew)).toBeUndefined();
+    expect(cloudBaseAboveLaunchM(noDew, 0)).toBeUndefined();
     const noTemp = perfectHour()
       .with((h) => {
         h.tempC = undefined;
       })
       .build();
-    expect(cloudBaseAboveLaunchM(noTemp)).toBeUndefined();
+    expect(cloudBaseAboveLaunchM(noTemp, 0)).toBeUndefined();
   });
 
   it("topOfLiftUsesLargerOfCloudBaseAndBLH", () => {
     // Perfect: 2000 + max(1875, 2000) = 4000
-    expect(isClose(topOfLiftM(perfectHour().build(), 2000), 4000)).toBe(true);
+    expect(isClose(topOfLiftM(perfectHour().build(), 2000, 0), 4000)).toBe(true);
     // BLH 1000: 2000 + max(1875, 1000) = 3875
     const lowBLH = perfectHour()
       .with((h) => {
         h.blhM = 1000;
       })
       .build();
-    expect(isClose(topOfLiftM(lowBLH, 2000), 3875)).toBe(true);
+    expect(isClose(topOfLiftM(lowBLH, 2000, 0), 3875)).toBe(true);
   });
 
   it("topOfLiftWithOneMissing", () => {
@@ -413,14 +436,31 @@ describe("cloud base and top of lift", () => {
         h.blhM = undefined;
       })
       .build();
-    expect(isClose(topOfLiftM(noBLH, 2000), 3875)).toBe(true);
+    expect(isClose(topOfLiftM(noBLH, 2000, 0), 3875)).toBe(true);
     // No cloud base: 2000 + 2000 = 4000
     const noCB = perfectHour()
       .with((h) => {
         h.dewpointC = undefined;
       })
       .build();
-    expect(isClose(topOfLiftM(noCB, 2000), 4000)).toBe(true);
+    expect(isClose(topOfLiftM(noCB, 2000, 0), 4000)).toBe(true);
+  });
+
+  it("topOfLiftUsesTheCloudBaseFromAHigherForecastPoint", () => {
+    // Point 300 m above the launch, no BLH: 2000 + (1875 + 300) = 4175
+    const noBLH = perfectHour()
+      .with((h) => {
+        h.blhM = undefined;
+      })
+      .build();
+    expect(isClose(topOfLiftM(noBLH, 2000, 300), 4175)).toBe(true);
+    // BLH 2200 beats that cloud base: 2000 + 2200 = 4200
+    const highBLH = perfectHour()
+      .with((h) => {
+        h.blhM = 2200;
+      })
+      .build();
+    expect(isClose(topOfLiftM(highBLH, 2000, 300), 4200)).toBe(true);
   });
 
   it("topOfLiftFallback", () => {
@@ -431,9 +471,9 @@ describe("cloud base and top of lift", () => {
         h.dewpointC = undefined;
       })
       .build();
-    expect(isClose(topOfLiftM(neither, 2000), 3500)).toBe(true);
+    expect(isClose(topOfLiftM(neither, 2000, 0), 3500)).toBe(true);
     const defaults = { ...SCORING_DEFAULTS, topOfLiftFallbackAboveLaunchM: 1000 };
-    expect(isClose(topOfLiftM(neither, 2000, defaults), 3000)).toBe(true);
+    expect(isClose(topOfLiftM(neither, 2000, 0, defaults), 3000)).toBe(true);
   });
 });
 
@@ -466,10 +506,10 @@ describe("SCORING_DEFAULTS", () => {
     const gustFactor = (h.gustMph ?? 0) - (h.windMph ?? 0);
     expect(gustFactor).toBeLessThan(d.highGustWarningFactorMultiple * (DEFAULT_WIND_LIMITS.gustFactorMph ?? 0));
     expect(h.blhM).toBeGreaterThanOrEqual(d.blhBonusMinM);
-    expect(cloudBaseAboveLaunchM(h)).toBeGreaterThanOrEqual(cloudBaseBonusM());
-    const ti = thermalIndex(h, PERFECT_LAUNCH_ELEVATION_M);
+    expect(cloudBaseAboveLaunchM(h, 0)).toBeGreaterThanOrEqual(cloudBaseBonusM());
+    const ti = thermalIndex(h, PERFECT_LAUNCH_ELEVATION_M, 0);
     expect(ti).toBeLessThanOrEqual(d.thermalIndexStrongMaxC);
-    const top = topOfLiftM(h, PERFECT_LAUNCH_ELEVATION_M);
+    const top = topOfLiftM(h, PERFECT_LAUNCH_ELEVATION_M, 0);
     const aloft = aloftWind(h, PERFECT_LAUNCH_ELEVATION_M, top);
     expect(aloft?.speedMph).toBeLessThan(d.aloftCautionMph);
   });

@@ -97,6 +97,8 @@ interface CtxOptions {
   neighborCenter?: NeighborSample;
   neighbors?: NeighborPointSample[];
   launch?: Launch;
+  /** The forecast point's height above the launch, 0 when the launch is its own point. */
+  pointAboveLaunchM?: number;
   siteLimits?: WindLimits;
   /** Site fields over the test site's (its `limits` win over `siteLimits`). */
   site?: Partial<Site>;
@@ -118,6 +120,7 @@ function ctx(o: CtxOptions = {}): HourContext {
     neighborCenter: o.neighborCenter ?? nb.center,
     neighbors: o.neighbors ?? nb.points,
     launch,
+    pointAboveLaunchM: o.pointAboveLaunchM ?? 0,
     site: makeSite(launch, o.siteLimits, o.site),
   };
   return c;
@@ -206,8 +209,8 @@ describe("baseline", () => {
   it("carries the cloud base and thermal index it evaluated, no-data hours included", () => {
     const hour = perfectHour().build();
     const elev = elevationM(makeLaunch());
-    expect(PERFECT.cloudBaseM).toBe(cloudBaseAboveLaunchM(hour));
-    expect(PERFECT.thermalIndexC).toBe(thermalIndex(hour, elev));
+    expect(PERFECT.cloudBaseM).toBe(cloudBaseAboveLaunchM(hour, 0));
+    expect(PERFECT.thermalIndexC).toBe(thermalIndex(hour, elev, 0));
     expect(PERFECT.cloudBaseM).toBeDefined();
     expect(PERFECT.thermalIndexC).toBeDefined();
     const noData = evalWith({ hour: hourWith((h) => (h.windMph = undefined)) });
@@ -567,10 +570,31 @@ describe("boundaries", () => {
     const below = hourWith((h) => ((h.tempC = spreadFor(1499)), (h.dewpointC = 0))).build();
     const at = hourWith((h) => ((h.tempC = spreadFor(1500)), (h.dewpointC = 0))).build();
     // Preconditions: the inputs really straddle the threshold.
-    expect(cloudBaseAboveLaunchM(below)).toBeLessThan(lowCloudBaseCautionM());
-    expect(cloudBaseAboveLaunchM(at)).toBeGreaterThanOrEqual(lowCloudBaseCautionM());
+    expect(cloudBaseAboveLaunchM(below, 0)).toBeLessThan(lowCloudBaseCautionM());
+    expect(cloudBaseAboveLaunchM(at, 0)).toBeGreaterThanOrEqual(lowCloudBaseCautionM());
     expect(kinds(evalWith({ launch, hour: below }))).toContain("lowCloud");
     expect(kinds(evalWith({ launch, hour: at }))).not.toContain("lowCloud");
+  });
+
+  it("a launch below its forecast point measures cloud base from the point", () => {
+    // The point's spread alone puts base at 1,000 ft, under the caution. The point is 300 m
+    // (984 ft) above the launch, so base is about 1,984 ft above the launch.
+    const spread = (1000 * METERS_PER_FOOT) / d.cloudBaseMPerDegSpread;
+    const hour = hourWith((h) => ((h.tempC = 5 + spread), (h.dewpointC = 5))).build();
+    expect(cloudBaseAboveLaunchM(hour, 0)).toBeLessThan(lowCloudBaseCautionM());
+    expect(kinds(evalWith({ hour }))).toContain("lowCloud");
+    const shared = evalWith({ hour, pointAboveLaunchM: 300 });
+    expect(shared.cloudBaseM).toBeCloseTo(1000 * METERS_PER_FOOT + 300, 9);
+    expect(shared.cloudBaseM).toBeGreaterThanOrEqual(lowCloudBaseCautionM());
+    expect(kinds(shared)).not.toContain("lowCloud");
+  });
+
+  it("a launch below its forecast point lifts the thermal parcel from the point", () => {
+    const hour = perfectHour().build();
+    const elev = elevationM(makeLaunch());
+    const shared = evalWith({ hour, pointAboveLaunchM: 300 });
+    expect(shared.thermalIndexC).toBe(thermalIndex(hour, elev, 300));
+    expect(shared.thermalIndexC).toBeLessThan(PERFECT.thermalIndexC ?? -Infinity);
   });
 
   it("low cloud cover 59 / 60 %", () => {
@@ -632,8 +656,8 @@ describe("boundaries", () => {
           l.tempC = parcel + ti;
         })
         .build();
-    expect(thermalIndex(hourFor(499, 0), elev)).toBe(0);
-    expect(thermalIndex(hourFor(499, 0.1), elev)).toBeGreaterThan(0);
+    expect(thermalIndex(hourFor(499, 0), elev, 0)).toBe(0);
+    expect(thermalIndex(hourFor(499, 0.1), elev, 0)).toBeGreaterThan(0);
     expect(kinds(evalWith({ launch, hour: hourFor(499, 0.1) }))).toContain("sledder");
     expect(kinds(evalWith({ launch, hour: hourFor(500, 0.1) }))).not.toContain("sledder");
     expect(kinds(evalWith({ launch, hour: hourFor(499, 0) }))).not.toContain("sledder");
@@ -731,7 +755,7 @@ describe("nil handling", () => {
     const noTI = (b: HourBuilder) =>
       b.level(600, (l) => (l.tempC = undefined)).level(500, (l) => (l.tempC = undefined));
     const low = noTI(hourWith((h) => (h.blhM = 400))).build();
-    expect(thermalIndex(low, PERFECT_LAUNCH_ELEVATION_M)).toBeUndefined();
+    expect(thermalIndex(low, PERFECT_LAUNCH_ELEVATION_M, 0)).toBeUndefined();
     expect(kinds(evalWith({ hour: low }))).toEqual(
       expect.arrayContaining(["sledder", "thermalIndexUnavailable"]),
     );
@@ -1918,6 +1942,7 @@ describe("Nov 7 2026 at Golden North (gusts not scored)", () => {
         neighborCenter: { ecmwf: wind },
         neighbors: [0, 90, 180, 270].map((bearingDeg) => ({ bearingDeg, ecmwf: wind })),
         launch: north,
+        pointAboveLaunchM: 0,
         site: golden,
       });
     });

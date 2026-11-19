@@ -142,8 +142,8 @@ No-go hours score 0. Other hours start at 50, then:
 
 The score is clamped to 0–100.
 
-- **Cloud base** is (temperature − dewpoint) × 125 m, from 2 m values Open-Meteo adjusts to the elevation of the site's highest launch, or to the launch's own elevation when it is more than 1,000 ft lower. It runs high at launches well above model terrain, which is why low cloud cover is checked as well and the base is shown as "≈".
-- **Thermal index** is the level temperature minus a surface parcel lifted dry adiabatically (9.8 °C/km). Lower means stronger thermals.
+- **Cloud base** is (temperature − dewpoint) × 125 m above the elevation the 2 m values are for: the site's highest launch, or the launch itself when it is more than 1,000 ft lower. A launch below that elevation adds the difference, so the base is always given above the launch. It runs high at launches well above model terrain, which is why low cloud cover is checked as well and the base is shown as "≈".
+- **Thermal index** is the level temperature minus a surface parcel lifted dry adiabatically (9.8 °C/km), starting from the elevation the 2 m temperature is for. Lower means stronger thermals.
 - **Boundary layer height** is relative to the model's smoothed terrain, not to launch, so treat it as a rough signal.
 
 ### Kiting sites
