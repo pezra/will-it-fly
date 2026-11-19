@@ -4,18 +4,11 @@ Architectural decisions that would be costly to reverse. Newest first.
 
 ## Forecasts are fetched per site point, and each model only for what it's read for (2026-11-18, `cheaper-forecast-requests`)
 
-A site's launches share the forecast for its highest launch. A launch more than 1,000 ft below that gets its own (`sitePoints`). Each site has one neighbor ring around its highest launch. A load sends three requests:
-- surface variables from `ecmwf_ifs` and RRFS
-- pressure levels from `ecmwf_ifs025` and RRFS
-- the neighbors
-
-Cloud base and the thermal parcel are measured from the point's elevation. A full load had cost about 560 of Open-Meteo's 600 weighted calls a minute per IP. Most of that went on duplicate launch points and on model/variable pairs nobody read. Now it's about 330. Elevation is the one input that moves the forecast between a site's launches. In a live check at Williams Peak, two points 1,470 ft apart differed by 3 °C, and ECMWF picked another grid cell. Cache entries are keyed by the point layout, so a change to the sharing rule refetches instead of misreading.
+A site's launches share the forecast for its highest launch. Only a launch more than 1,000 ft below that gets its own forecast. Each site has one neighbor ring. Surface and pressure-level variables go in separate requests, so each model is asked only for what is read from it. A full load had cost about 560 of Open-Meteo's 600 weighted calls a minute per IP, most of it on duplicate points and model/variable pairs nobody read. Elevation is the one input that changes the forecast between a site's launches.
 
 ### Rejected
-- One point per site with our own lapse-rate correction for lower launches. It's a scoring rule built on our guess at Open-Meteo's downscaling, to save two points.
-- One point per site with no correction. Thermal calls can be off by up to ~3 °C at two sites.
-- Deduplicating only identical launch points. That's 47 points instead of 37, and the neighbors stay per launch.
-- One launch request. Open-Meteo applies every variable to every model in a request, so the unread pairs can't be dropped without splitting it.
+- Our own lapse-rate correction for lower launches. It's a scoring rule built on a guess at Open-Meteo's downscaling.
+- Deduplicating only identical launch points. That leaves 47 points instead of 37.
 
 ## Failed forecast loads are retried once, only for network failures (2026-11-18, `improve-forecast-fetch-reliability`)
 
