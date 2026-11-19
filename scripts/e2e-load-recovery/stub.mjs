@@ -6,8 +6,8 @@
 //   ok         answers every request with a synthesized, valid forecast
 //   429        answers 429 with Open-Meteo's JSON error body
 //   503        answers 503
-//   hang-once  the FIRST launch request and the FIRST neighbor request never answer (socket kept
-//              open); every later request is answered like `ok`
+//   hang-once  the FIRST request of each kind (surface, levels, neighbors) never answers
+//              (socket kept open); every later request is answered like `ok`
 //   hang       every request never answers
 // OSRM (/table/...) always answers 500, so the app falls back to estimated drive times.
 // Valid bodies are built from the recorded fixtures in test/fixtures, repeated for however many
@@ -39,17 +39,23 @@ function denverMidnight(day) {
   throw new Error(`no Denver midnight for ${day}`);
 }
 
+/** surface (has `cape`), levels (pressure-level variables) or neighbors (10 m wind only). */
+function kindOf(query) {
+  const hourly = query.get("hourly");
+  return hourly.includes("cape") ? "surface" : hourly.includes("hPa") ? "levels" : "neighbors";
+}
+
 function synthesize(url) {
   const query = url.searchParams;
   const count = query.get("latitude").split(",").length;
-  const isLaunch = query.get("hourly").includes("cape");
-  const source = read(isLaunch ? "openmeteo-launches.json" : "openmeteo-neighbors.json");
+  const source = read(`openmeteo-${kindOf(query)}.json`);
   const day = query.get("start_date") ?? DENVER_DAY.format(new Date());
   const days = query.get("start_date") ? 1 : Number(query.get("forecast_days") ?? 2);
   const shift = denverMidnight(day) - source[0].hourly.time[0];
   const locations = Array.from({ length: count }, (_, i) => {
     const loc = structuredClone(source[i % source.length]);
     for (const part of [loc.hourly, loc.daily]) {
+      if (!part) continue; // levels has no daily
       const length = part === loc.hourly ? days * 24 : days;
       for (const [key, series] of Object.entries(part)) {
         const isTime = key === "time" || key.startsWith("sunrise") || key.startsWith("sunset");
@@ -83,7 +89,7 @@ export async function startStub({ mode, port = 0, log = () => {} }) {
       res.writeHead(404).end();
       return;
     }
-    const kind = url.searchParams.get("hourly").includes("cape") ? "launch" : "neighbor";
+    const kind = kindOf(url.searchParams);
     const entry = { t, kind, outcome: "" };
     requests.push(entry);
     const hang = () => {
